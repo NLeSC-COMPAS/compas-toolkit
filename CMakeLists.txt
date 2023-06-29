@@ -14,8 +14,8 @@ target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Wconvers
 set(PROJECT_CLANG_TIDY clang-tidy -checks=-*,readability-*,bugprone-*,-readability-magic-numbers,-readability-use-anyofallof,-readability-else-after-return)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${PROJECT_CLANG_TIDY}")
 
-# find_package(CUDAToolkit REQUIRED)
-# target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cudart_static)
-# target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cuda_driver)
-# target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::nvrtc)
+find_package(CUDAToolkit REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cudart_static)
+target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::cuda_driver)
+target_link_libraries(${PROJECT_NAME} PRIVATE CUDA::nvrtc)
 
