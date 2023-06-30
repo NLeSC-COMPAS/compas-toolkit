@@ -1,0 +1,33 @@
+#pragma once
+
+#ifdef __CUDACC__
+    #ifdef __CUDA_ARCH__
+        #define COMPAS_IS_DEVICE (1)
+    #else
+        #define COMPAS_IS_DEVICE (0)
+    #endif
+
+    #define COMPAS_IS_HOST     (!COMPAS_IS_DEVICE)
+    #define COMPAS_DEVICE      __device__ __forceinline__
+    #define COMPAS_HOST_DEVICE __host__ __device__ __forceinline__
+    #define COMPAS_UNREACHABLE       \
+        do {                         \
+            __builtin_unreachable(); \
+        } while (1)
+    #define COMPAS_ASSUME(EXPR) (__builtin_assume(EXPR))
+    #define COMPAS_ASSUME_ALIGNED(PTR, ALIGN) \
+        (__builtin_assume_aligned(PTR, ALIGN))
+
+#else
+
+    #define COMPAS_IS_DEVICE (0)
+    #define COMPAS_IS_HOST   (1)
+    #define COMPAS_DEVICE
+    #define COMPAS_HOST_DEVICE
+    #define COMPAS_UNREACHABLE \
+        do {                   \
+        } while (1)
+    #define COMPAS_ASSUME(EXPR)               ((void)(0))
+    #define COMPAS_ASSUME_ALIGNED(PTR, ALIGN) (PTR)
+
+#endif

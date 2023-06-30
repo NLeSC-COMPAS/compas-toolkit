@@ -1,58 +1,55 @@
-#pragma once
-
-#include "signal.h"
+#include "core/all.h"
+#include "trajectory.h"
 
 namespace compas {
 
-__global__ void to_sample_point_components(
-        float2 m,
-        Trajectory trajectory,
-        int readout,
-        int voxel,
-        TissueParameters p
-) {
-    auto R_2 = 1 / p.T_2[voxel];
-    auto ns = trajectory.nsamples_per_readout
-    auto delta_t = trajectory.delta_t[readout];
-    auto k_start = trajectory.k_start[readout]
-    auto delta_k = trajectory.Δk_adc[readout_idx];
-
-    auto xyz = p.xyz[voxel];
-    auto x = xyz.x;
-    auto y = xyz.y
-
-    m = rewind(m, R2, float(0.5) * ns * delta_t, p);
-    m = prephaser(m, k_start.re, k_start.im, x, y);
-
-    auto theta = delta_k.re * x + delta_k.im * y
-    if (has_B0(p)) {
-        theta += π * p.B0 * Δt * 2;
-    }
-
-    lnE₂eⁱᶿ = (-Δt * R_2 + im*theta);
-    return (m, lnE₂eⁱᶿ);
-}
-
-__global__ void simulate_prepare_kernel(
-    int nreadouts,
-    int nvoxels,
-    CudaView<float, 2> exponents,
-    CudaView<float, 2> factors,
-    CudaView<float2, 2> echos
-) {
+__global__ void simulate_signal_prepare_kernel(
+    CudaView<cfloat, 2> exponents,
+    CudaView<cfloat, 2> factors,
+    CudaView<const cfloat, 2> echos,
+    TissueParameters parameters,
+    SpokesTrajectory trajectory) {
     int readout = blockIdx.x * blockDim.x + threadIdx.x;
     int voxel = blockIdx.y * blockDim.y + threadIdx.y;
 
-    if (readout >= nreadouts || voxel >= nvoxels) {
-        return;
+    if (readout < echos.size(0) && voxel < echos.size(1)) {
+        auto m = echos[readout][voxel];
+
+        auto p = parameters.get_voxel(voxel);
+        auto [m_s, exponent] =
+            to_sample_point_components(m, trajectory.get_readout(readout), p);
+        auto factor = m_s * p.rho;
+
+        exponents[readout][voxel] = exponent;
+        factors[readout][voxel] = factor;
     }
-
-    auto m = echos(voxel, readout);
-    auto p = parameters(voxel)
-    m_s, exponent = to_sample_point_components(m, trajectory, readout, p)
-
-    exponents(voxel, readout) = exponent;
-    factors(voxel, readout) = m_s * complex(p.ρˣ, p.ρʸ);
 }
 
+__global__ void simulate_signal_sum_kernel(
+    CudaView<cfloat, 3> signal,
+    CudaView<const cfloat, 2> exponents,
+    CudaView<const cfloat, 2> factors,
+    CudaView<const float, 2> coil_sensitivities) {
+    int readout = blockIdx.x * blockDim.x + threadIdx.x;
+    int sample = blockIdx.y * blockDim.y + threadIdx.y;
+    int coil = blockIdx.z * blockDim.z + threadIdx.z;
+    bool in_bounds = readout < signal.size(0) && sample < signal.size(1)
+        && coil < coil_sensitivities.size(0);
+
+    if (in_bounds) {
+        int nv = exponents.size(0);
+        cfloat S = 0;
+
+        for (int voxel = 0; voxel < nv; voxel++) {
+            auto exponent = exponents[readout][voxel];
+            auto factor = factors[readout][voxel];
+            auto C = coil_sensitivities[coil][voxel];
+
+            S += exp(exponent * float(sample)) * (factor * C);
+        }
+
+        signal[readout][sample][coil] = S;
+    }
 }
+
+}  // namespace compas

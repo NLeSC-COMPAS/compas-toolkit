@@ -1,18 +1,29 @@
-#include "signal.h"
+#include "core/all.h"
 #include "signal_kernels.cuh"
 
 namespace compas {
 
 void simulate_signal(
-        CudaContext ctx,
-        CudaView<float, 1> signal, // t
-        CudaView<float, 2> echos, // nvoxels x nreadouts
-        const TissueParameters& parameters, // nvoxels
-        const Trajectory& trajectory, // ??
-        CudaView<float> coil_sensitivites // nvoxels x ncoils
-) {
-    size_t nvoxels = echos.size(0);
-    size_t nreadouts = echos.size(1);
+    CudaView<cfloat, 3> signal,
+    CudaView<const cfloat, 2> echos,
+    TissueParameters parameters,
+    SpokesTrajectory trajectory,
+    CudaView<const float, 2> coil_sensitivities) {
+    CudaView<cfloat, 2> exponents;
+    CudaView<cfloat, 2> factors;
+
+    simulate_signal_prepare_kernel<<<1, 1>>>(
+        exponents,
+        factors,
+        echos,
+        parameters,
+        trajectory);
+
+    simulate_signal_sum_kernel<<<1, 1>>>(
+        signal,
+        exponents,
+        factors,
+        coil_sensitivities);
 }
 
-}
+}  // namespace compas
