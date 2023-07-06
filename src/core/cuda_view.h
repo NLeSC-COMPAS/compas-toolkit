@@ -62,22 +62,108 @@ struct StaticArray<T, 0> {
     }
 };
 
-template<typename T, int N = 1>
+namespace layouts {
+template<int N>
+struct RowMajor {
+    COMPAS_HOST_DEVICE
+    RowMajor(StaticArray<int, N> shape) : shape_(shape) {}
+
+    COMPAS_HOST_DEVICE
+    RowMajor() {
+        for (int i = 0; i < N; i++) {
+            shape_[i] = 0;
+        }
+    }
+
+    COMPAS_HOST_DEVICE
+    int size(int axis) const {
+        return axis < N ? shape_[axis] : 1;
+    }
+
+    COMPAS_HOST_DEVICE
+    ptrdiff_t stride(int axis) const {
+        ptrdiff_t stride = 1;
+
+        for (int i = axis + 1; i < N; i++) {
+            stride *= shape_[i];
+        }
+
+        return stride;
+    }
+
+  private:
+    StaticArray<int, N> shape_;
+};
+
+template<int N>
+struct ColumnMajor {
+    COMPAS_HOST_DEVICE
+    ColumnMajor(StaticArray<int, N> shape) : shape_(shape) {}
+
+    COMPAS_HOST_DEVICE
+    int size(int axis) const {
+        return axis < N ? shape_[axis] : 1;
+    }
+
+    COMPAS_HOST_DEVICE
+    ptrdiff_t stride(int axis) const {
+        ptrdiff_t stride = 1;
+
+        for (int i = 0; i < axis && i < N; i++) {
+            stride *= shape_[i];
+        }
+
+        return stride;
+    }
+
+  private:
+    StaticArray<int, N> shape_;
+};
+
+template<int N>
+struct Strided {
+    COMPAS_HOST_DEVICE
+    Strided(StaticArray<int, N> shape, StaticArray<ptrdiff_t, N> strides) :
+        shape_(shape),
+        strides_(strides) {}
+
+    COMPAS_HOST_DEVICE
+    int size(int axis) const {
+        return axis < N ? shape_[axis] : 1;
+    }
+
+    COMPAS_HOST_DEVICE
+    ptrdiff_t stride(int axis) const {
+        return axis < N ? strides_[axis] : 1;
+    }
+
+  private:
+    StaticArray<int, N> shape_;
+    StaticArray<ptrdiff_t, N> strides_;
+};
+}  // namespace layouts
+
+template<typename T, int N = 1, template<int> class L = layouts::RowMajor>
 struct CudaView;
 
 namespace detail {
 template<typename T, size_t N>
 struct CudaViewIndexHelper {
-    using type = CudaView<T, N - 1>;
+    using type = CudaView<T, N - 1, layouts::Strided>;
 
-    COMPAS_HOST_DEVICE
-    static type call(CudaView<T, N> view, ptrdiff_t index) {
+    template<template<int> class L>
+    COMPAS_HOST_DEVICE static type
+    call(const CudaView<T, N, L>& view, ptrdiff_t index) {
+        T* base_ptr = view.data() + view.stride(0) * index;
         StaticArray<int, N - 1> new_shape;
+        StaticArray<ptrdiff_t, N - 1> new_strides;
+
         for (int i = 1; i < N; i++) {
-            new_shape[i - 1] = view.shape[i];
+            new_shape[i - 1] = view.size(i);
+            new_strides[i - 1] = view.stride(i);
         }
 
-        return {view.ptr + view.stride(0) * index, new_shape};
+        return {base_ptr, {new_shape, new_strides}};
     }
 };
 
@@ -85,17 +171,48 @@ template<typename T>
 struct CudaViewIndexHelper<T, 1> {
     using type = T&;
 
-    COMPAS_HOST_DEVICE
-    static type call(CudaView<T, 1> view, ptrdiff_t index) {
-        return view.ptr[view.stride(0) * index];
+    template<template<int> class L>
+    COMPAS_HOST_DEVICE static type
+    call(CudaView<T, 1, L> view, ptrdiff_t index) {
+        return (view.data())[view.stride(0) * index];
     }
 };
 }  // namespace detail
 
-template<typename T, int N>
+template<typename T, int N, template<int> class L>
 struct CudaView {
-    operator CudaView<const T, N>() const {
-        return {ptr, shape};
+    using value_type = T;
+    using layout_type = L<N>;
+    static constexpr int rank = N;
+
+    COMPAS_HOST_DEVICE
+    CudaView(T* ptr, layout_type layout) : ptr_(ptr), layout_(layout) {}
+
+    COMPAS_HOST_DEVICE
+    CudaView() : CudaView(nullptr, layout_type {}) {}
+
+    template<typename U = const T>
+    operator CudaView<U, N, L>() const {
+        return {ptr_, layout_};
+    }
+
+    const layout_type& layout() const {
+        return layout_;
+    }
+
+    COMPAS_HOST_DEVICE
+    int size(int axis) const {
+        return layout_.size(axis);
+    }
+
+    COMPAS_HOST_DEVICE
+    ptrdiff_t stride(int axis) const {
+        return layout_.stride(axis);
+    }
+
+    COMPAS_HOST_DEVICE
+    T* data() const {
+        return ptr_;
     }
 
     COMPAS_HOST_DEVICE
@@ -103,7 +220,7 @@ struct CudaView {
         bool result = false;
 
         for (int i = 0; i < N; i++) {
-            result |= shape[i] == 0;
+            result |= size(i) == 0;
         }
 
         return result;
@@ -114,31 +231,21 @@ struct CudaView {
         int total = 0;
 
         for (int i = 0; i < N; i++) {
-            total *= shape[i];
+            total *= size(i);
         }
 
         return total;
     }
 
     COMPAS_HOST_DEVICE
-    int size(int axis) const {
-        return axis < N ? shape[axis] : 1;
-    }
+    StaticArray<int, N> shape() const {
+        StaticArray<int, N> result;
 
-    COMPAS_HOST_DEVICE
-    ptrdiff_t stride(int axis) const {
-        ptrdiff_t stride = 1;
-
-        for (int i = axis + 1; i < N; i++) {
-            stride *= shape[i];
+        for (int i = 0; i < N; i++) {
+            result[i] = size(i);
         }
 
-        return stride;
-    }
-
-    COMPAS_HOST_DEVICE
-    T* data() const {
-        return ptr;
+        return result;
     }
 
     COMPAS_HOST_DEVICE
@@ -147,28 +254,8 @@ struct CudaView {
         return detail::CudaViewIndexHelper<T, N>::call(*this, index);
     }
 
-    T* ptr;
-    StaticArray<int, N> shape;
+    T* ptr_;
+    layout_type layout_;
 };
-
-template<typename T, typename U>
-__device__ T& operator+=(CudaView<T, 1>& v, U&& value) {
-    (*v.ptr) += value;
-}
-
-template<typename T, typename U>
-__device__ T& operator-=(CudaView<T, 1>& v, U&& value) {
-    (*v.ptr) -= value;
-}
-
-template<typename T, typename U>
-__device__ T& operator/=(CudaView<T, 1>& v, U&& value) {
-    (*v.ptr) /= value;
-}
-
-template<typename T, typename U>
-__device__ T& operator*=(CudaView<T, 1>& v, U&& value) {
-    (*v.ptr) *= value;
-}
 
 }  // namespace compas

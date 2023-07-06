@@ -95,45 +95,45 @@ COMPAS_HOST_DEVICE complex_type<T> operator*(T a, complex_type<T> b) {
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T>
 operator+=(complex_type<T>& a, complex_type<T> b) {
-    a = a + b;
+    return a = a + b;
 }
 
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T>
 operator-=(complex_type<T>& a, complex_type<T> b) {
-    a = a - b;
+    return a = a - b;
 }
 
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T>
 operator*=(complex_type<T>& a, complex_type<T> b) {
-    a = a * b;
+    return a = a * b;
 }
 
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T>
 operator/=(complex_type<T>& a, complex_type<T> b) {
-    a = a / b;
+    return a = a / b;
 }
 
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T> operator+=(complex_type<T>& a, T b) {
-    a = a + b;
+    return a = a + b;
 }
 
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T> operator-=(complex_type<T>& a, T b) {
-    a = a - b;
+    return a = a - b;
 }
 
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T> operator*=(complex_type<T>& a, T b) {
-    a = a * b;
+    return a = a * b;
 }
 
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T> operator/=(complex_type<T>& a, T b) {
-    a = a / b;
+    return a = a / b;
 }
 
 }  // namespace compas

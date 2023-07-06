@@ -34,10 +34,10 @@ __global__ void simulate_signal_sum_kernel(
     int sample = blockIdx.y * blockDim.y + threadIdx.y;
     int coil = blockIdx.z * blockDim.z + threadIdx.z;
     bool in_bounds = readout < signal.size(0) && sample < signal.size(1)
-        && coil < coil_sensitivities.size(0);
+        && coil < signal.size(2);
 
     if (in_bounds) {
-        int nv = exponents.size(0);
+        int nv = exponents.size(1);
         cfloat S = 0;
 
         for (int voxel = 0; voxel < nv; voxel++) {

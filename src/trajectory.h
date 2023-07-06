@@ -30,7 +30,7 @@ struct SpokesTrajectory {
 COMPAS_HOST_DEVICE
 cfloat rewind(cfloat m, float R_2, float delta_t, Voxel p) {
     cfloat arg = delta_t * R_2;
-    arg -= cfloat(0, -delta_t * (2.0f * M_PI) * p.B_0);
+    arg -= cfloat(0, -delta_t * 2.0f * float(M_PI) * p.B_0);
     return m * exp(arg);
 }
 
