@@ -19,7 +19,6 @@
         (__builtin_assume_aligned(PTR, ALIGN))
 
 #else
-
     #define COMPAS_IS_DEVICE (0)
     #define COMPAS_IS_HOST   (1)
     #define COMPAS_DEVICE
