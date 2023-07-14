@@ -1,4 +1,5 @@
 #include "context.h"
+#include "simulate_signal.h"
 #include "tissueparameters.h"
 #include "trajectory.h"
 

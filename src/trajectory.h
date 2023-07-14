@@ -18,7 +18,7 @@ CartesianTrajectory make_cartesian_trajectory(
     int nreadouts,
     int samples_per_readout,
     float delta_t,
-    CudaArray<cfloat> k_start,
-    CudaArray<cfloat> delta_k);
+    host_view<cfloat> k_start,
+    host_view<cfloat> delta_k);
 
 }  // namespace compas

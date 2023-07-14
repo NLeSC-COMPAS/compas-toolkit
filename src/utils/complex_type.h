@@ -39,7 +39,7 @@ using cfloat = complex_type<float>;
 using cdouble = complex_type<double>;
 
 COMPAS_HOST_DEVICE
-complex_type<float> polar(float mag, float angle = {}) {
+static complex_type<float> polar(float mag, float angle = {}) {
     float sin, cos;
 #if COMPAS_IS_DEVICE
     __sincosf(angle, &sin, &cos);

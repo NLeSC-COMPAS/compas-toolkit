@@ -22,7 +22,7 @@
     #define COMPAS_IS_DEVICE (0)
     #define COMPAS_IS_HOST   (1)
     #define COMPAS_DEVICE
-    #define COMPAS_HOST_DEVICE
+    #define COMPAS_HOST_DEVICE inline
     #define COMPAS_UNREACHABLE \
         do {                   \
         } while (1)
