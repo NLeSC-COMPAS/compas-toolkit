@@ -7,36 +7,45 @@
 namespace compas {
 
 template<typename T>
-struct alignas(2 * sizeof(T)) complex_type {
+struct complex_storage {
+    T re = {}, im = {};
+};
+
+template<>
+struct alignas(2 * sizeof(float)) complex_storage<float> {
+    float re = 0, im = 0;
+};
+
+template<>
+struct alignas(2 * sizeof(double)) complex_storage<double> {
+    double re = 0, im = 0;
+};
+
+template<typename T>
+struct alignas(2 * sizeof(T)) complex_type: complex_storage<T> {
     COMPAS_HOST_DEVICE
-    complex_type(T real = {}, T imag = {}) : re(real), im(imag) {}
+    complex_type(T real = {}, T imag = {}) : complex_storage<T> {real, imag} {}
 
     COMPAS_HOST_DEVICE
     T real() const {
-        return re;
+        return this->re;
     }
 
     COMPAS_HOST_DEVICE
     T imag() const {
-        return im;
+        return this->im;
     }
 
     COMPAS_HOST_DEVICE
     T norm() const {
-        return re * re + im * im;
+        return real() * real() + imag() * imag();
     }
 
     COMPAS_HOST_DEVICE
     T conj() const {
-        return {re, -im};
+        return {real(), -imag()};
     }
-
-    T re;
-    T im;
 };
-
-using cfloat = complex_type<float>;
-using cdouble = complex_type<double>;
 
 COMPAS_HOST_DEVICE
 static complex_type<float> polar(float mag, float angle = {}) {
@@ -108,6 +117,16 @@ COMPAS_HOST_DEVICE complex_type<T> pow(complex_type<T> a, T b) {
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T> pow(T a, complex_type<T> b) {
     return exp(b * log(a));
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE complex_type<T> operator+(complex_type<T> a) {
+    return a;
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE complex_type<T> operator-(complex_type<T> a) {
+    return {-a.re, -a.im};
 }
 
 template<typename T>
@@ -223,5 +242,8 @@ template<typename T>
 COMPAS_HOST_DEVICE complex_type<T> operator/=(complex_type<T>& a, T b) {
     return a = a / b;
 }
+
+using cfloat = complex_type<float>;
+using cdouble = complex_type<double>;
 
 }  // namespace compas

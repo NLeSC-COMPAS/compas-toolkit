@@ -42,6 +42,7 @@ CudaException::CudaException(CUresult err, std::string msg) :
 
 struct CudaContextImpl {
     CudaContextImpl(CUdevice device) {
+        COMPAS_CUDA_CHECK(cuInit(0));
         COMPAS_CUDA_CHECK(cuDevicePrimaryCtxRetain(&context, device));
     }
 
@@ -115,8 +116,8 @@ void CudaBuffer::copy_from_host(
     const void* host_ptr,
     size_t offset,
     size_t length) {
-    COMPAS_ASSERT(
-        offset < nbytes_ && length < nbytes_ && offset + length <= nbytes_);
+    COMPAS_ASSERT(offset < nbytes_);
+    COMPAS_ASSERT(length <= nbytes_ && offset + length <= nbytes_);
 
     CudaContextGuard guard {context_};
     COMPAS_CUDA_CHECK(cuMemcpyHtoD(device_ptr_ + offset, host_ptr, length));

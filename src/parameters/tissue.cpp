@@ -1,4 +1,4 @@
-#include "tissueparameters.h"
+#include "tissue.h"
 
 namespace compas {
 TissueParameters make_tissue_parameters(
@@ -13,7 +13,7 @@ TissueParameters make_tissue_parameters(
     host_view<float> x,
     host_view<float> y,
     host_view<float> z) {
-    fixed_array<index_t, 2> shape = {
+    vec2<index_t> shape = {
         static_cast<int>(TissueParameterField::NUM_FIELDS),
         num_voxels};
     CudaArray<float, 2> params = ctx.zeros<float, 2>(shape);
@@ -47,6 +47,7 @@ TissueParameters make_tissue_parameters(
 
     return {
         .parameters = params,
+        .nvoxels = num_voxels,
         .has_z = has_z,
         .has_b0 = has_b0,
         .has_b1 = has_b1,

@@ -5,7 +5,7 @@
 #if COMPAS_IS_DEVICE
 namespace compas {
 
-[[noreturn]] COMPAS_DEVICE void
+[[noreturn]] __device__ __noinline__ void
 panic(const char* message, const char* file, const int line, const char* func) {
     printf(
         "[CUDA thread (%d, %d, %d)(%d, %d, %d)] panic occured: (%s:%d:%s): %s\n",

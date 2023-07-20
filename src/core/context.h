@@ -5,7 +5,7 @@
 #include <memory>
 #include <string>
 
-#include "utils/view.h"
+#include "core/view.h"
 
 namespace compas {
 
@@ -59,8 +59,14 @@ struct CudaContext {
     std::string device_name() const;
     std::shared_ptr<CudaBuffer> allocate_buffer(size_t nbytes) const;
 
+    template<typename F>
+    void launch(F fun) const {
+        F x = 1;
+        fun();
+    }
+
     template<typename T, int N = 1>
-    CudaArray<T, N> allocate(fixed_array<index_t, N> shape) const {
+    CudaArray<T, N> allocate(vector<index_t, N> shape) const {
         size_t nbytes = sizeof(T);
         for (index_t i = 0; i < N; i++) {
             nbytes *= size_t(shape[i]);
@@ -71,7 +77,7 @@ struct CudaContext {
 
     template<typename T>
     CudaArray<T> allocate(index_t n) const {
-        return allocate<T>(fixed_array<index_t, 1> {n});
+        return allocate<T>(vector<index_t, 1> {n});
     }
 
     template<typename T, int N>
@@ -82,7 +88,7 @@ struct CudaContext {
     }
 
     template<typename T, int N = 1>
-    CudaArray<T, N> zeros(fixed_array<index_t, N> shape) const {
+    CudaArray<T, N> zeros(vector<index_t, N> shape) const {
         auto buffer = allocate<T>(shape);
         buffer.fill(T {});
         return buffer;
@@ -144,7 +150,7 @@ template<typename T, index_t N>
 struct CudaArray {
     CudaArray(
         std::shared_ptr<CudaBuffer> buffer,
-        fixed_array<index_t, N> shape,
+        vector<index_t, N> shape,
         size_t offset = 0) :
         buffer_(std::move(buffer)),
         shape_(shape),
@@ -171,12 +177,12 @@ struct CudaArray {
         return size_t(size()) * sizeof(T);
     }
 
-    fixed_array<int, N> shape() const {
+    vector<int, N> shape() const {
         return shape_;
     }
 
     template<index_t M>
-    CudaArray<T, M> reshape(fixed_array<index_t, M> new_shape) const {
+    CudaArray<T, M> reshape(vector<index_t, M> new_shape) const {
         index_t total = 1;
         for (index_t i = 0; i < M; i++) {
             total *= new_shape[i];
@@ -187,14 +193,14 @@ struct CudaArray {
     }
 
     CudaArray<T> flatten() const {
-        fixed_array<index_t, 1> new_shape = {size()};
+        vector<index_t, 1> new_shape = {size()};
         return {buffer_, new_shape};
     }
 
     CudaArray<T, N> slice(index_t begin, index_t end) const {
         COMPAS_ASSERT(N > 0 && 0 <= begin && begin <= end && end <= size(0));
         size_t stride = size_t(begin);
-        fixed_array<index_t, N> new_shape;
+        vector<index_t, N> new_shape;
         new_shape[0] = end - begin;
 
         for (int i = 0; i < N - 1; i++) {
@@ -208,7 +214,7 @@ struct CudaArray {
     CudaArray<T, N - 1> slice(index_t index) const {
         COMPAS_ASSERT(N > 0 && index >= 0 && index < size(0));
         size_t stride = size_t(index);
-        fixed_array<index_t, N - 1> new_shape;
+        vector<index_t, N - 1> new_shape;
 
         for (int i = 0; i < N - 1; i++) {
             new_shape[i] = shape_[i + 1];
@@ -268,7 +274,7 @@ struct CudaArray {
 
   private:
     std::shared_ptr<CudaBuffer> buffer_;
-    fixed_array<index_t, N> shape_;
+    vector<index_t, N> shape_;
     size_t offset_;
 };
 

@@ -1,4 +1,4 @@
-#include "trajectory.h"
+#include "cartesian.h"
 
 namespace compas {
 

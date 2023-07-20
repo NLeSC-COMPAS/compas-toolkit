@@ -6,8 +6,8 @@ project(${PROJECT_NAME} LANGUAGES CXX CUDA)
 # Directory where libraries will be placed after building
 SET(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}")
 
-file(GLOB sources "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.cu")
-add_library(${PROJECT_NAME} STATIC ${sources})
+file(GLOB_RECURSE sources "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.cu")
+add_library(${PROJECT_NAME} STATIC ${sources} src/sequences/pssfp_kernels.cuh)
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION lib)
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/include")
@@ -18,7 +18,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/src")
 set(CXXFLAGS
         $<IF:$<COMPILE_LANGUAGE:CUDA>,-forward-unknown-to-host-compiler,>
         -Wall -Wextra -Wconversion -Wno-unused-parameter
-        $<IF:$<COMPILE_LANGUAGE:CUDA>,-Xcompiler=-Werror,-Werror>)
+        $<IF:$<COMPILE_LANGUAGE:CUDA>,-Xcompiler=-Werror,-Werror>
+        $<IF:$<COMPILE_LANGUAGE:CUDA>,-Xptxas="-v",>
+        )
 target_compile_options(${PROJECT_NAME} PRIVATE ${CXXFLAGS})
 
 # Enable C++17 support

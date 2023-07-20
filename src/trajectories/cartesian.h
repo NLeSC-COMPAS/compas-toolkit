@@ -1,7 +1,8 @@
 #pragma once
 
-#include "context.h"
-#include "utils/complex_type.h"
+#include "core/complex_type.h"
+#include "core/context.h"
+#include "trajectories/cartesian_kernels.cuh"
 
 namespace compas {
 
@@ -11,6 +12,15 @@ struct CartesianTrajectory {
     float delta_t;
     CudaArray<cfloat> k_start;
     CudaArray<cfloat> delta_k;
+
+    CartesianTrajectoryView view() const {
+        return {
+            .nreadouts = nreadouts,
+            .samples_per_readout = samples_per_readout,
+            .delta_t = delta_t,
+            .k_start = k_start.view(),
+            .delta_k = delta_k.view()};
+    }
 };
 
 CartesianTrajectory make_cartesian_trajectory(
