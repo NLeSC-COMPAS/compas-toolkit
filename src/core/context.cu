@@ -7,8 +7,7 @@
 
 namespace compas {
 
-static std::string
-format_exception_message(CUresult err, const char* file, const int line) {
+static std::string format_exception_message(CUresult err, const char* file, const int line) {
     const char* name = "";
     const char* msg = "";
 
@@ -16,27 +15,32 @@ format_exception_message(CUresult err, const char* file, const int line) {
     cuGetErrorString(err, &msg);
 
     char output[1024];
-    snprintf(
-        output,
-        sizeof output,
-        "CUDA error: %s (%s) at %s:%d",
-        name,
-        msg,
-        file,
-        line);
+    snprintf(output, sizeof output, "CUDA error: %s (%s) at %s:%d", name, msg, file, line);
+
+    return output;
+}
+
+static std::string format_exception_message(cudaError_t err, const char* file, const int line) {
+    auto name = cudaGetErrorName(err);
+    auto msg = cudaGetErrorString(err);
+
+    char output[1024];
+    snprintf(output, sizeof output, "CUDA error: %s (%s) at %s:%d", name, msg, file, line);
 
     return output;
 }
 
 CudaException::CudaException(CUresult err, const char* file, const int line) :
-    err_(err),
     message_(format_exception_message(err, file, line)) {
     //
 }
 
-CudaException::CudaException(CUresult err, std::string msg) :
-    err_(err),
-    message_("CUDA error: " + msg) {
+CudaException::CudaException(cudaError_t err, const char* file, const int line) :
+    message_(format_exception_message(err, file, line)) {
+    //
+}
+
+CudaException::CudaException(std::string msg) : message_("CUDA error: " + msg) {
     //
 }
 
@@ -62,11 +66,9 @@ CudaContext make_context(int device) {
     return std::make_shared<CudaContextImpl>(device);
 }
 
-CudaContextGuard::CudaContextGuard(const CudaContext& ctx) :
-    CudaContextGuard(ctx.impl_) {}
+CudaContextGuard::CudaContextGuard(const CudaContext& ctx) : CudaContextGuard(ctx.impl_) {}
 
-CudaContextGuard::CudaContextGuard(std::shared_ptr<CudaContextImpl> impl) :
-    impl_(impl) {
+CudaContextGuard::CudaContextGuard(std::shared_ptr<CudaContextImpl> impl) : impl_(impl) {
     COMPAS_CUDA_CHECK(cuCtxPushCurrent(impl_->context));
 }
 
@@ -112,42 +114,29 @@ CudaBuffer::~CudaBuffer() {
     }
 }
 
-void CudaBuffer::copy_from_host(
-    const void* host_ptr,
-    size_t offset,
-    size_t length) {
-    COMPAS_ASSERT(offset < nbytes_);
-    COMPAS_ASSERT(length <= nbytes_ && offset + length <= nbytes_);
+void CudaBuffer::copy_from_host(const void* host_ptr, size_t offset, size_t length) {
+    COMPAS_ASSERT(offset <= nbytes_ && length <= nbytes_ - offset);
 
     CudaContextGuard guard {context_};
     COMPAS_CUDA_CHECK(cuMemcpyHtoD(device_ptr_ + offset, host_ptr, length));
 }
 
 void CudaBuffer::copy_to_host(void* host_ptr, size_t offset, size_t length) {
-    COMPAS_ASSERT(
-        offset < nbytes_ && length < nbytes_ && offset + length <= nbytes_);
+    COMPAS_ASSERT(offset <= nbytes_ && length <= nbytes_ - offset);
 
     CudaContextGuard guard {context_};
     COMPAS_CUDA_CHECK(cuMemcpyDtoH(host_ptr, device_ptr_ + offset, length));
 }
 
-void CudaBuffer::copy_from_device(
-    CUdeviceptr src_ptr,
-    size_t offset,
-    size_t length) {
-    COMPAS_ASSERT(
-        offset < nbytes_ && length < nbytes_ && offset + length <= nbytes_);
+void CudaBuffer::copy_from_device(CUdeviceptr src_ptr, size_t offset, size_t length) {
+    COMPAS_ASSERT(offset <= nbytes_ && length <= nbytes_ - offset);
 
     CudaContextGuard guard {context_};
     COMPAS_CUDA_CHECK(cuMemcpyDtoD(src_ptr, device_ptr_ + offset, length));
 }
 
-void CudaBuffer::copy_to_device(
-    CUdeviceptr dst_ptr,
-    size_t offset,
-    size_t length) {
-    COMPAS_ASSERT(
-        offset < nbytes_ && length < nbytes_ && offset + length <= nbytes_);
+void CudaBuffer::copy_to_device(CUdeviceptr dst_ptr, size_t offset, size_t length) {
+    COMPAS_ASSERT(offset <= nbytes_ && length <= nbytes_ - offset);
 
     CudaContextGuard guard {context_};
     COMPAS_CUDA_CHECK(cuMemcpyDtoD(device_ptr_ + offset, dst_ptr, length));
@@ -162,8 +151,7 @@ void CudaBuffer::fill(
 
     bool all_equal = true;
     for (size_t i = 1; i < element_nbytes; i++) {
-        if (static_cast<const char*>(element_ptr)[i]
-            != static_cast<const char*>(element_ptr)[0]) {
+        if (static_cast<const char*>(element_ptr)[i] != static_cast<const char*>(element_ptr)[0]) {
             all_equal = false;
         }
     }
@@ -181,8 +169,7 @@ void CudaBuffer::fill(
         uint32_t value = static_cast<const uint32_t*>(element_ptr)[0];
         COMPAS_CUDA_CHECK(cuMemsetD32(ptr, value, nbytes));
     } else {
-        COMPAS_PANIC(
-            "fill can only be performed using 8, 16, or 32 bit values");
+        COMPAS_PANIC("fill can only be performed using 8, 16, or 32 bit values");
     }
 }
 

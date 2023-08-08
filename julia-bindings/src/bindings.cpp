@@ -6,27 +6,38 @@
 #include "trajectories/cartesian.h"
 
 template<typename T, int N>
-compas::host_view<T, N> into_view(const jlcxx::ArrayRef<T, N>& array) {
+compas::vector<int, N> to_shape(const jlcxx::ArrayRef<T, N>& array) {
     compas::vector<int, N> shape;
     for (int i = 0; i < N; i++) {
-        shape[i] = jl_array_dim(array.wrapped(), i);
+        shape[i] = jl_array_dim(array.wrapped(), N - i - 1);
     }
+    return shape;
+}
 
-    return {array.data(), shape};
+template<typename T, int N>
+compas::host_view<T, N> into_view(const jlcxx::ArrayRef<T, N>& array) {
+    return {array.data(), to_shape(array)};
+}
+
+template<typename T, int N>
+compas::host_view_mut<T, N> into_view_mut(jlcxx::ArrayRef<T, N>& array) {
+    return {array.data(), to_shape(array)};
 }
 
 template<typename T, int N>
 compas::host_view<compas::complex_type<T>, N>
 into_view(const jlcxx::ArrayRef<std::complex<T>, N>& array) {
-    compas::vector<int, N> shape;
-
-    for (int i = 0; i < N; i++) {
-        shape[i] = jl_array_dim(array.wrapped(), N - i - 1);
-    }
-
     auto ptr = static_cast<const compas::complex_type<T>*>(
-        static_cast<const void*>(array.data()));
-    return {ptr, shape};
+            static_cast<const void*>(array.data()));
+    return {ptr, to_shape(array)};
+}
+
+template<typename T, int N>
+compas::host_view_mut<compas::complex_type<T>, N>
+into_view_mut(jlcxx::ArrayRef<std::complex<T>, N>& array) {
+    auto ptr = static_cast<compas::complex_type<T>*>(
+            static_cast<void*>(array.data()));
+    return {ptr, to_shape(array)};
 }
 
 JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
@@ -113,7 +124,7 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
            compas::TissueParameters parameters,
            compas::CartesianTrajectory trajectory,
            jlcxx::ArrayRef<float, 2> julia_coil_sensitivities) {
-            auto signal = into_view(julia_signal);
+            auto signal = into_view_mut(julia_signal);
             auto echos = into_view(julia_echos);
             auto coil_sensitivities = into_view(julia_coil_sensitivities);
 
@@ -129,6 +140,6 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
                 trajectory,
                 d_coil_sensitivities);
 
-            //        d_signal.copy_to(signal);
+            d_signal.copy_to(signal);
         });
 }

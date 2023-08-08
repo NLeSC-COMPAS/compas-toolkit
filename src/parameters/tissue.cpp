@@ -13,9 +13,7 @@ TissueParameters make_tissue_parameters(
     host_view<float> x,
     host_view<float> y,
     host_view<float> z) {
-    vec2<index_t> shape = {
-        static_cast<int>(TissueParameterField::NUM_FIELDS),
-        num_voxels};
+    vec2<index_t> shape = {static_cast<int>(TissueParameterField::NUM_FIELDS), num_voxels};
     CudaArray<float, 2> params = ctx.zeros<float, 2>(shape);
 
     params.slice(TissueParameterField::T1).copy_from(T1);

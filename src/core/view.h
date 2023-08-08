@@ -1,13 +1,12 @@
 #pragma once
 
-#include <cstddef>
-
 #include "assertion.h"
 #include "macros.h"
 #include "vector.h"
 
 #if COMPAS_IS_HOST
     #include <array>
+    #include <cstddef>
 #endif
 
 namespace compas {
@@ -122,9 +121,7 @@ struct strided {
     strided() = default;
 
     COMPAS_HOST_DEVICE
-    strided(ndindex_t<N> sizes, vector<ptrdiff_t, N> strides) :
-        sizes_(sizes),
-        strides_(strides) {}
+    strided(ndindex_t<N> sizes, vector<ptrdiff_t, N> strides) : sizes_(sizes), strides_(strides) {}
 
     COMPAS_HOST_DEVICE
     strided(const row_major<N>& that) {
@@ -181,11 +178,7 @@ struct strided {
 
 enum struct memory_space { HOST, CUDA };
 
-template<
-    typename T,
-    typename L,
-    memory_space M = memory_space::HOST,
-    index_t N = L::rank>
+template<typename T, typename L, memory_space M = memory_space::HOST, index_t N = L::rank>
 struct view_impl;
 
 template<typename T, typename L, memory_space M>
@@ -263,8 +256,7 @@ struct view_base {
     }
 
     COMPAS_HOST_DEVICE
-    view_impl<T, layouts::drop_axis<L>, M>
-    drop_leading_axis(index_t index = 0) const {
+    view_impl<T, layouts::drop_axis<L>, M> drop_leading_axis(index_t index = 0) const {
         COMPAS_DEBUG_ASSERT(index >= 0 && index < size(0));
         ptrdiff_t offset = stride(0) * index;
         return {ptr_ + offset, layout_};
@@ -330,8 +322,7 @@ struct view_impl: view_base<T, L, M> {
     view_impl(T* ptr = nullptr, L layout = {}) : base_type(ptr, layout) {}
 
     template<typename T2, typename L2>
-    COMPAS_HOST_DEVICE view_impl(const view_base<T2, L2, M>& that) :
-        base_type(that) {}
+    COMPAS_HOST_DEVICE view_impl(const view_base<T2, L2, M>& that) : base_type(that) {}
 
     COMPAS_HOST_DEVICE
     view_impl<T, layouts::drop_axis<L>, M> operator[](index_t index) const {
@@ -352,8 +343,7 @@ struct view_impl<T, L, M, 1>: view_base<T, L, M> {
     view_impl(T* ptr = nullptr, L layout = {}) : base_type(ptr, layout) {}
 
     template<typename T2, typename L2>
-    COMPAS_HOST_DEVICE view_impl(const view_base<T2, L2, M>& that) :
-        base_type(that) {}
+    COMPAS_HOST_DEVICE view_impl(const view_base<T2, L2, M>& that) : base_type(that) {}
 
     COMPAS_HOST_DEVICE
     T& operator[](index_t index) const {

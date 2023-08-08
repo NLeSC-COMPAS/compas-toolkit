@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cuda.h>
+#include <cuda_runtime_api.h>
 
 #include <memory>
 #include <string>
@@ -16,19 +17,15 @@ struct CudaContextImpl;
 struct CudaBuffer;
 
 struct CudaException: public std::exception {
-    CudaException(CUresult err, const char* file, const int line);
-    CudaException(CUresult err, std::string msg);
+    CudaException(std::string msg);
+    CudaException(CUresult err, const char* file, int line);
+    CudaException(cudaError_t err, const char* file, int line);
 
     const char* what() const noexcept {
         return message_.c_str();
     }
 
-    CUresult error() const {
-        return err_;
-    }
-
   private:
-    CUresult err_;
     std::string message_;
 };
 
@@ -81,8 +78,8 @@ struct CudaContext {
     }
 
     template<typename T, int N>
-    CudaArray<T, N> allocate(host_view<T, N> buffer) const {
-        auto result = allocate<T, N>(buffer.shape());
+    CudaArray<std::decay_t<T>, N> allocate(host_view_mut<T, N> buffer) const {
+        auto result = allocate<std::decay_t<T>, N>(buffer.shape());
         result.copy_from(buffer);
         return result;
     }
@@ -122,11 +119,7 @@ struct CudaBuffer {
     void copy_from_device(CUdeviceptr src_ptr, size_t offset, size_t nbytes);
     void copy_to_device(CUdeviceptr dst_ptr, size_t offset, size_t nbytes);
 
-    void fill(
-        const void* element_ptr,
-        size_t element_nbytes,
-        size_t offset,
-        size_t nbytes);
+    void fill(const void* element_ptr, size_t element_nbytes, size_t offset, size_t nbytes);
 
     CUdeviceptr device_data() {
         return device_ptr_;
@@ -148,10 +141,7 @@ struct CudaBuffer {
 
 template<typename T, index_t N>
 struct CudaArray {
-    CudaArray(
-        std::shared_ptr<CudaBuffer> buffer,
-        vector<index_t, N> shape,
-        size_t offset = 0) :
+    CudaArray(std::shared_ptr<CudaBuffer> buffer, vector<index_t, N> shape, size_t offset = 0) :
         buffer_(std::move(buffer)),
         shape_(shape),
         offset_(offset) {}
@@ -242,26 +232,17 @@ struct CudaArray {
 
     void copy_from(host_view<T, N> input) const {
         COMPAS_ASSERT(input.shape() == shape());
-        buffer_->copy_from_host(
-            input.data(),
-            offset_ * sizeof(T),
-            size_in_bytes());
+        buffer_->copy_from_host(input.data(), offset_ * sizeof(T), size_in_bytes());
     }
 
     void copy_to(host_view_mut<T, N> output) const {
         COMPAS_ASSERT(output.shape() == shape());
-        buffer_->copy_to_host(
-            output.data(),
-            offset_ * sizeof(T),
-            size_in_bytes());
+        buffer_->copy_to_host(output.data(), offset_ * sizeof(T), size_in_bytes());
     }
 
     void copy_from(const CudaArray<T, N>& input) const {
         COMPAS_ASSERT(input.shape() == shape());
-        buffer_->copy_from_device(
-            input.data(),
-            offset_ * sizeof(T),
-            size_in_bytes());
+        buffer_->copy_from_device(input.data(), offset_ * sizeof(T), size_in_bytes());
     }
 
     void copy_to(const CudaArray<T, N>& output) const {

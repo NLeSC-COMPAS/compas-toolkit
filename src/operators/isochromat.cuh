@@ -5,17 +5,12 @@ namespace compas {
 
 struct Isochromat: vfloat3 {
     COMPAS_HOST_DEVICE Isochromat() : vfloat3(0.0f, 0.0f, 1.0f) {}
-    COMPAS_HOST_DEVICE Isochromat(float x, float y, float z) :
-        vfloat3(x, y, z) {}
+    COMPAS_HOST_DEVICE Isochromat(float x, float y, float z) : vfloat3(x, y, z) {}
     COMPAS_HOST_DEVICE Isochromat(vfloat3 v) : vfloat3(v) {}
 
     COMPAS_HOST_DEVICE
-    Isochromat rotate(
-        cfloat gamma_dt_RF,
-        float gamma_dt_GR,
-        float r,
-        float dt,
-        const TissueVoxel& p) const {
+    Isochromat
+    rotate(cfloat gamma_dt_RF, float gamma_dt_GR, float r, float dt, const TissueVoxel& p) const {
         Isochromat m = *this;
 
         // Determine rotation vector a
@@ -48,26 +43,20 @@ struct Isochromat: vfloat3 {
     }
 
     COMPAS_HOST_DEVICE
-    Isochromat
-    rotate(vfloat3 gamma_dt_GR, vfloat3 r, float dt, const TissueVoxel& p)
-        const {
-        Isochromat m = *this;
-
+    Isochromat rotate(vfloat3 gamma_dt_GR, vfloat3 r, float dt, const TissueVoxel& p) const {
         // Determine rotation vector a
         auto az = -dot(gamma_dt_GR, r);
         az -= dt * float(2 * M_PI) * p.B0;
 
-        // Angle of rotation is norm of rotation vector
+        // Angle of rotation
         auto theta = az;
+        auto sin_theta = sinf(theta);
+        auto cos_theta = cosf(theta);
 
-        if (theta != 0) {
-            auto sin_theta = sinf(theta);
-            auto cos_theta = cosf(theta);
-
-            // Perform rotation in XY plane
-            m.x = cos_theta * m.x - sin_theta * m.y;
-            m.y = cos_theta * m.y + sin_theta * m.y;
-        }
+        // Perform rotation in XY plane
+        Isochromat m = *this;
+        m.x = cos_theta * m.x - sin_theta * m.y;
+        m.y = cos_theta * m.y + sin_theta * m.y;
 
         return m;
     }

@@ -32,15 +32,13 @@ panic(const char* message, const char* file, const int line, const char* func) {
 
 namespace compas {
 struct CompasException: std::runtime_error {
-    CompasException(std::string message) :
-        std::runtime_error(std::move(message)) {}
+    CompasException(std::string message) : std::runtime_error(std::move(message)) {}
 };
 
 [[noreturn]] inline void
 panic(const char* message, const char* file, const int line, const char* func) {
     std::stringstream ss;
-    ss << "panic occurred (" << file << ":" << line << ":" << func
-       << "): " << message;
+    ss << "panic occurred (" << file << ":" << line << ":" << func << "): " << message;
     throw CompasException(ss.str());
 }
 }  // namespace compas
