@@ -3,7 +3,7 @@
 #include "core/context.h"
 #include "parameters/tissue.h"
 #include "simulate/signal.h"
-#include "trajectories/cartesian.h"
+#include "trajectories/multi.h"
 
 template<typename T, int N>
 compas::vector<int, N> to_shape(const jlcxx::ArrayRef<T, N>& array) {
@@ -27,16 +27,14 @@ compas::host_view_mut<T, N> into_view_mut(jlcxx::ArrayRef<T, N>& array) {
 template<typename T, int N>
 compas::host_view<compas::complex_type<T>, N>
 into_view(const jlcxx::ArrayRef<std::complex<T>, N>& array) {
-    auto ptr = static_cast<const compas::complex_type<T>*>(
-            static_cast<const void*>(array.data()));
+    auto ptr = static_cast<const compas::complex_type<T>*>(static_cast<const void*>(array.data()));
     return {ptr, to_shape(array)};
 }
 
 template<typename T, int N>
 compas::host_view_mut<compas::complex_type<T>, N>
 into_view_mut(jlcxx::ArrayRef<std::complex<T>, N>& array) {
-    auto ptr = static_cast<compas::complex_type<T>*>(
-            static_cast<void*>(array.data()));
+    auto ptr = static_cast<compas::complex_type<T>*>(static_cast<void*>(array.data()));
     return {ptr, to_shape(array)};
 }
 
@@ -44,7 +42,24 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
     mod.add_type<compas::CudaContext>("CudaContext");
     mod.method("make_context", compas::make_context);
 
-    mod.add_type<compas::CartesianTrajectory>("CartesianTrajectory");
+    mod.add_type<compas::Trajectory>("Trajectory");
+    mod.method(
+        "make_spiral_trajectory",
+        [](const compas::CudaContext& context,
+           int nreadouts,
+           int samples_per_readout,
+           float delta_t,
+           jlcxx::ArrayRef<std::complex<float>> k_start,
+           jlcxx::ArrayRef<std::complex<float>> delta_k) -> compas::Trajectory {
+            return make_spiral_trajectory(
+                context,
+                nreadouts,
+                samples_per_readout,
+                delta_t,
+                into_view(k_start),
+                into_view(delta_k));
+        });
+
     mod.method(
         "make_cartesian_trajectory",
         [](const compas::CudaContext& context,
@@ -52,14 +67,14 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
            int samples_per_readout,
            float delta_t,
            jlcxx::ArrayRef<std::complex<float>> k_start,
-           jlcxx::ArrayRef<std::complex<float>> delta_k) {
+           std::complex<float> delta_k) -> compas::Trajectory {
             return make_cartesian_trajectory(
                 context,
                 nreadouts,
                 samples_per_readout,
                 delta_t,
                 into_view(k_start),
-                into_view(delta_k));
+                {delta_k.real(), delta_k.imag()});
         });
 
     mod.add_type<compas::TissueParameters>("TissueParameters");
@@ -122,7 +137,7 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
            jlcxx::ArrayRef<std::complex<float>, 3> julia_signal,
            jlcxx::ArrayRef<std::complex<float>, 2> julia_echos,
            compas::TissueParameters parameters,
-           compas::CartesianTrajectory trajectory,
+           compas::Trajectory trajectory,
            jlcxx::ArrayRef<float, 2> julia_coil_sensitivities) {
             auto signal = into_view_mut(julia_signal);
             auto echos = into_view(julia_echos);

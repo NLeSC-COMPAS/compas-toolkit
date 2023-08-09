@@ -1,3 +1,5 @@
+#pragma once
+
 #include "core/view.h"
 #include "parameters/tissue_kernels.cuh"
 

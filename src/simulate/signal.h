@@ -2,7 +2,7 @@
 
 #include "core/context.h"
 #include "parameters/tissue.h"
-#include "trajectories/cartesian.h"
+#include "trajectories/multi.h"
 
 namespace compas {
 
@@ -11,7 +11,7 @@ void simulate_signal(
     CudaArray<cfloat, 3> signal,
     CudaArray<cfloat, 2> echos,
     TissueParameters parameters,
-    CartesianTrajectory trajectory,
+    Trajectory trajectory,
     CudaArray<float, 2> coil_sensitivities);
 
 }

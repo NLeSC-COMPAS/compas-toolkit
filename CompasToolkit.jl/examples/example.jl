@@ -32,7 +32,7 @@ py = -(N÷2):1:(N÷2)-1 # phase encoding indices
 Δkˣ = 2π / FOVˣ; # k-space step in x direction for Nyquist sampling
 Δkʸ = 2π / FOVʸ; # k-space step in y direction for Nyquist sampling
 k0 = [(-ns/2 * Δkˣ) + im * (py[mod1(r,N)] * Δkʸ) for r in 1:nr]; # starting points in k-space per readout
-Δk = [Δkˣ + 0.0im for r in 1:nr]; # k-space steps per sample point for each readout
+Δk = Δkˣ; # k-space steps per sample point for each readout
 
 trajectory = CompasToolkit.make_cartesian_trajectory(context, nr, ns, Float32(Δt_adc), ComplexF32.(k0), ComplexF32.(Δk));
 
@@ -62,5 +62,5 @@ CompasToolkit.simulate_signal(
 signal_ref = reshape(deserialize("signal.bin"), ncoils, nr, ns)
 
 for c in 1:ncoils
-    println("match coil ", c, ": ", signal[:,:,c] ≈ signal_ref[c,:,:])
+    println("match coil ", c, ": ", all(isapprox(signal[:,:,c], signal_ref[c,:,:], rtol=1e-4)))
 end
