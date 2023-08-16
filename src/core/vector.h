@@ -246,6 +246,7 @@ struct vector_norm_impl<float, N> {
         for (int i = 0; i < N; i++) {
             result += input[i] * input[i];
         }
+
         return sqrtf(result);
     }
 };

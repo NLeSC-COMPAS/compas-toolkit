@@ -1,3 +1,6 @@
+#include <cooperative_groups.h>
+#include <cooperative_groups/reduce.h>
+
 #include "sequences/pssfp_kernels.cuh"
 
 namespace compas {
@@ -6,17 +9,18 @@ namespace kernels {
 namespace {
 COMPAS_DEVICE
 float calculate_E1(float delta_t, float T1) {
-    return expf(-delta_t * (1.0f / T1));
+    return __expf(-delta_t * (1.0f / T1));
 }
 
 COMPAS_DEVICE
 float calculate_E2(float delta_t, float T2) {
-    return expf(-delta_t * (1.0f / T2));
+    return __expf(-delta_t * (1.0f / T2));
 }
 }  // namespace
 
-COMPAS_DEVICE
-void simulate_pssfp_for_voxel(
+template<typename Group>
+COMPAS_DEVICE void simulate_pssfp_for_voxel(
+    Group group,
     const pSSFPSequenceView& sequence,
     float z,
     cuda_strided_view_mut<cfloat> echos,
@@ -71,7 +75,7 @@ void simulate_pssfp_for_voxel(
     m = excite(m, theta0, z);
 
     // slice select re- & prephaser, B₀ rotation, T₂ decay and T₁ regrowth until next RF
-    m = m.rotate(2 * gamma_dt_GRz_pr, z, dt_pr, p);
+    m = m.rotate(float(2) * gamma_dt_GRz_pr, z, dt_pr, p);
     m = m.decay(E1_pr, E2_pr);
     m = m.regrowth(E1_pr);
 
@@ -86,32 +90,45 @@ void simulate_pssfp_for_voxel(
         m = precess(m, z);
 
         // sample magnetization at echo time (sum over slice direction)
-        echos[TR] += {m.x, m.y};
+        cfloat sum = {m.x, m.y};
+
+#pragma unroll 32
+        for (uint delta = group.size() / 2; delta > 0; delta /= 2) {
+            sum.re += group.shfl_down(sum.re, delta);
+            sum.im += group.shfl_down(sum.im, delta);
+        }
+
+        if (group.thread_rank() == 0) {
+            echos[TR] += sum;
+        }
 
         // slice select prephaser, B₀ rotation, T₂ decay and T₁ regrowth until next RF
         m = precess(m, z);
     }
 }
 
-template<int threads_per_voxel = 1>
+template<int batch_size>
 __global__ void simulate_pssfp(
     cuda_view_mut<cfloat, 2> echos,
+    cuda_view<float> z,
     TissueParametersView parameters,
     pSSFPSequenceView sequence) {
-    index_t voxel = index_t(blockDim.x * blockIdx.x + threadIdx.x) / 1;
+    index_t voxel = index_t(blockDim.x * blockIdx.x + threadIdx.x) / batch_size;
     index_t nvoxels = parameters.nvoxels;
+
+    auto group =
+        cooperative_groups::tiled_partition<batch_size>(cooperative_groups::this_thread_block());
 
     if (voxel >= nvoxels) {
         return;
     }
 
-    for (index_t zi = 0; zi < sequence.z.size(); zi++) {
-        simulate_pssfp_for_voxel(
-            sequence,
-            sequence.z[zi],
-            echos.drop_axis<1>(voxel),
-            parameters.get(voxel));
-    }
+    simulate_pssfp_for_voxel(
+        group,
+        sequence,
+        z[group.thread_rank()],
+        echos.drop_axis<1>(voxel),
+        parameters.get(voxel));
 }
 
 }  // namespace kernels

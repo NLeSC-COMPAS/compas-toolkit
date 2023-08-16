@@ -16,10 +16,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/src")
 # The CUDA compiler struggles with the "Werror" options, so we need to explicitly forward it to the host compiler
 # using `-Xcompiler=-Werror` if we are compiling CUDA code.
 set(CXXFLAGS
-        $<IF:$<COMPILE_LANGUAGE:CUDA>,-forward-unknown-to-host-compiler,>
+        $<$<COMPILE_LANGUAGE:CUDA>:-forward-unknown-to-host-compiler>
+        $<$<COMPILE_LANGUAGE:CUDA>:--generate-line-info>
         -Wall -Wextra -Wconversion -Wno-unused-parameter
-        $<IF:$<COMPILE_LANGUAGE:CUDA>,-Xcompiler=-Werror,-Werror>
-        $<IF:$<COMPILE_LANGUAGE:CUDA>,-Xptxas="-v",>
+        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Werror>
+        $<$<COMPILE_LANGUAGE:CUDA>:-Xptxas="-v">
         )
 target_compile_options(${PROJECT_NAME} PRIVATE ${CXXFLAGS})
 

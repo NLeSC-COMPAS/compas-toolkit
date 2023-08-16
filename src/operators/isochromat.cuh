@@ -29,12 +29,21 @@ struct Isochromat: vfloat3 {
         // Angle of rotation is norm of rotation vector
         auto theta = norm(a);
 
-        if (fabsf(theta) < 1e-9) {  // theta != 0
+        if (fabsf(theta) < 1e-9f) {  // theta != 0
             // Normalize rotation vector
+#if COMPAS_IS_DEVICE
+            vfloat3 k = a * __fdividef(1.0f, theta);
+#else
             vfloat3 k = a / theta;
+#endif
 
-            auto sin_theta = sinf(theta);
-            auto cos_theta = cosf(theta);
+            float sin_theta, cos_theta;
+#if COMPAS_IS_DEVICE
+            __sincosf(theta, &sin_theta, &cos_theta);
+#else
+            sin_theta = sinf(theta);
+            cos_theta = cosf(theta);
+#endif
 
             // Perform rotation (Rodrigues formula)
             m = (cos_theta * m) + (sin_theta * cross(k, m))
@@ -52,8 +61,13 @@ struct Isochromat: vfloat3 {
 
         // Angle of rotation
         auto theta = az;
-        auto sin_theta = sinf(theta);
-        auto cos_theta = cosf(theta);
+        float sin_theta, cos_theta;
+#if COMPAS_IS_DEVICE
+        __sincosf(theta, &sin_theta, &cos_theta);
+#else
+        sin_theta = sinf(theta);
+        cos_theta = cosf(theta);
+#endif
 
         // Perform rotation in XY plane
         Isochromat m = *this;
@@ -75,9 +89,16 @@ struct Isochromat: vfloat3 {
 
     COMPAS_HOST_DEVICE
     Isochromat invert(const TissueVoxel& p) const {
-        auto theta = float(M_PI);
+        float theta = float(M_PI);
         theta *= p.B1;
-        auto cos_theta = cosf(theta);
+
+        float cos_theta;
+#if COMPAS_IS_DEVICE
+        cos_theta = __cosf(theta);
+#else
+        cos_theta = cosf(theta);
+#endif
+
         return {x, y, cos_theta * z};
     }
 
