@@ -139,8 +139,8 @@ struct strided {
         }
     }
 
-    template<typename L>
-    COMPAS_HOST_DEVICE strided(const drop_axis<L>& that) {
+    template<typename L, index_t A>
+    COMPAS_HOST_DEVICE strided(const drop_axis<L, A>& that) {
         for (int i = 0; i < N; i++) {
             sizes_[i] = that.size(i);
             strides_[i] = that.stride(i);
@@ -255,11 +255,18 @@ struct view_base {
         return size() == 0;
     }
 
+    template<index_t Axis>
+    COMPAS_HOST_DEVICE view_impl<T, layouts::drop_axis<L, Axis>, M>
+    drop_axis(index_t index = 0) const {
+        static_assert(Axis < rank, "axis out of bounds");
+        COMPAS_DEBUG_ASSERT(index >= 0 && index < size(Axis));
+        ptrdiff_t offset = stride(Axis) * index;
+        return {ptr_ + offset, layout_};
+    };
+
     COMPAS_HOST_DEVICE
     view_impl<T, layouts::drop_axis<L>, M> drop_leading_axis(index_t index = 0) const {
-        COMPAS_DEBUG_ASSERT(index >= 0 && index < size(0));
-        ptrdiff_t offset = stride(0) * index;
-        return {ptr_ + offset, layout_};
+        return this->template drop_axis<0>(index);
     };
 
     COMPAS_HOST_DEVICE

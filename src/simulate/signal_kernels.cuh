@@ -28,16 +28,20 @@ __global__ void prepare_signal_factors(
 }
 
 __global__ void prepare_signal_cartesian(
-    cuda_view_mut<cfloat> exponents,
+    cuda_view_mut<cfloat, 2> exponents,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
+    auto num_samples = exponents.size(0);
+    auto num_voxels = exponents.size(1);
 
-    if (voxel < exponents.size(0)) {
+    if (voxel < num_voxels) {
         auto p = parameters.get(voxel);
         auto exponent = trajectory.to_sample_point_exponent(p);
 
-        exponents[voxel] = exponent;
+        for (int sample = 0; sample < num_samples; sample++) {
+            exponents[sample][voxel] = exp(exponent * float(sample));
+        }
     }
 }
 
@@ -56,6 +60,35 @@ __global__ void prepare_signal_spiral(
     }
 }
 
+template<int threads_cooperative>
+COMPAS_DEVICE void reduce_signal_cooperative(
+    int sample_index,
+    int readout_index,
+    int coil_index,
+    cuda_view_mut<cfloat, 3> signal,
+    int lane,
+    cfloat value) {
+    static_assert(is_power_of_two(threads_cooperative) && threads_cooperative <= 32);
+
+#pragma unroll 6
+    for (uint delta = threads_cooperative / 2; delta > 0; delta /= 2) {
+        static constexpr uint mask = uint((1L << threads_cooperative) - 1);
+
+        value.re += __shfl_down_sync(mask, value.re, delta, threads_cooperative);
+        value.im += __shfl_down_sync(mask, value.im, delta, threads_cooperative);
+    }
+
+    auto num_coils = signal.size(0);
+    auto num_samples = signal.size(2);
+
+    // Only thread zero writes the results
+    if (lane == 0) {
+        if (sample_index < num_samples && coil_index < num_coils) {
+            signal[coil_index][readout_index][sample_index] = value;
+        }
+    }
+}
+
 template<
     int threads_per_block,
     int threads_cooperative,
@@ -64,14 +97,12 @@ template<
     int blocks_per_sm = 1>
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_cartesian(
     cuda_view_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
-    cuda_view<cfloat> exponents,  // [num_voxels]
+    cuda_view<cfloat, 2> exponents,  // [num_samples num_voxels]
     cuda_view<cfloat, 2> factors,  // [num_readouts num_voxels]
     cuda_view<float, 2> coil_sensitivities  // [num_coils num_voxels]
 ) {
-    static_assert(is_power_of_two(threads_cooperative) && threads_cooperative <= 32);
     static_assert(threads_per_block % threads_cooperative == 0);
 
-    auto num_samples = signal.size(2);
     auto num_voxels = coil_sensitivities.size(1);
     auto num_coils = coil_sensitivities.size(0);
 
@@ -98,21 +129,24 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
             local_coils[c] = coil_index < num_coils ? coil_sensitivities[coil_index][voxel] : 0;
         }
 
-        auto exponent = exponents[voxel];
-        auto factor = factors[readout][voxel];
+        auto start_sample = factors[readout][voxel] * exponents[sample_start][voxel];
+        auto step = exponents[1][voxel];
 
-        auto step = exp(exponent);
-        auto base = exp(exponent * float(sample_start)) * factor;
+        cfloat local_samples[sample_tiling_factor] = {0};
+        local_samples[0] = start_sample;
+#pragma unroll
+        for (int s = 1; s < sample_tiling_factor; s++) {
+            local_samples[s] = local_samples[s - 1] * step;
+        }
 
 #pragma unroll
         for (int s = 0; s < sample_tiling_factor; s++) {
 #pragma unroll
             for (int c = 0; c < coil_tiling_factor; c++) {
                 auto coil = local_coils[c];
-                sums[c][s] += base * coil;
+                auto sample = local_samples[s];
+                sums[c][s] += sample * coil;
             }
-
-            base *= step;
         }
     }
 
@@ -120,24 +154,13 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
     for (int s = 0; s < sample_tiling_factor; s++) {
 #pragma unroll
         for (int c = 0; c < coil_tiling_factor; c++) {
-            auto coil_index = coil_start + c;
-            auto sample = sample_start + s;
-            auto value = sums[c][s];
-
-#pragma unroll 6
-            for (uint delta = threads_cooperative / 2; delta > 0; delta /= 2) {
-                static constexpr uint mask = uint((1L << threads_cooperative) - 1);
-
-                value.re += __shfl_down_sync(mask, value.re, delta, threads_cooperative);
-                value.im += __shfl_down_sync(mask, value.im, delta, threads_cooperative);
-            }
-
-            // Only thread zero writes the results
-            if (lane == 0) {
-                if (sample < num_samples && coil_index < num_coils) {
-                    signal[coil_index][readout][sample] = value;
-                }
-            }
+            reduce_signal_cooperative<threads_cooperative>(
+                sample_start + s,
+                readout,
+                coil_start + c,
+                signal,
+                lane,
+                sums[c][s]);
         }
     }
 }
@@ -154,10 +177,8 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_s
     cuda_view<cfloat, 2> factors,  // [num_readouts num_voxels]
     cuda_view<float, 2> coil_sensitivities  // [num_coils num_voxels]
 ) {
-    static_assert(is_power_of_two(threads_cooperative) && threads_cooperative <= 32);
     static_assert(threads_per_block % threads_cooperative == 0);
 
-    auto num_samples = signal.size(2);
     auto num_voxels = coil_sensitivities.size(1);
     auto num_coils = coil_sensitivities.size(0);
 
@@ -206,24 +227,13 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_s
     for (int s = 0; s < sample_tiling_factor; s++) {
 #pragma unroll
         for (int c = 0; c < coil_tiling_factor; c++) {
-            auto coil_index = coil_start + c;
-            auto sample = sample_start + s;
-            auto value = sums[c][s];
-
-#pragma unroll 6
-            for (uint delta = threads_cooperative / 2; delta > 0; delta /= 2) {
-                static constexpr uint mask = uint((1L << threads_cooperative) - 1);
-
-                value.re += __shfl_down_sync(mask, value.re, delta, threads_cooperative);
-                value.im += __shfl_down_sync(mask, value.im, delta, threads_cooperative);
-            }
-
-            // Only thread zero writes the results
-            if (lane == 0) {
-                if (sample < num_samples && coil_index < num_coils) {
-                    signal[coil_index][readout][sample] = value;
-                }
-            }
+            reduce_signal_cooperative<threads_cooperative>(
+                sample_start + s,
+                readout,
+                coil_start + c,
+                signal,
+                lane,
+                sums[c][s]);
         }
     }
 }

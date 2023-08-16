@@ -2,6 +2,8 @@
 
 #include "core/context.h"
 #include "parameters/tissue.h"
+#include "sequences/pssfp.h"
+#include "simulate/sequence.h"
 #include "simulate/signal.h"
 #include "trajectories/multi.h"
 
@@ -156,5 +158,42 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
                 d_coil_sensitivities);
 
             d_signal.copy_to(signal);
+        });
+
+    mod.add_type<compas::pSSFPSequence>("pSSFPSequence");
+    mod.method(
+        "make_pssfp_sequence",
+        [](const compas::CudaContext& context,
+           jlcxx::ArrayRef<std::complex<float>> RF_train,
+           float TR,
+           jlcxx::ArrayRef<std::complex<float>> gamma_dt_RF,
+           jlcxx::ArrayRef<float> dt,
+           jlcxx::ArrayRef<float> gamma_dt_GRz,
+           jlcxx::ArrayRef<float> z) {
+            COMPAS_ASSERT(dt.size() == 3);
+            COMPAS_ASSERT(gamma_dt_GRz.size() == 3);
+
+            return make_pssfp_sequence(
+                context,
+                into_view(RF_train),
+                TR,
+                into_view(gamma_dt_RF),
+                {dt[0], dt[1], dt[2]},
+                {gamma_dt_GRz[0], gamma_dt_GRz[1], gamma_dt_GRz[2]},
+                into_view(z));
+        });
+
+    mod.method(
+        "simulate_sequence",
+        [](const compas::CudaContext& context,
+           jlcxx::ArrayRef<std::complex<float>, 2> julia_echos,
+           compas::TissueParameters parameters,
+           compas::pSSFPSequence sequence) {
+            auto echos = into_view_mut(julia_echos);
+            auto d_echos = context.allocate<compas::cfloat>(echos.shape());
+
+            compas::simulate_sequence(context, d_echos, parameters, sequence);
+
+            d_echos.copy_to(echos);
         });
 }

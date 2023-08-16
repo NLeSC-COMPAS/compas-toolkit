@@ -23,6 +23,22 @@ nvoxels = N*N
 # Finally we assemble the phantom as an array of `T₁T₂B₀ρˣρʸxy` values
 parameters = CompasToolkit.make_tissue_parameters(context, nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
 
+# Next, we assemble a balanced sequence with constant flip angle of 60 degrees,
+nTR = N
+RF_train = complex.(fill(40.0, nTR)) .|> ComplexF32 # constant flip angle train
+RF_train[2:2:end] .*= -1 # 0-π phase cycling
+nRF = 25 # nr of RF discretization points
+durRF = 0.001 # duration of RF excitation
+TR = 0.010 # repetition time
+TI = 10.0 # long inversion delay -> no inversion
+gaussian = [exp(-(i-(nRF/2))^2 * inv(nRF)) for i ∈ 1:nRF] # RF excitation waveform
+γΔtRF = (π/180) * normalize(gaussian, 1) .|> ComplexF32 # normalize to flip angle of 1 degree
+Δt = Float32[durRF/nRF, TI, (TR - durRF)/2] # time intervals during TR
+γΔtGRz = Float32[0.002/nRF, 0.00, -0.01] # slice select gradient strengths during TR
+nz = 35 # nr of spins in z direction
+z = LinRange(-1,1,nz)  .|> Float32 # z locations
+
+pssfp = CompasToolkit.make_pssfp_sequence(context, RF_train, Float32(TR), γΔtRF, Δt, γΔtGRz, z)
 
 # Next, we assemble a Cartesian trajectory with linear phase encoding
 nr = N # nr of readouts
@@ -48,6 +64,13 @@ coil_sensitivities = hcat(coil₁ |> vec, coil₂ |> vec, coil₃ |> vec, coil�
 signal = zeros(ComplexF32, ns, nr, ncoils)
 
 echos = zeros(ComplexF32, N*N, nr)
+CompasToolkit.simulate_sequence(
+    context,
+    echos,
+    parameters,
+    pssfp
+)
+
 transpose!(echos, deserialize("echos.bin"))
 
 CompasToolkit.simulate_signal(

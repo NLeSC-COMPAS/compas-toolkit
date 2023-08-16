@@ -99,9 +99,16 @@ float abs(complex_type<float> a) {
     return hypotf(a.re, a.im);
 }
 
-template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> log(complex_type<T> v) {
+COMPAS_HOST_DEVICE complex_type<double> log(complex_type<double> v) {
     return {::log(abs(v)), arg(v)};
+}
+
+COMPAS_HOST_DEVICE complex_type<float> log(complex_type<float> v) {
+#if COMPAS_IS_DEVICE
+    return {::__logf(abs(v)), arg(v)};
+#else
+    return {::logf(abs(v)), arg(v)};
+#endif
 }
 
 template<typename T>
