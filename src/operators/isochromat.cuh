@@ -29,7 +29,7 @@ struct Isochromat: vfloat3 {
         // Angle of rotation is norm of rotation vector
         auto theta = norm(a);
 
-        if (fabsf(theta) < 1e-9f) {  // theta != 0
+        if (fabsf(theta) > 1e-9f) {  // theta != 0
             // Normalize rotation vector
 #if COMPAS_IS_DEVICE
             vfloat3 k = a * __fdividef(1.0f, theta);
@@ -54,9 +54,9 @@ struct Isochromat: vfloat3 {
     }
 
     COMPAS_HOST_DEVICE
-    Isochromat rotate(vfloat3 gamma_dt_GR, vfloat3 r, float dt, const TissueVoxel& p) const {
+    Isochromat rotate(float gamma_dt_GR, float r, float dt, const TissueVoxel& p) const {
         // Determine rotation vector a
-        auto az = -dot(gamma_dt_GR, r);
+        auto az = -(gamma_dt_GR * r);
         az -= dt * float(2 * M_PI) * p.B0;
 
         // Angle of rotation
@@ -70,10 +70,10 @@ struct Isochromat: vfloat3 {
 #endif
 
         // Perform rotation in XY plane
-        Isochromat m = *this;
-        m.x = cos_theta * m.x - sin_theta * m.y;
-        m.y = cos_theta * m.y + sin_theta * m.y;
-
+        Isochromat m;
+        m.x = cos_theta * x - sin_theta * y;
+        m.y = cos_theta * y + sin_theta * x;
+        m.z = z;
         return m;
     }
 
