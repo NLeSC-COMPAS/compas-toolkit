@@ -36,3 +36,5 @@ lib/
 *.exe
 *.out
 *.app
+
+CompasToolkit.jl/src/CompasToolkit.jl

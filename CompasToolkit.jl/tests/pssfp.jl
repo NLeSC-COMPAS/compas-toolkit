@@ -14,7 +14,7 @@ N = 256
 T₁ = fill(0.85f0, N, N) |> vec;
 T₂ = fill(0.05f0, N, N) |> vec;
 B₀ = repeat(1:N,1,N) .|> Float32 |> vec;
-B₁ = repeat(1:N,1,N) .|> Float32 |> vec;
+B₁ = ones(Float32, N, N) |> vec;
 
 # We also set the spatial coordinates for the phantom
 FOVˣ, FOVʸ = 25.6, 25.6;
@@ -63,8 +63,8 @@ echos = zeros(ComplexF32, nvoxels, nTR)
 CompasToolkit.simulate_sequence(context, echos, parameters, pssfp)
 echos = transpose(echos)
 
-println(echos ≈ echos_ref)
+println("fraction equal: ", sum(echos .≈ echos_ref) / length(echos))
+
 err = abs.(echos - echos_ref)
-println(echos[2,2], " ", echos_ref[2,2], " ", err[2,2])
 println("maximum abs error: ", maximum(err))
 println("maximum rel error: ", maximum(a / b for (a, b) in zip(err, abs.(echos_ref)) if b != 0))

@@ -40,9 +40,9 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[deps.BlochSimulators]]
 deps = ["Adapt", "CUDA", "ComputationalResources", "Distributed", "DistributedArrays", "Functors", "InteractiveUtils", "LinearAlgebra", "OffsetArrays", "StaticArrays", "Unitful", "Unitless"]
-git-tree-sha1 = "92c1f170c152cb5492a3937fc603061fb98061e8"
-repo-rev = "main"
-repo-url = "../../../BlochSimulators.jl"
+#git-tree-sha1 = "92c1f170c152cb5492a3937fc603061fb98061e8"
+#repo-rev = "main"
+path = "../../../BlochSimulators.jl"
 uuid = "2c9a3a5d-4a8d-4ca7-a6c9-04a38836deab"
 version = "0.1.0"
 
@@ -89,7 +89,7 @@ version = "0.1.8"
 
 [[deps.CompasToolkit]]
 deps = ["CxxWrap"]
-path = "/var/scratch/sheldens/compas-toolkit/CompasToolkit.jl/"
+path = "../../CompasToolkit.jl/"
 uuid = "7e3df991-ca6f-4721-8d7b-832e42ca037e"
 version = "0.1.0"
 
