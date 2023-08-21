@@ -4,13 +4,10 @@ set(PROJECT_NAME "compas-toolkit")
 project(${PROJECT_NAME} LANGUAGES CXX CUDA)
 
 # Directory where libraries will be placed after building
-SET(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}")
+set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}")
 
 file(GLOB_RECURSE sources "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.cu")
-add_library(${PROJECT_NAME} STATIC ${sources} src/sequences/pssfp_kernels.cuh)
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION lib)
-SET(LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib")
-configure_file(${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.input ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.jl)
+add_library(${PROJECT_NAME} STATIC ${sources})
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/include")
 target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/src")
@@ -22,8 +19,9 @@ set(CXXFLAGS
         $<$<COMPILE_LANGUAGE:CUDA>:--generate-line-info>
         -Wall -Wextra -Wconversion -Wno-unused-parameter
         $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Werror>
+        $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>
         $<$<COMPILE_LANGUAGE:CUDA>:-Xptxas="-v">
-        )
+)
 target_compile_options(${PROJECT_NAME} PRIVATE ${CXXFLAGS})
 
 # Enable C++17 support
@@ -39,5 +37,13 @@ find_package(CUDAToolkit REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cudart_static)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cuda_driver)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::nvrtc)
+
+# Installation of library files
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION lib)
+set(COMPAS_LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib")
+configure_file(
+    ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.input
+    ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.jl)
+
 
 add_subdirectory(julia-bindings)
