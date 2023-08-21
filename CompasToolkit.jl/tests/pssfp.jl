@@ -1,0 +1,70 @@
+using BlochSimulators
+using CompasToolkit
+using ImagePhantoms
+using ComputationalResources
+using LinearAlgebra
+using StaticArrays
+
+context = CompasToolkit.make_context(0)
+
+# First we assemble a Shepp Logan phantom with homogeneous T₁ and T₂
+# but non-constant proton density and B₀
+N = 256
+ρ = ComplexF32.(ImagePhantoms.shepp_logan(N, ImagePhantoms.SheppLoganEmis())') |> vec;
+T₁ = fill(0.85f0, N, N) |> vec;
+T₂ = fill(0.05f0, N, N) |> vec;
+B₀ = repeat(1:N,1,N) .|> Float32 |> vec;
+B₁ = repeat(1:N,1,N) .|> Float32 |> vec;
+
+# We also set the spatial coordinates for the phantom
+FOVˣ, FOVʸ = 25.6, 25.6;
+X = [x for x ∈ LinRange(-FOVˣ/2, FOVˣ/2, N), y ∈ 1:N] .|> Float32 |> vec;
+Y = [y for x ∈ 1:N, y ∈ LinRange(-FOVʸ/2, FOVʸ/2, N)] .|> Float32 |> vec;
+nvoxels = N*N
+
+# Finally we assemble the phantom as an array of `T₁T₂B₀ρˣρʸxy` values
+parameters_ref = map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)
+parameters = CompasToolkit.make_tissue_parameters(context, nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
+
+# Next, we assemble a balanced sequence with constant flip angle of 60 degrees,
+nTR = N
+RF_train = complex.(fill(40.0, nTR)) # constant flip angle train
+RF_train[2:2:end] .*= -1 # 0-π phase cycling
+nRF = 25 # nr of RF discretization points
+durRF = 0.001 # duration of RF excitation
+TR = 0.010 # repetition time
+TI = 10.0 # long inversion delay -> no inversion
+gaussian = [exp(-(i-(nRF/2))^2 * inv(nRF)) for i ∈ 1:nRF] # RF excitation waveform
+γΔtRF = (π/180) * normalize(gaussian, 1) |> SVector{nRF} # normalize to flip angle of 1 degree
+Δt = (ex=durRF/nRF, inv = TI, pr = (TR - durRF)/2); # time intervals during TR
+γΔtGRz = (ex=0.002/nRF, inv = 0.00, pr = -0.01); # slice select gradient strengths during TR
+nz = 35 # nr of spins in z direction
+z = SVector{nz}(LinRange(-1,1,nz)) # z locations
+
+pssfp_ref = pSSFP(RF_train, TR, γΔtRF, Δt, γΔtGRz, z)
+
+
+RF_train = RF_train .|> ComplexF32 # constant flip angle train
+γΔtRF = collect(γΔtRF) .|> ComplexF32 # normalize to flip angle of 1 degree
+Δt = Float32[Δt.ex, Δt.inv, Δt.pr] # time intervals during TR
+γΔtGRz = Float32[γΔtGRz.ex, γΔtGRz.inv, γΔtGRz.pr] # slice select gradient strengths during TR
+z = collect(z)  .|> Float32 # z locations
+
+pssfp = CompasToolkit.make_pssfp_sequence(context, RF_train, Float32(TR), γΔtRF, Δt, γΔtGRz, z)
+
+
+# isochromat model
+pssfp_ref = gpu(f32(pssfp_ref))
+parameters_ref = gpu(f32(parameters_ref))
+echos_ref = simulate(CUDALibs(), pssfp_ref, parameters_ref);
+echos_ref = collect(echos_ref)
+
+echos = zeros(ComplexF32, nvoxels, nTR)
+CompasToolkit.simulate_sequence(context, echos, parameters, pssfp)
+echos = transpose(echos)
+
+println(echos ≈ echos_ref)
+err = abs.(echos - echos_ref)
+println(echos[2,2], " ", echos_ref[2,2], " ", err[2,2])
+println("maximum abs error: ", maximum(err))
+println("maximum rel error: ", maximum(a / b for (a, b) in zip(err, abs.(echos_ref)) if b != 0))
