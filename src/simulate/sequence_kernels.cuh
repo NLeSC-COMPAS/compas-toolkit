@@ -45,6 +45,7 @@ COMPAS_DEVICE void simulate_pssfp_for_voxel(
 
     // Simulate excitation with flip angle theta using hard pulse approximation of the normalized RF-waveform γdtRF
     auto excite = [&](Isochromat m, cfloat theta, float z) {
+#pragma unroll 8
         for (index_t i = 0; i < gamma_dt_RF_ex.size(); i++) {
             auto zap = theta * gamma_dt_RF_ex[i];
             m = m.rotate(zap, gamma_dt_GRz_ex, z, dt_ex, p);

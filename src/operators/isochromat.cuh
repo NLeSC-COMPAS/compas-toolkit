@@ -27,12 +27,24 @@ struct Isochromat: vfloat3 {
         vfloat3 a = {ax, ay, az};
 
         // Angle of rotation is norm of rotation vector
-        auto theta = norm(a);
+        float theta_sq = a.x * a.x + a.y * a.y + a.z * a.z;
+        float theta;
+
+#if COMPAS_IS_DEVICE
+        //        theta = __sqrtf(theta_sq);
+        asm("sqrt.approx.f32 %0, %1;" : "=f"(theta) : "f"(theta_sq));
+#else
+        theta = sqrtf(theta_sq);
+#endif
 
         if (fabsf(theta) > 1e-9f) {  // theta != 0
+
             // Normalize rotation vector
 #if COMPAS_IS_DEVICE
-            vfloat3 k = a * __fdividef(1.0f, theta);
+            float theta_rcp = 0;
+            //            theta_rcp = __fdividef(1.0f, theta);
+            asm("rcp.approx.f32 %0, %1;" : "=f"(theta_rcp) : "f"(theta));
+            vfloat3 k = a * theta_rcp;
 #else
             vfloat3 k = a / theta;
 #endif
