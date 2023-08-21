@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <utility>
 
 #include "context.h"
 
@@ -66,9 +67,7 @@ CudaContext make_context(int device) {
     return std::make_shared<CudaContextImpl>(device);
 }
 
-CudaContextGuard::CudaContextGuard(const CudaContext& ctx) : CudaContextGuard(ctx.impl_) {}
-
-CudaContextGuard::CudaContextGuard(std::shared_ptr<CudaContextImpl> impl) : impl_(impl) {
+CudaContextGuard::CudaContextGuard(std::shared_ptr<CudaContextImpl> impl) : impl_(std::move(impl)) {
     COMPAS_CUDA_CHECK(cuCtxPushCurrent(impl_->context));
 }
 

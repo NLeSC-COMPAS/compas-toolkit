@@ -38,6 +38,8 @@ void simulate_sequence(
     CudaArray<cfloat, 2> echos,
     TissueParameters parameters,
     pSSFPSequence sequence) {
+    CudaContextGuard guard {context};
+
     // Initialize echos to zero
     echos.fill(0);
 

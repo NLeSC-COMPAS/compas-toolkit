@@ -15,6 +15,7 @@ struct CudaArray;
 struct CudaContext;
 struct CudaContextImpl;
 struct CudaBuffer;
+struct CudaContextGuard;
 
 struct CudaException: public std::exception {
     CudaException(std::string msg);
@@ -36,15 +37,6 @@ struct CudaException: public std::exception {
             throw ::compas::CudaException(code, __FILE__, __LINE__); \
         }                                                            \
     } while (0)
-
-struct CudaContextGuard {
-    CudaContextGuard(std::shared_ptr<CudaContextImpl> impl);
-    CudaContextGuard(const CudaContext& ctx);
-    ~CudaContextGuard();
-
-  private:
-    std::shared_ptr<CudaContextImpl> impl_;
-};
 
 struct CudaContext {
     friend CudaContextGuard;
@@ -108,6 +100,15 @@ struct CudaContext {
 };
 
 CudaContext make_context(int device = 0);
+
+struct CudaContextGuard {
+    CudaContextGuard(std::shared_ptr<CudaContextImpl> impl);
+    CudaContextGuard(const CudaContext& ctx) : CudaContextGuard(ctx.impl_) {}
+    ~CudaContextGuard();
+
+  private:
+    std::shared_ptr<CudaContextImpl> impl_;
+};
 
 struct CudaBuffer {
     CudaBuffer(const CudaContext& context, size_t nbytes);

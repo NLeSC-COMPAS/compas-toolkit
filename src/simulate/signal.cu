@@ -16,6 +16,8 @@ static void simulate_signal_cartesian(
     TissueParameters parameters,
     CartesianTrajectory trajectory,
     CudaArray<float, 2> coil_sensitivities) {
+    CudaContextGuard guard {context};
+
     int ncoils = coil_sensitivities.size(0);
     int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
@@ -86,6 +88,8 @@ static void simulate_signal_spiral(
     TissueParameters parameters,
     SpiralTrajectory trajectory,
     CudaArray<float, 2> coil_sensitivities) {
+    CudaContextGuard guard {context};
+
     int ncoils = coil_sensitivities.size(0);
     int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
