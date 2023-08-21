@@ -9,6 +9,8 @@ SET(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}")
 file(GLOB_RECURSE sources "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.cu")
 add_library(${PROJECT_NAME} STATIC ${sources} src/sequences/pssfp_kernels.cuh)
 install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION lib)
+SET(LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib")
+configure_file(${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.input ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.jl)
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/include")
 target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/src")
