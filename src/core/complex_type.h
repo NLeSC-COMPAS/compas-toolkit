@@ -200,9 +200,9 @@ COMPAS_HOST_DEVICE complex_type<T> operator/(const complex_type<T>& x, const T& 
 
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T> operator/(const T& x, const complex_type<T>& y) {
-    T norm = T(1) / (y.re * y.re + y.im * y.im);
+    T norm = T(x) / (y.re * y.re + y.im * y.im);
 
-    return {(x * y.re) * norm, (x * y.im) * norm};
+    return {y.re * norm, -y.im * norm};
 }
 
 template<typename T>
