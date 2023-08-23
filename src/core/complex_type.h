@@ -25,6 +25,11 @@ template<typename T>
 struct alignas(2 * sizeof(T)) complex_type: complex_storage<T> {
     COMPAS_HOST_DEVICE
     complex_type(T real = {}, T imag = {}) : complex_storage<T> {real, imag} {}
+    complex_type(const complex_type<T>& that) = default;
+
+    template<typename R>
+    COMPAS_HOST_DEVICE explicit complex_type(const complex_type<R>& that) :
+        complex_storage<T> {T(that.re), T(that.im)} {}
 
     COMPAS_HOST_DEVICE
     T real() const {
@@ -65,7 +70,7 @@ complex_type<double> polar(double mag, double angle = {}) {
 }
 
 COMPAS_HOST_DEVICE
-complex_type<float> exp(complex_type<float> m) {
+complex_type<float> exp(const complex_type<float>& m) {
 #if COMPAS_IS_DEVICE
     float e = ::__expf(m.re);
 #else
@@ -75,35 +80,35 @@ complex_type<float> exp(complex_type<float> m) {
 }
 
 COMPAS_HOST_DEVICE
-complex_type<double> exp(complex_type<double> m) {
+complex_type<double> exp(const complex_type<double>& m) {
     return polar(::exp(m.re), m.im);
 }
 
 COMPAS_HOST_DEVICE
-float arg(complex_type<float> m) {
+float arg(const complex_type<float>& m) {
     return atan2f(m.im, m.re);
 }
 
 COMPAS_HOST_DEVICE
-double arg(complex_type<double> m) {
+double arg(const complex_type<double>& m) {
     return atan2(m.im, m.re);
 }
 
 COMPAS_HOST_DEVICE
-double abs(complex_type<double> a) {
+double abs(const complex_type<double>& a) {
     return hypot(a.re, a.im);
 }
 
 COMPAS_HOST_DEVICE
-float abs(complex_type<float> a) {
+float abs(const complex_type<float>& a) {
     return hypotf(a.re, a.im);
 }
 
-COMPAS_HOST_DEVICE complex_type<double> log(complex_type<double> v) {
+COMPAS_HOST_DEVICE complex_type<double> log(const complex_type<double>& v) {
     return {::log(abs(v)), arg(v)};
 }
 
-COMPAS_HOST_DEVICE complex_type<float> log(complex_type<float> v) {
+COMPAS_HOST_DEVICE complex_type<float> log(const complex_type<float>& v) {
 #if COMPAS_IS_DEVICE
     return {::__logf(abs(v)), arg(v)};
 #else
@@ -112,132 +117,162 @@ COMPAS_HOST_DEVICE complex_type<float> log(complex_type<float> v) {
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> pow(complex_type<T> a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T> pow(const complex_type<T>& a, const complex_type<T>& b) {
     return exp(b * log(a));
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> pow(complex_type<T> a, T b) {
+COMPAS_HOST_DEVICE complex_type<T> pow(const complex_type<T>& a, const T& b) {
     return exp(b * log(a));
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> pow(T a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T> pow(const T& a, const complex_type<T>& b) {
     return exp(b * ::log(a));
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator+(complex_type<T> a) {
+COMPAS_HOST_DEVICE complex_type<T> operator+(const complex_type<T>& a) {
     return a;
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator-(complex_type<T> a) {
+COMPAS_HOST_DEVICE complex_type<T> operator-(const complex_type<T>& a) {
     return {-a.re, -a.im};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator+(complex_type<T> a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T> operator+(const complex_type<T>& a, const complex_type<T>& b) {
     return {a.re + b.re, a.im + b.im};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator+(complex_type<T> a, T b) {
+COMPAS_HOST_DEVICE complex_type<T> operator+(const complex_type<T>& a, const T& b) {
     return {a.re + b, a.im};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator+(T a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T> operator+(const T& a, const complex_type<T>& b) {
     return {a + b.re, b.im};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator-(complex_type<T> a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T> operator-(const complex_type<T>& a, const complex_type<T>& b) {
     return {a.re - b.re, a.im - b.im};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator-(complex_type<T> a, T b) {
+COMPAS_HOST_DEVICE complex_type<T> operator-(const complex_type<T>& a, const T& b) {
     return {a.re - b, a.im};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator-(T a, complex_type<T> b) {
-    return {a - b.re, b.im};
+COMPAS_HOST_DEVICE complex_type<T> operator-(const T& a, const complex_type<T>& b) {
+    return {a - b.re, -b.im};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator*(complex_type<T> a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T> operator*(const complex_type<T>& a, const complex_type<T>& b) {
     return {a.re * b.re - a.im * b.im, a.re * b.im + a.im * b.re};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator*(complex_type<T> a, T b) {
+COMPAS_HOST_DEVICE complex_type<T> operator*(const complex_type<T>& a, const T& b) {
     return {a.re * b, a.im * b};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator*(T a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T> operator*(const T& a, const complex_type<T>& b) {
     return {a * b.re, a * b.im};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator/(complex_type<T> x, complex_type<T> y) {
+COMPAS_HOST_DEVICE complex_type<T> operator/(const complex_type<T>& x, const complex_type<T>& y) {
     T norm = T(1) / (y.re * y.re + y.im * y.im);
 
     return {(x.re * y.re + x.im * y.im) * norm, (x.im * y.re - x.re * y.im) * norm};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator/(complex_type<T> x, T y) {
+COMPAS_HOST_DEVICE complex_type<T> operator/(const complex_type<T>& x, const T& y) {
     return x * T(T(1) / y);
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator/(T x, complex_type<T> y) {
+COMPAS_HOST_DEVICE complex_type<T> operator/(const T& x, const complex_type<T>& y) {
     T norm = T(1) / (y.re * y.re + y.im * y.im);
 
     return {(x * y.re) * norm, (x * y.im) * norm};
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator+=(complex_type<T>& a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T>& operator+=(complex_type<T>& a, const complex_type<T>& b) {
     return a = a + b;
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator-=(complex_type<T>& a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T>& operator-=(complex_type<T>& a, const complex_type<T>& b) {
     return a = a - b;
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator*=(complex_type<T>& a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T>& operator*=(complex_type<T>& a, const complex_type<T>& b) {
     return a = a * b;
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator/=(complex_type<T>& a, complex_type<T> b) {
+COMPAS_HOST_DEVICE complex_type<T>& operator/=(complex_type<T>& a, const complex_type<T>& b) {
     return a = a / b;
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator+=(complex_type<T>& a, T b) {
+COMPAS_HOST_DEVICE complex_type<T>& operator+=(complex_type<T>& a, const T& b) {
     return a = a + b;
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator-=(complex_type<T>& a, T b) {
+COMPAS_HOST_DEVICE complex_type<T>& operator-=(complex_type<T>& a, const T& b) {
     return a = a - b;
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator*=(complex_type<T>& a, T b) {
+COMPAS_HOST_DEVICE complex_type<T>& operator*=(complex_type<T>& a, const T& b) {
     return a = a * b;
 }
 
 template<typename T>
-COMPAS_HOST_DEVICE complex_type<T> operator/=(complex_type<T>& a, T b) {
+COMPAS_HOST_DEVICE complex_type<T>& operator/=(complex_type<T>& a, const T& b) {
     return a = a / b;
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE bool operator==(const complex_type<T>& a, const complex_type<T>& b) {
+    return a.real() == b.real() && a.imag() == b.imag();
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE bool operator==(const complex_type<T>& a, const T& b) {
+    return operator==(a, complex_type<T>(b));
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE bool operator==(const T& a, const complex_type<T>& b) {
+    return operator==(complex_type<T>(a), b);
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE bool operator!=(const complex_type<T>& a, const complex_type<T>& b) {
+    return !operator==(a, b);
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE bool operator!=(const complex_type<T>& a, const T& b) {
+    return !operator==(a, b);
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE bool operator!=(const T& a, const complex_type<T>& b) {
+    return !operator==(a, b);
 }
 
 using cfloat = complex_type<float>;
