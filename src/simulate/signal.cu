@@ -54,24 +54,27 @@ static void simulate_signal_cartesian(
         trajectory.view());
     COMPAS_CUDA_CHECK(cudaGetLastError());
 
-    const uint threads_per_block = 64;
+    const uint block_size_x = 64;
+    const uint block_size_y = 1;
     const uint threads_cooperative = 32;
     const uint samples_per_thread = 8;
+    const uint readouts_per_thread = 1;
     const uint coils_per_thread = 4;
 
-    block_dim = {threads_per_block};
+    block_dim = {block_size_x, block_size_y};
     grid_dim = {
         div_ceil(
             div_ceil(uint(samples_per_readout), samples_per_thread) * threads_cooperative,
-            threads_per_block),
-        uint(nreadouts),
+            block_size_x),
+        div_ceil(uint(nreadouts), readouts_per_thread * block_size_y),
         div_ceil(uint(ncoils), uint(coils_per_thread)),
     };
 
     kernels::sum_signal_cartesian<
-        threads_per_block,
+        block_size_x * block_size_y,
         threads_cooperative,
         samples_per_thread,
+        readouts_per_thread,
         coils_per_thread><<<grid_dim, block_dim>>>(
         signal.view_mut(),
         exponents.view(),
