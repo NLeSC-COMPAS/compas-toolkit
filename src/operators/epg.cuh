@@ -132,9 +132,9 @@ struct EPGCudaState {
             auto a = state[i];
             EPGStateColumn b;
 
-            b.F_plus = R11 * a.F_plus + R12 * a.F_min + R13 * a.F_min;
-            b.F_min = R21 * a.F_plus + R22 * a.F_min + R23 * a.F_min;
-            b.Z = R31 * a.F_plus + R32 * a.F_min + R33 * a.F_min;
+            b.F_plus = R11 * a.F_plus + R12 * a.F_min + R13 * a.Z;
+            b.F_min = R21 * a.F_plus + R22 * a.F_min + R23 * a.Z;
+            b.Z = R31 * a.F_plus + R32 * a.F_min + R33 * a.Z;
 
             state[i] = b;
         }
