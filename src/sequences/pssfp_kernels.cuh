@@ -2,7 +2,6 @@
 
 #include "core/complex_type.h"
 #include "core/view.h"
-#include "operators/isochromat.cuh"
 #include "parameters/tissue_kernels.cuh"
 
 namespace compas {

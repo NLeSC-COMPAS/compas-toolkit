@@ -47,10 +47,15 @@ struct alignas(2 * sizeof(T)) complex_type: complex_storage<T> {
     }
 
     COMPAS_HOST_DEVICE
-    T conj() const {
+    complex_type<T> conj() const {
         return {real(), -imag()};
     }
 };
+
+template<typename T>
+COMPAS_HOST_DEVICE static complex_type<T> conj(const complex_type<T>& v) {
+    return v.conj();
+}
 
 COMPAS_HOST_DEVICE
 static complex_type<float> polar(float mag, float angle = {}) {
@@ -279,3 +284,18 @@ using cfloat = complex_type<float>;
 using cdouble = complex_type<double>;
 
 }  // namespace compas
+
+#define COMPAS_COMPLEX_DEVICE_SHFL_IMPL(F, Ty)                                 \
+    template<typename T>                                                       \
+    COMPAS_DEVICE compas::complex_type<T> F(                                   \
+        unsigned mask,                                                         \
+        const compas::complex_type<T>& var,                                    \
+        Ty arg,                                                                \
+        int width = 32) {                                                      \
+        return {::F(mask, var.re, arg, width), ::F(mask, var.im, arg, width)}; \
+    }
+
+COMPAS_COMPLEX_DEVICE_SHFL_IMPL(__shfl_sync, int);
+COMPAS_COMPLEX_DEVICE_SHFL_IMPL(__shfl_up_sync, unsigned int);
+COMPAS_COMPLEX_DEVICE_SHFL_IMPL(__shfl_down_sync, unsigned int);
+COMPAS_COMPLEX_DEVICE_SHFL_IMPL(__shfl_xor_sync, int);

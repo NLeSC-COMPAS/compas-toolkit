@@ -1,6 +1,9 @@
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 
+#include "operators/epg.cuh"
+#include "operators/isochromat.cuh"
+#include "sequences/fisp_kernels.cuh"
 #include "sequences/pssfp_kernels.cuh"
 
 namespace compas {
@@ -128,6 +131,82 @@ __global__ void simulate_pssfp(
         group,
         sequence,
         z[group.thread_rank()],
+        echos.drop_axis<1>(voxel),
+        parameters.get(voxel));
+}
+
+static __device__ cfloat off_resonance_rotation(float delta_t, float B0 = 0.0f) {
+    if (B0 == 0) {
+        return 1;
+    }
+
+    auto theta = float(2.0f * M_PI) * delta_t * B0;
+    return polar(1.0f, theta);
+}
+
+template<int max_N, int warp_size>
+__device__ void simulate_fisp_for_voxel(
+    const FISPSequenceView& sequence,
+    cuda_view<cfloat> slice_profile,
+    cuda_strided_view_mut<cfloat> echos,
+    TissueVoxel p) {
+    auto T1 = p.T1;
+    auto T2 = p.T2;
+    auto TR = sequence.TR;
+    auto TE = sequence.TE;
+    auto TI = sequence.TI;
+
+    auto E1_TE = calculate_E1(TE, T1);
+    auto E2_TE = calculate_E2(TE, T2);
+
+    auto E1_TI = calculate_E1(TI, T1);
+    auto E2_TI = calculate_E2(TI, T2);
+
+    auto E1_TR_m_TE = calculate_E1(TR - TE, T1);
+    auto E2_TR_m_TE = calculate_E2(TR - TE, T2);
+
+    auto r_TE = off_resonance_rotation(TE, p.B0);
+    auto r_TR_m_TE = off_resonance_rotation(TR - TE, p.B0);
+
+    auto omega = EPGCudaState<max_N, warp_size>(sequence.max_state);
+
+    // apply inversion pulse
+    omega.invert();
+    omega.decay(E1_TI, E2_TI);
+    omega.regrowth(E1_TI);
+
+    for (index_t i = 0; i < sequence.RF_train.size(); i++) {
+        // mix states
+        omega.excite(slice_profile[i] * sequence.RF_train[i], p.B1);
+        // T2 decay F states, T1 decay Z states, B0 rotation until TE
+        omega.rotate_decay(E1_TE, E2_TE, r_TE);
+        omega.regrowth(E1_TE);
+        // sample F₊[0]
+        omega.sample_transverse(&echos[i], 0);
+        // T2 decay F states, T1 decay Z states, B0 rotation until next RF excitation
+        omega.rotate_decay(E1_TR_m_TE, E2_TR_m_TE, r_TR_m_TE);
+        omega.rotate(E1_TR_m_TE);
+        // shift F states due to dephasing gradients
+        omega.dephasing();
+    }
+}
+
+template<int max_N, int warp_size>
+__global__ void simulate_fisp(
+    cuda_view_mut<cfloat, 2> echos,
+    cuda_view<cfloat> slice_profile,
+    TissueParametersView parameters,
+    FISPSequenceView sequence) {
+    index_t voxel = index_t(blockDim.x * blockIdx.x + threadIdx.x) / warp_size;
+    index_t nvoxels = parameters.nvoxels;
+
+    if (voxel >= nvoxels) {
+        return;
+    }
+
+    simulate_fisp_for_voxel<max_N, warp_size>(
+        sequence,
+        slice_profile,
         echos.drop_axis<1>(voxel),
         parameters.get(voxel));
 }

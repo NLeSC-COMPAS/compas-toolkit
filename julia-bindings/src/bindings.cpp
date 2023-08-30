@@ -196,4 +196,38 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
 
             d_echos.copy_to(echos);
         });
+
+    mod.add_type<compas::FISPSequence>("FISPSequence");
+    mod.method(
+        "make_fisp_sequence",
+        [](const compas::CudaContext& context,
+           jlcxx::ArrayRef<std::complex<float>> RF_train,
+           jlcxx::ArrayRef<std::complex<float>, 2> slice_profiles,
+           float TR,
+           float TE,
+           int max_state,
+           float TI) {
+            return make_fisp_sequence(
+                context,
+                into_view(RF_train),
+                into_view(slice_profiles),
+                TR,
+                TE,
+                max_state,
+                TI);
+        });
+
+    mod.method(
+        "simulate_sequence",
+        [](const compas::CudaContext& context,
+           jlcxx::ArrayRef<std::complex<float>, 2> julia_echos,
+           compas::TissueParameters parameters,
+           compas::FISPSequence sequence) {
+            auto echos = into_view_mut(julia_echos);
+            auto d_echos = context.allocate<compas::cfloat>(echos.shape());
+
+            compas::simulate_sequence(context, d_echos, parameters, sequence);
+
+            d_echos.copy_to(echos);
+        });
 }

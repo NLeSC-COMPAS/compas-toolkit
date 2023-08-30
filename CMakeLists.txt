@@ -3,11 +3,14 @@ cmake_minimum_required(VERSION 3.10)
 set(PROJECT_NAME "compas-toolkit")
 project(${PROJECT_NAME} LANGUAGES CXX CUDA)
 
+file(GLOB_RECURSE sources "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.cu")
+add_library(${PROJECT_NAME} STATIC ${sources} src/operators/epg.cuh)
+
 # Directory where libraries will be placed after building
 set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}")
-
-file(GLOB_RECURSE sources "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.cu")
-add_library(${PROJECT_NAME} STATIC ${sources})
+install(TARGETS ${PROJECT_NAME}
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)
 
 target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/include")
 target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/src")
@@ -39,11 +42,9 @@ target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cuda_driver)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::nvrtc)
 
 # Installation of library files
-install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION lib)
 set(COMPAS_LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib")
 configure_file(
     ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.input
     ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.jl)
-
 
 add_subdirectory(julia-bindings)

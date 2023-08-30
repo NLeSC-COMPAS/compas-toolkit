@@ -5,7 +5,7 @@
 namespace compas {
 
 template<int batch_size>
-int simulate_sequence_batch(
+int simulate_pssfp_sequence_batch(
     int iz,
     const CudaArray<cfloat, 2>& echos,
     const TissueParameters& parameters,
@@ -46,16 +46,66 @@ void simulate_sequence(
     // We process the z-slices in batches. The first batches process 32 slices at once, the next batches process 16
     // slices at once, the next 8 slices, etc. Since the reduction is performed using warp-shuffles, these batch sizes
     // must powers of two and cannot exceed 32.  The offset keeps track of how many slices have already been processed
-    // and is incremented by each call to `simulate_sequence_batch`.
+    // and is incremented by each call to `simulate_pssfp_sequence_batch`.
     int offset = 0;
-    offset = simulate_sequence_batch<32>(offset, echos, parameters, sequence);
-    offset = simulate_sequence_batch<16>(offset, echos, parameters, sequence);
-    offset = simulate_sequence_batch<8>(offset, echos, parameters, sequence);
-    offset = simulate_sequence_batch<4>(offset, echos, parameters, sequence);
-    offset = simulate_sequence_batch<2>(offset, echos, parameters, sequence);
-    offset = simulate_sequence_batch<1>(offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<32>(offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<16>(offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<8>(offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<4>(offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<2>(offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<1>(offset, echos, parameters, sequence);
 
     COMPAS_ASSERT(offset == sequence.z.size());
+}
+
+template<int max_N, int warp_size = max_N>
+void simulate_fisp_sequence_for_size(
+    const CudaContext& context,
+    CudaArray<cfloat, 2> echos,
+    TissueParameters parameters,
+    FISPSequence sequence) {
+    CudaContextGuard guard {context};
+
+    COMPAS_ASSERT(sequence.max_state <= max_N);
+
+    int nvoxels = parameters.nvoxels;
+    int nreadouts = sequence.RF_train.size();
+
+    COMPAS_ASSERT(echos.size(0) == nreadouts);
+    COMPAS_ASSERT(echos.size(1) == nvoxels);
+
+    echos.fill(0);
+
+    for (index_t i = 0; i < sequence.sliceprofiles.size(0); i++) {
+        dim3 block_size = 256;
+        dim3 grid_size = div_ceil(uint(nvoxels * warp_size), block_size.x);
+
+        kernels::simulate_fisp<max_N, warp_size><<<grid_size, block_size>>>(
+            echos.view_mut(),
+            sequence.sliceprofiles.slice(i).view(),
+            parameters.view(),
+            sequence.view());
+    }
+}
+
+void simulate_sequence(
+    const CudaContext& context,
+    CudaArray<cfloat, 2> echos,
+    TissueParameters parameters,
+    FISPSequence sequence) {
+    if (sequence.max_state < 8) {
+        simulate_fisp_sequence_for_size<8>(context, echos, parameters, sequence);
+    } else if (sequence.max_state < 16) {
+        simulate_fisp_sequence_for_size<16>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 32) {
+        simulate_fisp_sequence_for_size<32>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 64) {
+        simulate_fisp_sequence_for_size<64, 32>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 96) {
+        simulate_fisp_sequence_for_size<96, 32>(context, echos, parameters, sequence);
+    } else {
+        COMPAS_PANIC("max_state cannot exceed 96");
+    }
 }
 
 }  // namespace compas
