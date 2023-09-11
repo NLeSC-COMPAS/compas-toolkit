@@ -13,27 +13,33 @@ struct EPGCudaState {
     static constexpr int items_per_thread = (max_N + warp_size - 1) / warp_size;
 
     struct EPGStateColumn {
-        cfloat F_plus;
-        cfloat F_min;
-        cfloat Z;
+        cfloat F_plus = 0;
+        cfloat F_min = 0;
+        cfloat Z = 0;
     };
 
     COMPAS_DEVICE
     EPGCudaState(int N) : N(N) {
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
-            state[i] = {0, 0, 1};
+            state[i] = {0, 0, 0};
+
+            if (local_to_global_index(i) == 0) {
+                state[i].Z = 1;
+            }
         }
     }
 
     COMPAS_DEVICE
     void invert(float B1) {
-        float theta = static_cast<float>(M_PI * B1);
+        float theta = static_cast<float>(M_PI) * B1;
         float cos_theta = __cosf(theta);
 
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
-            state[i].Z *= cos_theta;
+            if (local_to_global_index(i) == 0) {
+                state[i].Z *= cos_theta;
+            }
         }
     }
 
@@ -41,7 +47,9 @@ struct EPGCudaState {
     void invert() {
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
-            state[i].Z *= -1.0f;
+            if (local_to_global_index(i) == 0) {
+                state[i].Z *= -1.0f;
+            }
         }
     }
 
@@ -74,7 +82,9 @@ struct EPGCudaState {
     void regrowth(float E1) {
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
-            state[i].Z += 1 - E1;
+            if (local_to_global_index(i) == 0) {
+                state[i].Z += 1 - E1;
+            }
         }
     }
 
@@ -104,14 +114,8 @@ struct EPGCudaState {
         __sincosf(phi, &sinphi, &cosphi);
 
         // again double angle formula
-        float sin2phi = 2 * sinphi * cosphi;
-        float cos2phi = 2 * cosphi * cosphi - 1.0f;
-
-        // complex exponentials
-        //        cfloat cfloat(cosphi,  sinphi)  = cfloat(cosphi,  sinphi);
-        //        cfloat cfloat(cos2phi, sin2phi) = cfloat(cos2phi, sin2phi);
-        //        cfloat conj(cfloat(cosphi,  sinphi))  = conj(cfloat(cosphi,  sinphi));
-        //        cfloat conj(cfloat(cos2phi, sin2phi)) = conj(cfloat(cos2phi, sin2phi));
+        float sin2phi = 2.0f * sinphi * cosphi;
+        float cos2phi = 2.0f * cosphi * cosphi - 1.0f;
 
         // compute individual components of rotation matrix
         float R11 = cosx_sq;
@@ -120,7 +124,7 @@ struct EPGCudaState {
 
         cfloat R21 = cfloat(cos2phi, -sin2phi) * sinx_sq;
         float R22 = cosx_sq;
-        cfloat R23 = cfloat(cosphi, -sinphi) * sinalpha;
+        cfloat R23 = cfloat(0, 1) * cfloat(cosphi, -sinphi) * sinalpha;
 
         cfloat R31 = -cfloat(0, 1) * cfloat(cosphi, -sinphi) * (sinalpha * 0.5f);
         cfloat R32 = cfloat(0, 1) * cfloat(cosphi, sinphi) * (sinalpha * 0.5f);
@@ -129,31 +133,30 @@ struct EPGCudaState {
         // apply rotation matrix to each state
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
-            auto a = state[i];
-            EPGStateColumn b;
-
-            b.F_plus = R11 * a.F_plus + R12 * a.F_min + R13 * a.Z;
-            b.F_min = R21 * a.F_plus + R22 * a.F_min + R23 * a.Z;
-            b.Z = R31 * a.F_plus + R32 * a.F_min + R33 * a.Z;
-
-            state[i] = b;
+            EPGStateColumn a = state[i];
+            state[i].F_plus = R11 * a.F_plus + R12 * a.F_min + R13 * a.Z;
+            state[i].F_min = R21 * a.F_plus + R22 * a.F_min + R23 * a.Z;
+            state[i].Z = R31 * a.F_plus + R32 * a.F_min + R33 * a.Z;
         }
-    }
-
-    COMPAS_DEVICE
-    void excite(float RF, float B1 = 1.0f) {
-        // TODO: optimize for when RF is not complex
-        excite(cfloat(RF), B1);
     }
 
     COMPAS_DEVICE
     void sample_transverse(cfloat* output, index_t index) const {
-        if (is_index_local(index)) {
-            index_t i = index_to_local_item(index);
-            *output += state[i].F_plus;
+#pragma unroll items_per_thread
+        for (index_t i = 0; i < items_per_thread; i++) {
+            if (local_to_global_index(i) == index) {
+                *output += state[i].F_plus;
+            }
         }
     }
 
+    COMPAS_DEVICE
+    void dephasing() {
+        shift_down();
+        shift_up();
+    }
+
+  private:
     COMPAS_DEVICE
     void shift_down() {
         unsigned int mask = ~0u;
@@ -168,40 +171,32 @@ struct EPGCudaState {
             }
 
             state[i].F_min = __shfl_sync(mask, input, src_lane, warp_size);
-        }
 
-        if (is_index_local(N - 1)) {
-            index_t i = index_to_local_item(N - 1);
-            state[i].F_min = 0;
+            if (local_to_global_index(i) >= N - 1) {
+                state[i].F_min = 0;
+            }
         }
     }
 
     COMPAS_DEVICE
     void shift_up() {
         unsigned int mask = ~0u;
-        int src_lane = (my_lane() + warp_size - 1) % warp_size;
+        int src_lane = (my_lane() + (warp_size - 1)) % warp_size;
 
 #pragma unroll items_per_thread
         for (index_t i = items_per_thread - 1; i >= 0; i--) {
             auto input = state[i].F_plus;
 
-            if (my_lane() + 1 == warp_size && i > 0) {
+            if (my_lane() == warp_size - 1 && i > 0) {
                 input = state[i - 1].F_plus;
             }
 
             state[i].F_plus = __shfl_sync(mask, input, src_lane, warp_size);
-        }
 
-        if (is_index_local(0)) {
-            index_t i = index_to_local_item(0);
-            state[i].F_plus = conj(state[i].F_min);
+            if (local_to_global_index(i) == 0) {
+                state[i].F_plus = conj(state[i].F_min);
+            }
         }
-    }
-
-    COMPAS_DEVICE
-    void dephasing() {
-        shift_down();
-        shift_up();
     }
 
     COMPAS_DEVICE
@@ -210,16 +205,10 @@ struct EPGCudaState {
     }
 
     COMPAS_DEVICE
-    static index_t is_index_local(index_t i) {
-        return i % warp_size == my_lane();
+    static index_t local_to_global_index(index_t i) {
+        return i * warp_size + my_lane();
     }
 
-    COMPAS_DEVICE
-    static index_t index_to_local_item(index_t i) {
-        return i / warp_size;
-    }
-
-  private:
     int N;
     EPGStateColumn state[items_per_thread];
 };

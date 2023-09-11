@@ -67,6 +67,7 @@ void simulate_fisp_sequence_for_size(
     CudaContextGuard guard {context};
 
     COMPAS_ASSERT(sequence.max_state <= max_N);
+    COMPAS_ASSERT(warp_size >= 1 && warp_size <= 32 && is_power_of_two(warp_size));
 
     int nvoxels = parameters.nvoxels;
     int nreadouts = sequence.RF_train.size();
@@ -93,18 +94,22 @@ void simulate_sequence(
     CudaArray<cfloat, 2> echos,
     TissueParameters parameters,
     FISPSequence sequence) {
-    if (sequence.max_state < 8) {
-        simulate_fisp_sequence_for_size<8>(context, echos, parameters, sequence);
-    } else if (sequence.max_state < 16) {
-        simulate_fisp_sequence_for_size<16>(context, echos, parameters, sequence);
+    if (sequence.max_state <= 4) {
+        simulate_fisp_sequence_for_size<4, 2>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 8) {
+        simulate_fisp_sequence_for_size<8, 4>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 16) {
+        simulate_fisp_sequence_for_size<16, 8>(context, echos, parameters, sequence);
     } else if (sequence.max_state <= 32) {
-        simulate_fisp_sequence_for_size<32>(context, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<32, 16>(context, echos, parameters, sequence);
     } else if (sequence.max_state <= 64) {
         simulate_fisp_sequence_for_size<64, 32>(context, echos, parameters, sequence);
     } else if (sequence.max_state <= 96) {
         simulate_fisp_sequence_for_size<96, 32>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 128) {
+        simulate_fisp_sequence_for_size<128, 32>(context, echos, parameters, sequence);
     } else {
-        COMPAS_PANIC("max_state cannot exceed 96");
+        COMPAS_PANIC("max_state cannot exceed 128");
     }
 }
 

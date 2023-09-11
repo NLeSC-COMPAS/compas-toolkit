@@ -136,7 +136,7 @@ __global__ void simulate_pssfp(
 }
 
 static __device__ cfloat off_resonance_rotation(float delta_t, float B0 = 0.0f) {
-    if (B0 == 0) {
+    if (B0 == 0.0f) {
         return 1;
     }
 
@@ -162,11 +162,11 @@ __device__ void simulate_fisp_for_voxel(
     auto E1_TI = calculate_E1(TI, T1);
     auto E2_TI = calculate_E2(TI, T2);
 
-    auto E1_TR_m_TE = calculate_E1(TR - TE, T1);
-    auto E2_TR_m_TE = calculate_E2(TR - TE, T2);
+    auto E1_TR_minus_TE = calculate_E1(TR - TE, T1);
+    auto E2_TR_minus_TE = calculate_E2(TR - TE, T2);
 
     auto r_TE = off_resonance_rotation(TE, p.B0);
-    auto r_TR_m_TE = off_resonance_rotation(TR - TE, p.B0);
+    auto r_TR_minus_TE = off_resonance_rotation(TR - TE, p.B0);
 
     auto omega = EPGCudaState<max_N, warp_size>(sequence.max_state);
 
@@ -184,8 +184,8 @@ __device__ void simulate_fisp_for_voxel(
         // sample F₊[0]
         omega.sample_transverse(&echos[i], 0);
         // T2 decay F states, T1 decay Z states, B0 rotation until next RF excitation
-        omega.rotate_decay(E1_TR_m_TE, E2_TR_m_TE, r_TR_m_TE);
-        omega.rotate(E1_TR_m_TE);
+        omega.rotate_decay(E1_TR_minus_TE, E2_TR_minus_TE, r_TR_minus_TE);
+        omega.regrowth(E1_TR_minus_TE);
         // shift F states due to dephasing gradients
         omega.dephasing();
     }
