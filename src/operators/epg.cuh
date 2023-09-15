@@ -96,9 +96,6 @@ struct EPGCudaState {
         float alpha = deg2rad * abs(RF);
         alpha *= B1;
 
-        // phase of RF pulse
-        float phi = arg(RF);
-
         float x = alpha * 0.5f;
         float sinx, cosx;
         __sincosf(x, &sinx, &cosx);
@@ -109,25 +106,30 @@ struct EPGCudaState {
         float sinalpha = 2.0f * sinx * cosx;
         float cosalpha = 2.0f * cosx_sq - 1.0f;
 
-        // phase stuff
-        float sinphi, cosphi;
-        __sincosf(phi, &sinphi, &cosphi);
+        // phase of RF pulse
+        float cosphi, sinphi;
+        //        float phi = arg(RF);
+        //        __sincosf(phi, &sinphi, &cosphi);
+
+        // normalizing RF is faster than using sincosf
+        cosphi = RF.re * rhypotf(RF.re, RF.im);
+        sinphi = RF.im * rhypotf(RF.re, RF.im);
 
         // again double angle formula
-        float sin2phi = 2.0f * sinphi * cosphi;
+        float sin2phi = 2.0f * cosphi * sinphi;
         float cos2phi = 2.0f * cosphi * cosphi - 1.0f;
 
         // compute individual components of rotation matrix
         float R11 = cosx_sq;
         cfloat R12 = cfloat(cos2phi, sin2phi) * sinx_sq;
-        cfloat R13 = -cfloat(0, 1) * cfloat(cosphi, sinphi) * sinalpha;
+        cfloat R13 = -cfloat(0, 1) * (cfloat(cosphi, sinphi) * sinalpha);
 
         cfloat R21 = cfloat(cos2phi, -sin2phi) * sinx_sq;
         float R22 = cosx_sq;
-        cfloat R23 = cfloat(0, 1) * cfloat(cosphi, -sinphi) * sinalpha;
+        cfloat R23 = cfloat(0, 1) * (cfloat(cosphi, -sinphi) * sinalpha);
 
-        cfloat R31 = -cfloat(0, 1) * cfloat(cosphi, -sinphi) * (sinalpha * 0.5f);
-        cfloat R32 = cfloat(0, 1) * cfloat(cosphi, sinphi) * (sinalpha * 0.5f);
+        cfloat R31 = -cfloat(0, 1) * (cfloat(cosphi, -sinphi) * sinalpha) * 0.5f;
+        cfloat R32 = cfloat(0, 1) * (cfloat(cosphi, sinphi) * sinalpha) * 0.5f;
         float R33 = cosalpha;
 
         // apply rotation matrix to each state
