@@ -2,7 +2,7 @@
 
 #include "core/complex_type.h"
 #include "core/context.h"
-#include "parameters/tissue_kernels.cuh"
+#include "parameters/tissue_view.cuh"
 
 namespace compas {
 

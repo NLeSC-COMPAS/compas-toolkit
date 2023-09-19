@@ -1,6 +1,8 @@
 #pragma once
 
 #ifdef __CUDACC__
+    #define COMPAS_IS_CUDA (1)
+
     #ifdef __CUDA_ARCH__
         #define COMPAS_IS_DEVICE (1)
     #else
@@ -11,6 +13,7 @@
     #define COMPAS_DEVICE      __device__ __forceinline__
     #define COMPAS_HOST_DEVICE __host__ __device__ __forceinline__
 #else
+    #define COMPAS_IS_CUDA     (0)
     #define COMPAS_IS_DEVICE   (0)
     #define COMPAS_IS_HOST     (1)
     #define COMPAS_DEVICE      inline

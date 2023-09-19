@@ -4,22 +4,27 @@
 #include "../core/macros.h"
 #include "../core/vector.h"
 #include "../core/view.h"
-#include "../parameters/tissue_kernels.cuh"
+#include "../parameters/tissue_view.cuh"
 
 namespace compas {
 
 template<int max_N, int warp_size>
-struct EPGCudaState {
+struct EPGThreadBlockState {
     static constexpr int items_per_thread = (max_N + warp_size - 1) / warp_size;
 
-    struct EPGStateColumn {
+    struct Column {
         cfloat F_plus = 0;
         cfloat F_min = 0;
         cfloat Z = 0;
     };
 
     COMPAS_DEVICE
-    EPGCudaState(int N) : N(N) {
+    EPGThreadBlockState(int N) : N(N) {
+        initialize();
+    }
+
+    COMPAS_DEVICE
+    void initialize() {
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
             state[i] = {0, 0, 0};
@@ -116,8 +121,8 @@ struct EPGCudaState {
         sinphi = RF.im * rhypotf(RF.re, RF.im);
 
         // again double angle formula
-        float sin2phi = 2.0f * cosphi * sinphi;
-        float cos2phi = 2.0f * cosphi * cosphi - 1.0f;
+        float sin2phi = (2.0f * cosphi) * sinphi;
+        float cos2phi = (2.0f * cosphi) * cosphi - 1.0f;
 
         // compute individual components of rotation matrix
         float R11 = cosx_sq;
@@ -135,7 +140,7 @@ struct EPGCudaState {
         // apply rotation matrix to each state
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
-            EPGStateColumn a = state[i];
+            Column a = state[i];
             state[i].F_plus = R11 * a.F_plus + R12 * a.F_min + R13 * a.Z;
             state[i].F_min = R21 * a.F_plus + R22 * a.F_min + R23 * a.Z;
             state[i].Z = R31 * a.F_plus + R32 * a.F_min + R33 * a.Z;
@@ -212,7 +217,7 @@ struct EPGCudaState {
     }
 
     int N;
-    EPGStateColumn state[items_per_thread];
+    Column state[items_per_thread];
 };
 
 }  // namespace compas

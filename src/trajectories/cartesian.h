@@ -2,7 +2,7 @@
 
 #include "core/complex_type.h"
 #include "core/context.h"
-#include "trajectories/cartesian_kernels.cuh"
+#include "trajectories/cartesian_view.cuh"
 
 namespace compas {
 

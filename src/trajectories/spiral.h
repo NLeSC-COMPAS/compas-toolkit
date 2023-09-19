@@ -2,7 +2,7 @@
 
 #include "core/complex_type.h"
 #include "core/context.h"
-#include "trajectories/spiral_kernels.cuh"
+#include "trajectories/spiral_view.cuh"
 
 namespace compas {
 

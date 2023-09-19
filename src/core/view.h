@@ -179,7 +179,7 @@ struct strided {
 enum struct memory_space { HOST, CUDA };
 
 template<typename T, typename L, memory_space M = memory_space::HOST, index_t N = L::rank>
-struct view_impl;
+struct basic_view;
 
 template<typename T, typename L, memory_space M>
 struct view_base {
@@ -256,7 +256,7 @@ struct view_base {
     }
 
     template<index_t Axis>
-    COMPAS_HOST_DEVICE view_impl<T, layouts::drop_axis<L, Axis>, M>
+    COMPAS_HOST_DEVICE basic_view<T, layouts::drop_axis<L, Axis>, M>
     drop_axis(index_t index = 0) const {
         static_assert(Axis < rank, "axis out of bounds");
         COMPAS_DEBUG_ASSERT(index >= 0 && index < size(Axis));
@@ -265,12 +265,12 @@ struct view_base {
     };
 
     COMPAS_HOST_DEVICE
-    view_impl<T, layouts::drop_axis<L>, M> drop_leading_axis(index_t index = 0) const {
+    basic_view<T, layouts::drop_axis<L>, M> drop_leading_axis(index_t index = 0) const {
         return this->template drop_axis<0>(index);
     };
 
     COMPAS_HOST_DEVICE
-    view_impl<T, typename L::transpose_type, M> transpose() const {
+    basic_view<T, typename L::transpose_type, M> transpose() const {
         return {ptr_, layout_.transpose()};
     }
 
@@ -322,17 +322,17 @@ struct view_base {
 };
 
 template<typename T, typename L, memory_space M, index_t N>
-struct view_impl: view_base<T, L, M> {
+struct basic_view: view_base<T, L, M> {
     using base_type = view_base<T, L, M>;
 
     COMPAS_HOST_DEVICE
-    view_impl(T* ptr = nullptr, L layout = {}) : base_type(ptr, layout) {}
+    basic_view(T* ptr = nullptr, L layout = {}) : base_type(ptr, layout) {}
 
     template<typename T2, typename L2>
-    COMPAS_HOST_DEVICE view_impl(const view_base<T2, L2, M>& that) : base_type(that) {}
+    COMPAS_HOST_DEVICE basic_view(const view_base<T2, L2, M>& that) : base_type(that) {}
 
     COMPAS_HOST_DEVICE
-    view_impl<T, layouts::drop_axis<L>, M> operator[](index_t index) const {
+    basic_view<T, layouts::drop_axis<L>, M> operator[](index_t index) const {
         return this->drop_leading_axis(index);
     }
 
@@ -343,14 +343,14 @@ struct view_impl: view_base<T, L, M> {
 };
 
 template<typename T, typename L, memory_space M>
-struct view_impl<T, L, M, 1>: view_base<T, L, M> {
+struct basic_view<T, L, M, 1>: view_base<T, L, M> {
     using base_type = view_base<T, L, M>;
 
     COMPAS_HOST_DEVICE
-    view_impl(T* ptr = nullptr, L layout = {}) : base_type(ptr, layout) {}
+    basic_view(T* ptr = nullptr, L layout = {}) : base_type(ptr, layout) {}
 
     template<typename T2, typename L2>
-    COMPAS_HOST_DEVICE view_impl(const view_base<T2, L2, M>& that) : base_type(that) {}
+    COMPAS_HOST_DEVICE basic_view(const view_base<T2, L2, M>& that) : base_type(that) {}
 
     COMPAS_HOST_DEVICE
     T& operator[](index_t index) const {
@@ -364,19 +364,19 @@ struct view_impl<T, L, M, 1>: view_base<T, L, M> {
 };
 
 template<typename T, index_t N = 1, memory_space M = memory_space::HOST>
-using view = view_impl<const T, layouts::row_major<N>, M>;
+using view = basic_view<const T, layouts::row_major<N>, M>;
 template<typename T, index_t N = 1, memory_space M = memory_space::HOST>
-using view_mut = view_impl<T, layouts::row_major<N>, M>;
+using view_mut = basic_view<T, layouts::row_major<N>, M>;
 
 template<typename T, index_t N = 1, memory_space M = memory_space::HOST>
-using strided_view = view_impl<const T, layouts::strided<N>, M>;
+using strided_view = basic_view<const T, layouts::strided<N>, M>;
 template<typename T, index_t N = 1, memory_space M = memory_space::HOST>
-using strided_view_mut = view_impl<T, layouts::strided<N>, M>;
+using strided_view_mut = basic_view<T, layouts::strided<N>, M>;
 
 template<typename T, index_t N = 1, memory_space M = memory_space::HOST>
-using fortran_view = view_impl<const T, layouts::col_major<N>, M>;
+using fortran_view = basic_view<const T, layouts::col_major<N>, M>;
 template<typename T, index_t N = 1, memory_space M = memory_space::HOST>
-using fortran_view_mut = view_impl<T, layouts::col_major<N>, M>;
+using fortran_view_mut = basic_view<T, layouts::col_major<N>, M>;
 
 template<typename T, index_t N = 1>
 using host_view = view<T, N, memory_space::HOST>;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/view.h"
-#include "parameters/tissue_kernels.cuh"
+#include "parameters/tissue_view.cuh"
 
 namespace compas {
 

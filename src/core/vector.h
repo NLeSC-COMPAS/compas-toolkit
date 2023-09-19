@@ -388,6 +388,6 @@ using vfloat4 = vec4<float>;
 using vdouble4 = vec4<double>;
 
 template<int N>
-using ndindex_t = vector<int, N>;
+using ndindex_t = vector<index_t, N>;
 
 }  // namespace compas

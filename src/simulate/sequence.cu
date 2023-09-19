@@ -67,7 +67,7 @@ void simulate_fisp_sequence_for_size(
     CudaContextGuard guard {context};
 
     COMPAS_ASSERT(sequence.max_state <= max_N);
-    COMPAS_ASSERT(warp_size >= 1 && warp_size <= 32 && is_power_of_two(warp_size));
+    COMPAS_ASSERT(is_power_of_two(warp_size) && warp_size <= 32);
 
     int nvoxels = parameters.nvoxels;
     int nreadouts = sequence.RF_train.size();

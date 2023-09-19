@@ -1,27 +1,69 @@
 #pragma once
 
-#include "core/view.h"
+#include "../operators/epg.cuh"
+#include "../parameters/tissue_view.cuh"
+#include "fisp_view.h"
 
 namespace compas {
-struct FISPSequenceView {
-    // Vector with flip angle for each TR with abs.(RF_train) the RF flip angles in degrees and
-    // angle.(RF_train) should be the RF phases in degrees.
-    cuda_view<cfloat> RF_train;
+namespace kernels {
+template<int max_N, int warp_size>
+COMPAS_DEVICE void simulate_fisp_for_voxel(
+    const FISPSequenceView& sequence,
+    cuda_view<cfloat> slice_profile,
+    cuda_strided_view_mut<cfloat> echos,
+    TissueVoxel p) {
+    auto off_resonance_rotation = [](float delta_t, float B0 = 0.0f) -> cfloat {
+        if (B0 == 0.0f) {
+            return 1;
+        }
 
-    // Matrix with RF scaling factors (a.u.) to simulate slice profile effects.
-    // Each column represents the (flip angle dependent) scaling factors for one position along the slice direction.
-    cuda_view<cfloat, 2> sliceprofiles;
+        auto theta = float(2.0f * M_PI) * delta_t * B0;
+        return polar(1.0f, theta);
+    };
 
-    // Repetition time in seconds, assumed constant during the sequence
-    float TR;
+    auto calculate_E = [](float delta_t, float T) -> float {
+        return __expf(-delta_t * (1.0f / T));
+    };
 
-    // Echo time in seconds, assumed constant during the sequence
-    float TE;
+    auto T1 = p.T1;
+    auto T2 = p.T2;
+    auto TR = sequence.TR;
+    auto TE = sequence.TE;
+    auto TI = sequence.TI;
 
-    // Maximum number of states to keep track of in EPG simulation
-    int max_state;
+    auto E1_TE = calculate_E(TE, T1);
+    auto E2_TE = calculate_E(TE, T2);
 
-    // Inversion delay after the inversion prepulse in seconds
-    float TI;
-};
+    auto E1_TI = calculate_E(TI, T1);
+    auto E2_TI = calculate_E(TI, T2);
+
+    auto E1_TR_minus_TE = calculate_E(TR - TE, T1);
+    auto E2_TR_minus_TE = calculate_E(TR - TE, T2);
+
+    auto r_TE = off_resonance_rotation(TE, p.B0);
+    auto r_TR_minus_TE = off_resonance_rotation(TR - TE, p.B0);
+
+    auto omega = EPGThreadBlockState<max_N, warp_size>(sequence.max_state);
+
+    // apply inversion pulse
+    omega.invert();
+    omega.decay(E1_TI, E2_TI);
+    omega.regrowth(E1_TI);
+
+    for (index_t i = 0; i < sequence.RF_train.size(); i++) {
+        // mix states
+        omega.excite(slice_profile[i] * sequence.RF_train[i], p.B1);
+        // T2 decay F states, T1 decay Z states, B0 rotation until TE
+        omega.rotate_decay(E1_TE, E2_TE, r_TE);
+        omega.regrowth(E1_TE);
+        // sample F₊[0]
+        omega.sample_transverse(&echos[i], 0);
+        // T2 decay F states, T1 decay Z states, B0 rotation until next RF excitation
+        omega.rotate_decay(E1_TR_minus_TE, E2_TR_minus_TE, r_TR_minus_TE);
+        omega.regrowth(E1_TR_minus_TE);
+        // shift F states due to dephasing gradients
+        omega.dephasing();
+    }
+}
+}  // namespace kernels
 }  // namespace compas

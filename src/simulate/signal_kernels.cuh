@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core/view.h"
-#include "trajectories/cartesian_kernels.cuh"
-#include "trajectories/spiral_kernels.cuh"
+#include "trajectories/cartesian_view.cuh"
+#include "trajectories/spiral_view.cuh"
 
 namespace compas {
 namespace kernels {

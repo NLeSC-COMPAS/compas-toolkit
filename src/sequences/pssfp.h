@@ -1,7 +1,7 @@
 #pragma once
 
 #include "core/context.h"
-#include "pssfp_kernels.cuh"
+#include "pssfp_view.h"
 
 namespace compas {
 struct pSSFPSequence {
