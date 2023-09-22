@@ -27,7 +27,7 @@ Next, configure the CMake project inside a new `build` directory:
 ```bash
 $ mkdir -p build
 $ cd build
-$ cmake -DCMAKE_BUILD_TYPE=Release ..
+$ cmake -B. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=native ..
 ```
 
 After the configuration, build the toolkit by running:
