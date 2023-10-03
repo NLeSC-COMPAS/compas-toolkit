@@ -45,41 +45,37 @@ static void simulate_signal_cartesian(
         trajectory.view());
     COMPAS_CUDA_CHECK(cudaGetLastError());
 
-    block_dim = {256};
-    grid_dim = {div_ceil(uint(nvoxels), block_dim.x)};
+    for (index_t icoil = 0; icoil < ncoils; icoil++) {
+        block_dim = {256};
+        grid_dim = {div_ceil(uint(nvoxels), block_dim.x)};
 
-    kernels::prepare_signal_cartesian<<<grid_dim, block_dim>>>(
-        exponents.view_mut(),
-        parameters.view(),
-        trajectory.view());
-    COMPAS_CUDA_CHECK(cudaGetLastError());
+        kernels::prepare_signal_cartesian<<<grid_dim, block_dim>>>(
+            exponents.view_mut(),
+            coil_sensitivities.slice(icoil).view(),
+            parameters.view(),
+            trajectory.view());
+        COMPAS_CUDA_CHECK(cudaGetLastError());
 
-    const uint block_size_x = 64;
-    const uint block_size_y = 1;
-    const uint threads_cooperative = 32;
-    const uint samples_per_thread = 8;
-    const uint readouts_per_thread = 1;
-    const uint coils_per_thread = 4;
+        cuComplex alpha = {1, 0};
+        cuComplex beta = {0, 0};
 
-    block_dim = {block_size_x, block_size_y};
-    grid_dim = {
-        div_ceil(
-            div_ceil(uint(samples_per_readout), samples_per_thread) * threads_cooperative,
-            block_size_x),
-        div_ceil(uint(nreadouts), readouts_per_thread * block_size_y),
-        div_ceil(uint(ncoils), uint(coils_per_thread)),
-    };
-
-    kernels::sum_signal_cartesian<
-        block_size_x * block_size_y,
-        threads_cooperative,
-        samples_per_thread,
-        readouts_per_thread,
-        coils_per_thread><<<grid_dim, block_dim>>>(
-        signal.view_mut(),
-        exponents.view(),
-        factors.view(),
-        coil_sensitivities.view());
+        COMPAS_CUDA_CHECK(cublasCgemm(
+            context.cublas_handle(),
+            CUBLAS_OP_T,  // transa
+            CUBLAS_OP_N,  // transb
+            samples_per_readout,  // m
+            nreadouts,  // n
+            nvoxels,  // k
+            &alpha,  // alpha
+            reinterpret_cast<const float2*>(exponents.device_data()),  // A
+            nvoxels,  // lda
+            reinterpret_cast<const float2*>(factors.device_data()),  // B
+            nvoxels,  // ldb
+            &beta,  //beta
+            reinterpret_cast<float2*>(signal.slice(icoil).device_data_mut()),  // C
+            samples_per_readout  // ldc
+            ));
+    }
 
     COMPAS_CUDA_CHECK(cudaGetLastError());
 }

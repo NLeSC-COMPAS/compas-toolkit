@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
@@ -19,8 +20,9 @@ struct CudaContextGuard;
 
 struct CudaException: public std::exception {
     CudaException(std::string msg);
-    CudaException(CUresult err, const char* file, int line);
-    CudaException(cudaError_t err, const char* file, int line);
+    CudaException(const CUresult& err, const char* file, int line);
+    CudaException(const cudaError_t& err, const char* file, int line);
+    CudaException(const cublasStatus_t& err, const char* file, int line);
 
     const char* what() const noexcept {
         return message_.c_str();
@@ -33,7 +35,7 @@ struct CudaException: public std::exception {
 #define COMPAS_CUDA_CHECK(expr)                                      \
     do {                                                             \
         auto code = (expr);                                          \
-        if (code != 0) {                                             \
+        if (code != decltype(code)(0)) {                             \
             throw ::compas::CudaException(code, __FILE__, __LINE__); \
         }                                                            \
     } while (0)
@@ -94,6 +96,8 @@ struct CudaContext {
         result.copy_from(input);
         return result;
     }
+
+    cublasHandle_t cublas_handle() const;
 
   private:
     std::shared_ptr<CudaContextImpl> impl_;

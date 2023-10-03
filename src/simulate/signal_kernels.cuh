@@ -29,6 +29,7 @@ __global__ void prepare_signal_factors(
 
 __global__ void prepare_signal_cartesian(
     cuda_view_mut<cfloat, 2> exponents,
+    cuda_view<float> coil_sensitivities,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
@@ -38,9 +39,10 @@ __global__ void prepare_signal_cartesian(
     if (voxel < num_voxels) {
         auto p = parameters.get(voxel);
         auto exponent = trajectory.to_sample_point_exponent(p);
+        auto coil = coil_sensitivities[voxel];
 
         for (int sample = 0; sample < num_samples; sample++) {
-            exponents[sample][voxel] = exp(exponent * float(sample));
+            exponents[sample][voxel] = coil * exp(exponent * float(sample));
         }
     }
 }
@@ -139,24 +141,22 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
         }
 
         cfloat step = exponents[1][voxel];
-        cfloat exponent = exponents[sample_start][voxel];
 
 #pragma unroll
         for (int r = 0; r < readout_tiling_factor; r++) {
             int readout = readout_start + r;
-            cfloat local_sample =
-                r == 0 || readout < num_readouts ? factors[readout][voxel] * exponent : 0;
 
 #pragma unroll
             for (int s = 0; s < sample_tiling_factor; s++) {
+                cfloat local_sample = r == 0 || readout < num_readouts
+                    ? factors[readout][voxel] * exponents[sample_start + s][voxel]
+                    : 0;
 #pragma unroll
                 for (int c = 0; c < coil_tiling_factor; c++) {
                     auto coil = local_coils[c];
                     auto sample = local_sample;
                     sums[c][r][s] += sample * coil;
                 }
-
-                local_sample *= step;
             }
         }
     }
