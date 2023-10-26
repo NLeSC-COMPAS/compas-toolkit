@@ -4,6 +4,7 @@ using ImagePhantoms
 using ComputationalResources
 using LinearAlgebra
 using StaticArrays
+using CUDA
 
 context = CompasToolkit.make_context(0)
 
@@ -51,6 +52,10 @@ echos_ref = collect(echos_ref)
 
 echos = zeros(ComplexF32, nvoxels, nTR)
 CompasToolkit.simulate_sequence(context, echos, parameters, fisp)
+
+d_echos = CUDA.zeros(ComplexF32, nvoxels, nTR)
+CompasToolkit.simulate_sequence(context, d_echos, parameters, fisp)
+
 echos = transpose(echos)
 
 println("fraction equal: ", sum(echos .≈ echos_ref) / length(echos))

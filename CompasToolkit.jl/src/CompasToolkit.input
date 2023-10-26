@@ -1,8 +1,15 @@
 module CompasToolkit
   using CxxWrap
-  @wrapmodule(joinpath("${COMPAS_LIB_PATH}", "libcompas-julia.so"))
+  using CUDA
+
+  find_library_path() = joinpath("${COMPAS_LIB_PATH}", "libcompas-julia.so")
+  @wrapmodule(find_library_path)
 
   function __init__()
     @initcxx
+  end
+
+  function simulate_sequence(context, echos::CUDA.CuArray{Complex{Float32}, 2}, parameters, sequence)
+    simulate_sequence_raw(context, Int(pointer(echos)), parameters, sequence)
   end
 end

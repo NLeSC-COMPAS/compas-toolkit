@@ -55,6 +55,17 @@ struct CudaContext {
     }
 
     template<typename T, int N = 1>
+    CudaArray<T, N> from_raw_pointer(CUdeviceptr ptr, vector<index_t, N> shape) const {
+        size_t nbytes = sizeof(T);
+        for (index_t i = 0; i < N; i++) {
+            nbytes *= size_t(shape[i]);
+        }
+
+        auto buffer = std::make_shared<CudaBuffer>(*this, ptr, nbytes);
+        return {buffer, shape};
+    }
+
+    template<typename T, int N = 1>
     CudaArray<T, N> allocate(vector<index_t, N> shape) const {
         size_t nbytes = sizeof(T);
         for (index_t i = 0; i < N; i++) {
@@ -111,6 +122,7 @@ struct CudaContextGuard {
 };
 
 struct CudaBuffer {
+    CudaBuffer(const CudaContext& context, CUdeviceptr pointer, size_t nbytes);
     CudaBuffer(const CudaContext& context, size_t nbytes);
     ~CudaBuffer();
 
@@ -136,6 +148,7 @@ struct CudaBuffer {
 
   private:
     CudaContext context_;
+    bool is_owned_;
     CUdeviceptr device_ptr_;
     size_t nbytes_;
 };

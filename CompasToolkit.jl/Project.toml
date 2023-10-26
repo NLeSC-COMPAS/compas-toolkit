@@ -5,3 +5,4 @@ version = "0.1.0"
 
 [deps]
 CxxWrap = "1f15a43c-97ca-5a2a-ae31-89f07a497df4"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"

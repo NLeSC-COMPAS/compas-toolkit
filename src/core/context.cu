@@ -91,8 +91,15 @@ std::shared_ptr<CudaBuffer> CudaContext::allocate_buffer(size_t nbytes) const {
     return std::make_shared<CudaBuffer>(*this, nbytes);
 }
 
+CudaBuffer::CudaBuffer(const CudaContext& context, CUdeviceptr ptr, size_t nbytes) :
+        context_(context),
+        is_owned_(false),
+        device_ptr_(ptr),
+        nbytes_(nbytes) {}
+
 CudaBuffer::CudaBuffer(const CudaContext& context, size_t nbytes) :
     context_(context),
+    is_owned_(true),
     device_ptr_(CUdeviceptr {}),
     nbytes_(0) {
     if (nbytes > 0) {
@@ -103,7 +110,7 @@ CudaBuffer::CudaBuffer(const CudaContext& context, size_t nbytes) :
 }
 
 CudaBuffer::~CudaBuffer() {
-    if (nbytes_ > 0) {
+    if (nbytes_ > 0 && is_owned_) {
         try {
             CudaContextGuard guard {context_};
             COMPAS_CUDA_CHECK(cuMemFree((CUdeviceptr)device_ptr_));
