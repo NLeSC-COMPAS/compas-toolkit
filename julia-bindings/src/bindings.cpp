@@ -246,4 +246,54 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
                 });
                 compas::simulate_sequence(context, d_echos, parameters, sequence);
             });
+
+    mod.add_type<compas::FISP3DSequence>("FISP3DSequence");
+    mod.method(
+        "make_fisp3d_sequence",
+        [](const compas::CudaContext& context,
+           jlcxx::ArrayRef<std::complex<float>> RF_train,
+           float TR,
+           float TE,
+           int max_state,
+           float TI,
+           float TW) {
+            return make_fisp3d_sequence(
+                context,
+                into_view(RF_train),
+                TR,
+                TE,
+                max_state,
+                TI,
+                TW);
+        });
+
+    mod.method(
+            "simulate_sequence",
+            [](const compas::CudaContext& context,
+               jlcxx::ArrayRef<std::complex<float>, 2> julia_echos,
+               compas::TissueParameters parameters,
+               compas::FISP3DSequence sequence) {
+                auto echos = into_view_mut(julia_echos);
+                auto d_echos = context.allocate<compas::cfloat>(echos.shape());
+
+                compas::simulate_sequence(context, d_echos, parameters, sequence);
+
+                d_echos.copy_to(echos);
+            });
+
+    mod.method(
+            "simulate_sequence_raw",
+            [](const compas::CudaContext& context,
+               long d_echos_ptr,
+               compas::TissueParameters parameters,
+               compas::FISP3DSequence sequence) {
+                int nvoxels = parameters.nvoxels;
+                int nreadouts = sequence.RF_train.size();
+
+                auto d_echos = context.from_raw_pointer<compas::cfloat, 2>(d_echos_ptr, {
+                    nreadouts,
+                    nvoxels
+                });
+                compas::simulate_sequence(context, d_echos, parameters, sequence);
+            });
 }

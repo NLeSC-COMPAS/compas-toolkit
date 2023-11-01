@@ -42,9 +42,7 @@ struct EPGThreadBlockState {
 
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
-            if (local_to_global_index(i) == 0) {
                 state[i].Z *= cos_theta;
-            }
         }
     }
 
@@ -52,9 +50,7 @@ struct EPGThreadBlockState {
     void invert() {
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
-            if (local_to_global_index(i) == 0) {
                 state[i].Z *= -1.0f;
-            }
         }
     }
 
@@ -90,6 +86,15 @@ struct EPGThreadBlockState {
             if (local_to_global_index(i) == 0) {
                 state[i].Z += 1 - E1;
             }
+        }
+    }
+
+    COMPAS_DEVICE
+    void spoil() {
+#pragma unroll items_per_thread
+        for (int i = 0; i < items_per_thread; i++) {
+                state[i].F_plus = 0;
+                state[i].F_min = 0;
         }
     }
 

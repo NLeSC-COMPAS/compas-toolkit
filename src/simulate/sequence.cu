@@ -113,4 +113,56 @@ void simulate_sequence(
     }
 }
 
+template<int max_N, int warp_size = max_N>
+void simulate_fisp3d_sequence_for_size(
+    const CudaContext& context,
+    CudaArray<cfloat, 2> echos,
+    TissueParameters parameters,
+    FISP3DSequence sequence) {
+    CudaContextGuard guard {context};
+
+    COMPAS_ASSERT(sequence.max_state <= max_N);
+    COMPAS_ASSERT(is_power_of_two(warp_size) && warp_size <= 32);
+
+    int nvoxels = parameters.nvoxels;
+    int nreadouts = sequence.RF_train.size();
+
+    COMPAS_ASSERT(echos.size(0) == nreadouts);
+    COMPAS_ASSERT(echos.size(1) == nvoxels);
+
+    echos.fill(0);
+
+    dim3 block_size = 256;
+    dim3 grid_size = div_ceil(uint(nvoxels * warp_size), block_size.x);
+
+    kernels::simulate_fisp3d<max_N, warp_size><<<grid_size, block_size>>>(
+        echos.view_mut(),
+        parameters.view(),
+        sequence.view());
+}
+
+void simulate_sequence(
+    const CudaContext& context,
+    CudaArray<cfloat, 2> echos,
+    TissueParameters parameters,
+    FISP3DSequence sequence) {
+    if (sequence.max_state <= 4) {
+        simulate_fisp3d_sequence_for_size<4, 2>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 8) {
+        simulate_fisp3d_sequence_for_size<8, 4>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 16) {
+        simulate_fisp3d_sequence_for_size<16, 8>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 32) {
+        simulate_fisp3d_sequence_for_size<32, 16>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 64) {
+        simulate_fisp3d_sequence_for_size<64, 32>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 96) {
+        simulate_fisp3d_sequence_for_size<96, 32>(context, echos, parameters, sequence);
+    } else if (sequence.max_state <= 128) {
+        simulate_fisp3d_sequence_for_size<128, 32>(context, echos, parameters, sequence);
+    } else {
+        COMPAS_PANIC("max_state cannot exceed 128");
+    }
+}
+
 }  // namespace compas

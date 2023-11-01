@@ -28,6 +28,7 @@ Next, configure the CMake project inside a new `build` directory:
 $ mkdir -p build
 $ cd build
 $ cmake -B. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=native ..
+$ cmake -B. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=86 -DCMAKE_PREFIX_PATH=/home/oheide/.julia/artifacts/391fa0630566129aba72c621b8b52aa5b0240563/lib/cmake/JlCxx .. 
 ```
 
 After the configuration, build the toolkit by running:
