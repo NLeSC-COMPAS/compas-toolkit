@@ -3,8 +3,8 @@
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 
-#include "../operators/isochromat.cuh"
 #include "core/complex_type.h"
+#include "operators/isochromat.cuh"
 #include "pssfp_view.h"
 
 namespace compas {
@@ -104,6 +104,27 @@ COMPAS_DEVICE void simulate_pssfp_for_voxel(
         // slice select prephaser, B₀ rotation, T₂ decay and T₁ regrowth until next RF
         m = precess(m, z);
     }
+}
+
+template<int warp_size>
+__global__ void simulate_pssfp(
+    cuda_view_mut<cfloat, 2> echos,
+    cuda_view<float> z,
+    TissueParametersView parameters,
+    pSSFPSequenceView sequence) {
+    index_t lane = threadIdx.x % warp_size;
+    index_t voxel = index_t(blockDim.x * blockIdx.x + threadIdx.x) / warp_size;
+    index_t nvoxels = parameters.nvoxels;
+
+    if (voxel >= nvoxels) {
+        return;
+    }
+
+    simulate_pssfp_for_voxel<warp_size>(
+        sequence,
+        z[lane],
+        echos.drop_axis<1>(voxel),
+        parameters.get(voxel));
 }
 }  // namespace kernels
 }  // namespace compas

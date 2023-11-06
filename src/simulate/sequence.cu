@@ -1,6 +1,7 @@
 #include "core/utils.h"
 #include "sequence.h"
-#include "sequence_kernels.cuh"
+#include "sequences/fisp_kernels.cuh"
+#include "sequences/pssfp_kernels.cuh"
 
 namespace compas {
 
