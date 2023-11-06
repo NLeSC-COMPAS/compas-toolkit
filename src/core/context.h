@@ -111,6 +111,7 @@ struct CudaContextGuard {
 };
 
 struct CudaBuffer {
+    CudaBuffer(const CudaContext& context, CUdeviceptr ptr, size_t nbytes);
     CudaBuffer(const CudaContext& context, size_t nbytes);
     ~CudaBuffer();
 
@@ -136,6 +137,7 @@ struct CudaBuffer {
 
   private:
     CudaContext context_;
+    bool is_owned_;
     CUdeviceptr device_ptr_;
     size_t nbytes_;
 };
