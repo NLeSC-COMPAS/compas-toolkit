@@ -14,4 +14,10 @@ COMPAS_HOST_DEVICE constexpr bool is_power_of_two(const T& value) {
     return value > 0 && (((value - T(1)) & value) == 0);
 }
 
+template<typename T>
+COMPAS_HOST_DEVICE T round_up_to_multiple_of(T n, T k) {
+    T remainder = n % k;
+    return n + (remainder > 0 ? k - remainder : 0);
+}
+
 }  // namespace compas
