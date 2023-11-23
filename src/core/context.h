@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "core/view.h"
 
@@ -104,7 +105,7 @@ CudaContext make_context(int device = 0);
 struct CudaContextGuard {
     CudaContextGuard(std::shared_ptr<CudaContextImpl> impl);
     CudaContextGuard(const CudaContext& ctx) : CudaContextGuard(ctx.impl_) {}
-    ~CudaContextGuard();
+    ~CudaContextGuard() noexcept(false);
 
   private:
     std::shared_ptr<CudaContextImpl> impl_;
@@ -233,14 +234,32 @@ struct CudaArray {
         return {device_data_mut(), shape_};
     }
 
+    void copy_from(const T* input_ptr, size_t num_elements) const {
+        COMPAS_ASSERT(num_elements == static_cast<size_t>(size()));
+        buffer_->copy_from_host(input_ptr, offset_ * sizeof(T), size_in_bytes());
+    }
+
+    void copy_to(T* output_ptr, size_t num_elements) const {
+        COMPAS_ASSERT(num_elements == static_cast<size_t>(size()));
+        buffer_->copy_to_host(output_ptr, offset_ * sizeof(T), size_in_bytes());
+    }
+
+    void copy_from(const std::vector<T>& input) const {
+        copy_from(input.data(), input.size());
+    }
+
+    void copy_to(std::vector<T>& output) const {
+        copy_to(output.data(), output.size());
+    }
+
     void copy_from(host_view<T, N> input) const {
         COMPAS_ASSERT(input.shape() == shape());
-        buffer_->copy_from_host(input.data(), offset_ * sizeof(T), size_in_bytes());
+        copy_from(input.data(), input.size());
     }
 
     void copy_to(host_view_mut<T, N> output) const {
         COMPAS_ASSERT(output.shape() == shape());
-        buffer_->copy_to_host(output.data(), offset_ * sizeof(T), size_in_bytes());
+        copy_to(output.data(), output.size());
     }
 
     void copy_from(const CudaArray<T, N>& input) const {

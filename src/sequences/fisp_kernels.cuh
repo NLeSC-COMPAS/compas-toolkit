@@ -46,6 +46,7 @@ COMPAS_DEVICE void simulate_fisp_for_voxel(
     auto omega = EPGThreadBlockState<max_N, warp_size>(sequence.max_state);
 
     // apply inversion pulse
+    omega.initialize();
     omega.invert();
     omega.decay(E1_TI, E2_TI);
     omega.regrowth(E1_TI);

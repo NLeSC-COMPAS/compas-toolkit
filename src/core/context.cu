@@ -71,13 +71,19 @@ CudaContextGuard::CudaContextGuard(std::shared_ptr<CudaContextImpl> impl) : impl
     COMPAS_CUDA_CHECK(cuCtxPushCurrent(impl_->context));
 }
 
-CudaContextGuard::~CudaContextGuard() {
+CudaContextGuard::~CudaContextGuard() noexcept(false) {
+    // Synchronize first, then pop the context, then check the synchronization result. This way, the current
+    // context will be popped even if `cuCtxSynchronize` returns an error.
+    auto synchronize_result = cuCtxSynchronize();
+
     try {
         CUcontext current;
         COMPAS_CUDA_CHECK(cuCtxPopCurrent(&current));
     } catch (const CudaException& e) {
         std::cerr << "ignoring cuda error: " << e.what() << "\n";
     }
+
+    COMPAS_CUDA_CHECK(synchronize_result);
 }
 
 std::string CudaContext::device_name() const {

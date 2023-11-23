@@ -47,4 +47,7 @@ configure_file(
     ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.input
     ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.jl)
 
+
+add_subdirectory(thirdparty/Catch2)
 add_subdirectory(julia-bindings)
+add_subdirectory(tests)
