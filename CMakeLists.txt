@@ -39,6 +39,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${PROJECT_CLANG
 find_package(CUDAToolkit REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cudart_static)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cuda_driver)
+target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cublas)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::nvrtc)
 
 # Installation of library files
@@ -51,3 +52,4 @@ configure_file(
 add_subdirectory(thirdparty/Catch2)
 add_subdirectory(julia-bindings)
 add_subdirectory(tests)
+add_subdirectory(benchmarks)

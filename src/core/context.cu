@@ -1,9 +1,9 @@
 #include <cuda.h>
 
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
 #include <utility>
-#include <cstring>
 
 #include "context.h"
 
@@ -32,12 +32,55 @@ static std::string format_exception_message(cudaError_t err, const char* file, c
     return output;
 }
 
+static std::string format_exception_message(cublasStatus_t err, const char* file, const int line) {
+    const char* msg = [=]() {
+        switch (err) {
+            case CUBLAS_STATUS_NOT_INITIALIZED:
+                return "CUBLAS_STATUS_NOT_INITIALIZED";
+            case CUBLAS_STATUS_ALLOC_FAILED:
+                return "CUBLAS_STATUS_ALLOC_FAILED";
+            case CUBLAS_STATUS_INVALID_VALUE:
+                return "CUBLAS_STATUS_INVALID_VALUE";
+            case CUBLAS_STATUS_ARCH_MISMATCH:
+                return "CUBLAS_STATUS_ARCH_MISMATCH";
+            case CUBLAS_STATUS_MAPPING_ERROR:
+                return "CUBLAS_STATUS_MAPPING_ERROR";
+            case CUBLAS_STATUS_EXECUTION_FAILED:
+                return "CUBLAS_STATUS_EXECUTION_FAILED";
+            case CUBLAS_STATUS_INTERNAL_ERROR:
+                return "CUBLAS_STATUS_INTERNAL_ERROR";
+            case CUBLAS_STATUS_NOT_SUPPORTED:
+                return "CUBLAS_STATUS_NOT_SUPPORTED";
+            case CUBLAS_STATUS_LICENSE_ERROR:
+                return "CUBLAS_STATUS_LICENSE_ERROR";
+            default:
+                return "unknown error";
+        }
+    }();
+
+    char output[1024];
+    snprintf(
+        output,
+        sizeof output,
+        "cuBLAS error: %s (code: %d) at %s:%d",
+        msg,
+        int(err),
+        file,
+        line);
+    return output;
+}
+
 CudaException::CudaException(CUresult err, const char* file, const int line) :
     message_(format_exception_message(err, file, line)) {
     //
 }
 
 CudaException::CudaException(cudaError_t err, const char* file, const int line) :
+    message_(format_exception_message(err, file, line)) {
+    //
+}
+
+CudaException::CudaException(cublasStatus_t err, const char* file, const int line) :
     message_(format_exception_message(err, file, line)) {
     //
 }
@@ -50,18 +93,26 @@ struct CudaContextImpl {
     CudaContextImpl(CUdevice device) {
         COMPAS_CUDA_CHECK(cuInit(0));
         COMPAS_CUDA_CHECK(cuDevicePrimaryCtxRetain(&context, device));
+        COMPAS_CUDA_CHECK(cublasCreate(&cublas_handle));
     }
 
     ~CudaContextImpl() {
         try {
+            COMPAS_CUDA_CHECK(cublasDestroy(cublas_handle));
+        } catch (const CudaException& e) {
+            std::cerr << "ignoring error during shutdown: " << e.what() << "\n";
+        }
+
+        try {
             COMPAS_CUDA_CHECK(cuDevicePrimaryCtxRelease(device));
         } catch (const CudaException& e) {
-            std::cerr << "ignoring cuda error: " << e.what() << "\n";
+            std::cerr << "ignoring cuda error during shutdown: " << e.what() << "\n";
         }
     }
 
     CUdevice device = 0;
     CUcontext context = nullptr;
+    cublasHandle_t cublas_handle = nullptr;
 };
 
 CudaContext make_context(int device) {
@@ -96,6 +147,10 @@ std::string CudaContext::device_name() const {
 
 std::shared_ptr<CudaBuffer> CudaContext::allocate_buffer(size_t nbytes) const {
     return std::make_shared<CudaBuffer>(*this, nbytes);
+}
+
+cublasHandle_t CudaContext::cublas_handle() const {
+    return impl_->cublas_handle;
 }
 
 void CudaContext::fill_buffer(

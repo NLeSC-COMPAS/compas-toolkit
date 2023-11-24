@@ -45,6 +45,26 @@ __global__ void prepare_signal_cartesian(
     }
 }
 
+__global__ void prepare_signal_cartesian_with_coil(
+    cuda_view_mut<cfloat, 2> exponents,
+    cuda_view<float> coil_sensitivities,
+    TissueParametersView parameters,
+    CartesianTrajectoryView trajectory) {
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
+    auto num_samples = exponents.size(0);
+    auto num_voxels = exponents.size(1);
+
+    if (voxel < num_voxels) {
+        auto p = parameters.get(voxel);
+        auto exponent = trajectory.to_sample_point_exponent(p);
+        auto coil = coil_sensitivities[voxel];
+
+        for (int sample = 0; sample < num_samples; sample++) {
+            exponents[sample][voxel] = coil * exp(exponent * float(sample));
+        }
+    }
+}
+
 __global__ void prepare_signal_spiral(
     cuda_view_mut<cfloat, 2> exponents,
     TissueParametersView parameters,

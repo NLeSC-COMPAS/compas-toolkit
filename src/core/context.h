@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
@@ -22,6 +23,7 @@ struct CudaException: public std::exception {
     CudaException(std::string msg);
     CudaException(CUresult err, const char* file, int line);
     CudaException(cudaError_t err, const char* file, int line);
+    CudaException(cublasStatus_t err, const char* file, int line);
 
     const char* what() const noexcept {
         return message_.c_str();
@@ -34,7 +36,7 @@ struct CudaException: public std::exception {
 #define COMPAS_CUDA_CHECK(expr)                                      \
     do {                                                             \
         auto code = (expr);                                          \
-        if (code != 0) {                                             \
+        if (code != decltype(code)(0)) {                             \
             throw ::compas::CudaException(code, __FILE__, __LINE__); \
         }                                                            \
     } while (0)
@@ -48,6 +50,8 @@ struct CudaContext {
 
     std::string device_name() const;
     std::shared_ptr<CudaBuffer> allocate_buffer(size_t nbytes) const;
+    cublasHandle_t cublas_handle() const;
+
     void fill_buffer(
         CUdeviceptr output_ptr,
         size_t num_elements,
@@ -100,7 +104,7 @@ struct CudaContext {
     }
 
     template<typename T, int N>
-    void fill(cuda_view_mut<T, N> output, const T &value) const {
+    void fill(cuda_view_mut<T, N> output, const T& value) const {
         fill_buffer(
             reinterpret_cast<CUdeviceptr>(static_cast<void*>(output.data())),
             static_cast<size_t>(output.size()),
