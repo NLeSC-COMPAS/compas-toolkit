@@ -5,9 +5,6 @@
 
 namespace compas {
 struct pSSFPSequence {
-    // number of repetition times
-    int nTR;
-
     // Vector with flip angle for each TR with abs.(RF_train) the RF flip angles in degrees and
     // angle.(RF_train) should be the RF phases in degrees.
     CudaArray<cfloat> RF_train;
@@ -17,6 +14,9 @@ struct pSSFPSequence {
 
     // nr of RF discretization points
     int nRF;
+
+    // number of repetition times
+    int nTR;
 
     // Time-discretized RF waveform, normalized to flip angle of 1 degree
     CudaArray<cfloat> gamma_dt_RF;
@@ -33,6 +33,7 @@ struct pSSFPSequence {
 
     pSSFPSequenceView view() const {
         return {
+            .nTR = nTR,
             .RF_train = RF_train.view(),
             .TR = TR,
             .gamma_dt_RF = gamma_dt_RF.view(),
@@ -53,10 +54,10 @@ inline pSSFPSequence make_pssfp_sequence(
     COMPAS_ASSERT(RF_train.size() > 0);
 
     return {
-        .nTR = RF_train.size(),
         .RF_train = context.allocate(RF_train),
         .TR = TR,
         .nRF = gamma_dt_RF.size(),
+        .nTR = RF_train.size(),
         .gamma_dt_RF = context.allocate(gamma_dt_RF),
         .dt = dt,
         .gamma_dt_GRz = gamma_dt_GRz,

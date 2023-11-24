@@ -2,20 +2,18 @@
 
 #include "core/context.h"
 #include "core/utils.h"
-#include "parameters/tissue.h"
 #include "simulate/signal.h"
 #include "simulate/signal_kernels.cuh"
-#include "trajectories/spiral.h"
 
 namespace compas {
 
-static void simulate_signal_cartesian(
+void simulate_signal_cartesian(
     const CudaContext& context,
-    CudaArray<cfloat, 3> signal,
-    CudaArray<cfloat, 2> echos,
-    TissueParameters parameters,
-    CartesianTrajectory trajectory,
-    CudaArray<float, 2> coil_sensitivities) {
+    cuda_view_mut<cfloat, 3> signal,
+    cuda_view<cfloat, 2> echos,
+    TissueParametersView parameters,
+    CartesianTrajectoryView trajectory,
+    cuda_view<float, 2> coil_sensitivities) {
     CudaContextGuard guard {context};
 
     int ncoils = coil_sensitivities.size(0);
@@ -40,9 +38,9 @@ static void simulate_signal_cartesian(
 
     kernels::prepare_signal_factors<<<grid_dim, block_dim>>>(
         factors.view_mut(),
-        echos.view(),
-        parameters.view(),
-        trajectory.view());
+        echos,
+        parameters,
+        trajectory);
     COMPAS_CUDA_CHECK(cudaGetLastError());
 
     block_dim = {256};
@@ -50,8 +48,8 @@ static void simulate_signal_cartesian(
 
     kernels::prepare_signal_cartesian<<<grid_dim, block_dim>>>(
         exponents.view_mut(),
-        parameters.view(),
-        trajectory.view());
+        parameters,
+        trajectory);
     COMPAS_CUDA_CHECK(cudaGetLastError());
 
     const uint block_size_x = 64;
@@ -75,22 +73,19 @@ static void simulate_signal_cartesian(
         threads_cooperative,
         samples_per_thread,
         readouts_per_thread,
-        coils_per_thread><<<grid_dim, block_dim>>>(
-        signal.view_mut(),
-        exponents.view(),
-        factors.view(),
-        coil_sensitivities.view());
+        coils_per_thread>
+        <<<grid_dim, block_dim>>>(signal, exponents.view(), factors.view(), coil_sensitivities);
 
     COMPAS_CUDA_CHECK(cudaGetLastError());
 }
 
-static void simulate_signal_spiral(
+void simulate_signal_spiral(
     const CudaContext& context,
-    CudaArray<cfloat, 3> signal,
-    CudaArray<cfloat, 2> echos,
-    TissueParameters parameters,
-    SpiralTrajectory trajectory,
-    CudaArray<float, 2> coil_sensitivities) {
+    cuda_view_mut<cfloat, 3> signal,
+    cuda_view<cfloat, 2> echos,
+    TissueParametersView parameters,
+    SpiralTrajectoryView trajectory,
+    cuda_view<float, 2> coil_sensitivities) {
     CudaContextGuard guard {context};
 
     int ncoils = coil_sensitivities.size(0);
@@ -113,9 +108,9 @@ static void simulate_signal_spiral(
 
     kernels::prepare_signal_factors<<<grid_dim, block_dim>>>(
         factors.view_mut(),
-        echos.view(),
-        parameters.view(),
-        trajectory.view());
+        echos,
+        parameters,
+        trajectory);
     COMPAS_CUDA_CHECK(cudaGetLastError());
 
     auto exponents = context.allocate<cfloat>(echos.shape());
@@ -124,8 +119,8 @@ static void simulate_signal_spiral(
 
     kernels::prepare_signal_spiral<<<grid_dim, block_dim>>>(
         exponents.view_mut(),
-        parameters.view(),
-        trajectory.view());
+        parameters,
+        trajectory);
     COMPAS_CUDA_CHECK(cudaGetLastError());
 
     const uint threads_per_block = 64;
@@ -146,26 +141,35 @@ static void simulate_signal_spiral(
         threads_per_block,
         threads_cooperative,
         samples_per_thread,
-        coils_per_thread><<<grid_dim, block_dim>>>(
-        signal.view_mut(),
-        exponents.view(),
-        factors.view(),
-        coil_sensitivities.view());
+        coils_per_thread>
+        <<<grid_dim, block_dim>>>(signal, exponents.view(), factors.view(), coil_sensitivities);
 
     COMPAS_CUDA_CHECK(cudaGetLastError());
 }
 
 void simulate_signal(
     const CudaContext& context,
-    CudaArray<cfloat, 3> signal,
-    CudaArray<cfloat, 2> echos,
-    TissueParameters parameters,
+    cuda_view_mut<cfloat, 3> signal,
+    cuda_view<cfloat, 2> echos,
+    TissueParametersView parameters,
     Trajectory trajectory,
-    CudaArray<float, 2> coil_sensitivities) {
+    cuda_view<float, 2> coil_sensitivities) {
     if (const auto c = trajectory.as_cartesian()) {
-        simulate_signal_cartesian(context, signal, echos, parameters, *c, coil_sensitivities);
+        simulate_signal_cartesian(
+            context,
+            signal,
+            echos,
+            parameters,
+            c->view(),
+            coil_sensitivities);
     } else if (const auto s = trajectory.as_spiral()) {
-        simulate_signal_spiral(context, signal, echos, parameters, *s, coil_sensitivities);
+        simulate_signal_spiral(  //
+            context,
+            signal,
+            echos,
+            parameters,
+            s->view(),
+            coil_sensitivities);
     } else {
         COMPAS_PANIC("invalid trajectory type");
     }

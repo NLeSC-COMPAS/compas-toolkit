@@ -8,9 +8,9 @@ namespace compas {
 template<int batch_size>
 int simulate_pssfp_sequence_batch(
     int iz,
-    const CudaArray<cfloat, 2>& echos,
-    const TissueParameters& parameters,
-    const pSSFPSequence& sequence) {
+    const cuda_view_mut<cfloat, 2>& echos,
+    const TissueParametersView& parameters,
+    const pSSFPSequenceView& sequence) {
     int nreadouts = sequence.nTR;
     int nvoxels = parameters.nvoxels;
     int nz = sequence.z.size();
@@ -22,11 +22,13 @@ int simulate_pssfp_sequence_batch(
     dim3 grid_size = div_ceil(uint(nvoxels * batch_size), block_size.x);
 
     while (iz + batch_size <= nz) {
-        kernels::simulate_pssfp<batch_size><<<grid_size, block_size>>>(
-            echos.view_mut(),
-            sequence.z.slice(iz, iz + batch_size).view(),
-            parameters.view(),
-            sequence.view());
+        auto z_subslices = cuda_view<float> {sequence.z.data() + iz, {batch_size}};
+
+        kernels::simulate_pssfp<batch_size><<<grid_size, block_size>>>(  //
+            echos,
+            z_subslices,
+            parameters,
+            sequence);
 
         iz += batch_size;
     }
@@ -36,13 +38,13 @@ int simulate_pssfp_sequence_batch(
 
 void simulate_sequence(
     const CudaContext& context,
-    CudaArray<cfloat, 2> echos,
-    TissueParameters parameters,
-    pSSFPSequence sequence) {
+    cuda_view_mut<cfloat, 2> echos,
+    TissueParametersView parameters,
+    pSSFPSequenceView sequence) {
     CudaContextGuard guard {context};
 
     // Initialize echos to zero
-    echos.fill(0);
+    context.fill(echos, cfloat(0));
 
     // We process the z-slices in batches. The first batches process 32 slices at once, the next batches process 16
     // slices at once, the next 8 slices, etc. Since the reduction is performed using warp-shuffles, these batch sizes
@@ -62,9 +64,9 @@ void simulate_sequence(
 template<int max_N, int warp_size = max_N>
 void simulate_fisp_sequence_for_size(
     const CudaContext& context,
-    CudaArray<cfloat, 2> echos,
-    TissueParameters parameters,
-    FISPSequence sequence) {
+    cuda_view_mut<cfloat, 2> echos,
+    TissueParametersView parameters,
+    FISPSequenceView sequence) {
     CudaContextGuard guard {context};
 
     COMPAS_ASSERT(sequence.max_state <= max_N);
@@ -76,25 +78,25 @@ void simulate_fisp_sequence_for_size(
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
 
-    echos.fill(0);
+    context.fill(echos, cfloat(0));
 
     for (index_t i = 0; i < sequence.sliceprofiles.size(0); i++) {
         dim3 block_size = 256;
         dim3 grid_size = div_ceil(uint(nvoxels * warp_size), block_size.x);
 
         kernels::simulate_fisp<max_N, warp_size><<<grid_size, block_size>>>(
-            echos.view_mut(),
-            sequence.sliceprofiles.slice(i).view(),
-            parameters.view(),
-            sequence.view());
+            echos,
+            sequence.sliceprofiles.drop_leading_axis(i),
+            parameters,
+            sequence);
     }
 }
 
 void simulate_sequence(
     const CudaContext& context,
-    CudaArray<cfloat, 2> echos,
-    TissueParameters parameters,
-    FISPSequence sequence) {
+    cuda_view_mut<cfloat, 2> echos,
+    TissueParametersView parameters,
+    FISPSequenceView sequence) {
     if (sequence.max_state <= 4) {
         simulate_fisp_sequence_for_size<4, 2>(context, echos, parameters, sequence);
     } else if (sequence.max_state <= 8) {

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <utility>
+#include <cstring>
 
 #include "context.h"
 
@@ -97,6 +98,39 @@ std::shared_ptr<CudaBuffer> CudaContext::allocate_buffer(size_t nbytes) const {
     return std::make_shared<CudaBuffer>(*this, nbytes);
 }
 
+void CudaContext::fill_buffer(
+    CUdeviceptr output_ptr,
+    size_t num_elements,
+    const void* fill_value,
+    size_t element_nbytes) const {
+    COMPAS_ASSERT(element_nbytes > 0);
+    size_t nbytes = num_elements * element_nbytes;
+
+    bool all_equal = true;
+    for (size_t i = 1; i < element_nbytes; i++) {
+        if (static_cast<const char*>(fill_value)[i] != static_cast<const char*>(fill_value)[0]) {
+            all_equal = false;
+        }
+    }
+
+    CudaContextGuard guard {*this};
+
+    if (all_equal || element_nbytes == 1) {
+        char value = static_cast<const char*>(fill_value)[0];
+        COMPAS_CUDA_CHECK(cuMemsetD8(output_ptr, value, nbytes));
+    } else if (element_nbytes == 2) {
+        uint16_t value;
+        std::memcpy(&value, fill_value, element_nbytes);
+        COMPAS_CUDA_CHECK(cuMemsetD16(output_ptr, value, nbytes));
+    } else if (element_nbytes == 4) {
+        uint32_t value;
+        std::memcpy(&value, fill_value, element_nbytes);
+        COMPAS_CUDA_CHECK(cuMemsetD32(output_ptr, value, nbytes));
+    } else {
+        COMPAS_PANIC("fill can only be performed using 8, 16, or 32 bit values");
+    }
+}
+
 CudaBuffer::CudaBuffer(const CudaContext& context, CUdeviceptr ptr, size_t nbytes) :
     context_(context),
     is_owned_(false),
@@ -119,7 +153,7 @@ CudaBuffer::~CudaBuffer() {
     if (nbytes_ > 0 && is_owned_) {
         try {
             CudaContextGuard guard {context_};
-            COMPAS_CUDA_CHECK(cuMemFree((CUdeviceptr)device_ptr_));
+            COMPAS_CUDA_CHECK(cuMemFree(device_ptr_));
         } catch (const CudaException& e) {
             std::cerr << "ignoring cuda error: " << e.what() << "\n";
         }
@@ -152,37 +186,6 @@ void CudaBuffer::copy_to_device(CUdeviceptr dst_ptr, size_t offset, size_t lengt
 
     CudaContextGuard guard {context_};
     COMPAS_CUDA_CHECK(cuMemcpyDtoD(device_ptr_ + offset, dst_ptr, length));
-}
-
-void CudaBuffer::fill(
-    const void* element_ptr,
-    size_t element_nbytes,
-    size_t offset,
-    size_t nbytes) {
-    COMPAS_ASSERT(element_nbytes > 0 && nbytes % element_nbytes == 0);
-
-    bool all_equal = true;
-    for (size_t i = 1; i < element_nbytes; i++) {
-        if (static_cast<const char*>(element_ptr)[i] != static_cast<const char*>(element_ptr)[0]) {
-            all_equal = false;
-        }
-    }
-
-    CudaContextGuard guard {context_};
-    CUdeviceptr ptr = device_ptr_ + offset;
-
-    if (all_equal || element_nbytes == 1) {
-        char value = static_cast<const char*>(element_ptr)[0];
-        COMPAS_CUDA_CHECK(cuMemsetD8(ptr, value, nbytes));
-    } else if (element_nbytes == 2) {
-        uint16_t value = static_cast<const uint16_t*>(element_ptr)[0];
-        COMPAS_CUDA_CHECK(cuMemsetD16(ptr, value, nbytes));
-    } else if (element_nbytes == 4) {
-        uint32_t value = static_cast<const uint32_t*>(element_ptr)[0];
-        COMPAS_CUDA_CHECK(cuMemsetD32(ptr, value, nbytes));
-    } else {
-        COMPAS_PANIC("fill can only be performed using 8, 16, or 32 bit values");
-    }
 }
 
 }  // namespace compas

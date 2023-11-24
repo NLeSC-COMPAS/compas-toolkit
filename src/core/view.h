@@ -176,6 +176,30 @@ struct strided {
 };
 }  // namespace layouts
 
+template<typename L, int Axis = 0>
+struct drop_axis_impl {
+    using type = layouts::drop_axis<L, Axis>;
+
+    COMPAS_HOST_DEVICE
+    static type call(const L& layout) {
+        return layout;
+    }
+};
+
+template<int N>
+struct drop_axis_impl<layouts::row_major<N>, 0> {
+    using type = layouts::row_major<N - 1>;
+
+    COMPAS_HOST_DEVICE
+    static type call(const layouts::row_major<N>& layout) {
+        ndindex_t<N - 1> sizes;
+        for (int i = 0; i + 1 < N; i++) {
+            sizes[i] = layout.size(i + 1);
+        }
+        return sizes;
+    }
+};
+
 enum struct memory_space { HOST, CUDA };
 
 template<typename T, typename L, memory_space M = memory_space::HOST, index_t N = L::rank>
@@ -256,16 +280,16 @@ struct view_base {
     }
 
     template<index_t Axis>
-    COMPAS_HOST_DEVICE basic_view<T, layouts::drop_axis<L, Axis>, M>
+    COMPAS_HOST_DEVICE basic_view<T, typename drop_axis_impl<L, Axis>::type, M>
     drop_axis(index_t index = 0) const {
         static_assert(Axis < rank, "axis out of bounds");
         COMPAS_DEBUG_ASSERT(index >= 0 && index < size(Axis));
         ptrdiff_t offset = stride(Axis) * index;
-        return {ptr_ + offset, layout_};
+        return {ptr_ + offset, drop_axis_impl<L, Axis>::call(layout_)};
     };
 
     COMPAS_HOST_DEVICE
-    basic_view<T, layouts::drop_axis<L>, M> drop_leading_axis(index_t index = 0) const {
+    basic_view<T, typename drop_axis_impl<L>::type, M> drop_leading_axis(index_t index = 0) const {
         return this->template drop_axis<0>(index);
     };
 
@@ -332,7 +356,7 @@ struct basic_view: view_base<T, L, M> {
     COMPAS_HOST_DEVICE basic_view(const view_base<T2, L2, M>& that) : base_type(that) {}
 
     COMPAS_HOST_DEVICE
-    basic_view<T, layouts::drop_axis<L>, M> operator[](index_t index) const {
+    basic_view<T, typename drop_axis_impl<L>::type, M> operator[](index_t index) const {
         return this->drop_leading_axis(index);
     }
 

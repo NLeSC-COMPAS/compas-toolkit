@@ -11,6 +11,9 @@ struct RepetitionData {
 };
 
 struct pSSFPSequenceView {
+    // number of repetition times
+    int nTR;
+
     // Vector with flip angle for each TR with abs.(RF_train) the RF flip angles in degrees and
     // angle.(RF_train) should be the RF phases in degrees.
     cuda_view<cfloat> RF_train;

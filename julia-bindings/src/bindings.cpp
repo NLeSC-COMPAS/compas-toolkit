@@ -151,11 +151,11 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
 
             compas::simulate_signal(
                 context,
-                d_signal,
-                d_echos,
-                parameters,
+                d_signal.view_mut(),
+                d_echos.view(),
+                parameters.view(),
                 trajectory,
-                d_coil_sensitivities);
+                d_coil_sensitivities.view());
 
             d_signal.copy_to(signal);
         });
@@ -192,7 +192,11 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
             auto echos = into_view_mut(julia_echos);
             auto d_echos = context.allocate<compas::cfloat>(echos.shape());
 
-            compas::simulate_sequence(context, d_echos, parameters, sequence);
+            compas::simulate_sequence(
+                context,
+                d_echos.view_mut(),
+                parameters.view(),
+                sequence.view());
 
             d_echos.copy_to(echos);
         });
@@ -226,7 +230,11 @@ JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
             auto echos = into_view_mut(julia_echos);
             auto d_echos = context.allocate<compas::cfloat>(echos.shape());
 
-            compas::simulate_sequence(context, d_echos, parameters, sequence);
+            compas::simulate_sequence(
+                context,
+                d_echos.view_mut(),
+                parameters.view(),
+                sequence.view());
 
             d_echos.copy_to(echos);
         });

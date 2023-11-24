@@ -8,10 +8,26 @@ namespace compas {
 
 void simulate_signal(
     const CudaContext& context,
-    CudaArray<cfloat, 3> signal,
-    CudaArray<cfloat, 2> echos,
-    TissueParameters parameters,
+    cuda_view_mut<cfloat, 3> signal,
+    cuda_view<cfloat, 2> echos,
+    TissueParametersView parameters,
     Trajectory trajectory,
-    CudaArray<float, 2> coil_sensitivities);
+    cuda_view<float, 2> coil_sensitivities);
 
-}
+void simulate_signal_cartesian(
+    const CudaContext& context,
+    cuda_view_mut<cfloat, 3> signal,
+    cuda_view<cfloat, 2> echos,
+    TissueParametersView parameters,
+    CartesianTrajectoryView trajectory,
+    cuda_view<float, 2> coil_sensitivities);
+
+void simulate_signal_spiral(
+    const CudaContext& context,
+    cuda_view_mut<cfloat, 3> signal,
+    cuda_view<cfloat, 2> echos,
+    TissueParametersView parameters,
+    SpiralTrajectoryView trajectory,
+    cuda_view<float, 2> coil_sensitivities);
+
+}  // namespace compas

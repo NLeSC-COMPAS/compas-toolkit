@@ -6,14 +6,14 @@ namespace compas {
 
 void simulate_sequence(
     const CudaContext& context,
-    CudaArray<cfloat, 2> echos,
-    TissueParameters parameters,
-    pSSFPSequence sequence);
+    cuda_view_mut<cfloat, 2> echos,
+    TissueParametersView parameters,
+    pSSFPSequenceView sequence);
 
 void simulate_sequence(
     const CudaContext& context,
-    CudaArray<cfloat, 2> echos,
-    TissueParameters parameters,
-    FISPSequence sequence);
+    cuda_view_mut<cfloat, 2> echos,
+    TissueParametersView parameters,
+    FISPSequenceView sequence);
 
 }  // namespace compas

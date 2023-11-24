@@ -48,6 +48,11 @@ struct CudaContext {
 
     std::string device_name() const;
     std::shared_ptr<CudaBuffer> allocate_buffer(size_t nbytes) const;
+    void fill_buffer(
+        CUdeviceptr output_ptr,
+        size_t num_elements,
+        const void* fill_value,
+        size_t element_size) const;
 
     template<typename F>
     void launch(F fun) const {
@@ -70,11 +75,16 @@ struct CudaContext {
         return allocate<T>(vector<index_t, 1> {n});
     }
 
-    template<typename T, int N>
-    CudaArray<std::decay_t<T>, N> allocate(host_view_mut<T, N> buffer) const {
+    template<typename T, int N, memory_space M>
+    CudaArray<std::decay_t<T>, N> allocate(basic_view<T, layouts::row_major<N>, M> buffer) const {
         auto result = allocate<std::decay_t<T>, N>(buffer.shape());
         result.copy_from(buffer);
         return result;
+    }
+
+    template<typename T, int N>
+    CudaArray<T, N> allocate(const CudaArray<T, N>& input) const {
+        return allocate(input.view());
     }
 
     template<typename T, int N = 1>
@@ -90,10 +100,12 @@ struct CudaContext {
     }
 
     template<typename T, int N>
-    CudaArray<T, N> copy(const CudaArray<T, N>& input) const {
-        CudaArray<T, N> result = allocate<T, N>(input.shape());
-        result.copy_from(input);
-        return result;
+    void fill(cuda_view_mut<T, N> output, const T &value) const {
+        fill_buffer(
+            reinterpret_cast<CUdeviceptr>(static_cast<void*>(output.data())),
+            static_cast<size_t>(output.size()),
+            &value,
+            sizeof(T));
     }
 
   private:
@@ -121,8 +133,6 @@ struct CudaBuffer {
 
     void copy_from_device(CUdeviceptr src_ptr, size_t offset, size_t nbytes);
     void copy_to_device(CUdeviceptr dst_ptr, size_t offset, size_t nbytes);
-
-    void fill(const void* element_ptr, size_t element_nbytes, size_t offset, size_t nbytes);
 
     CUdeviceptr device_data() {
         return device_ptr_;
@@ -272,7 +282,11 @@ struct CudaArray {
     }
 
     void fill(const T& value) const {
-        buffer_->fill(&value, sizeof(T), offset_ * sizeof(T), size_in_bytes());
+        context().fill_buffer(
+            reinterpret_cast<CUdeviceptr>(static_cast<const void*>(device_data_mut() + offset_)),
+            size(),
+            &value,
+            sizeof(T));
     }
 
   private:
