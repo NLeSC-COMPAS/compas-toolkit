@@ -1,26 +1,18 @@
 #pragma once
 
-#include <variant>
-
-#include "cartesian.h"
-#include "spiral.h"
+#include "core/object.h"
 
 namespace compas {
 
-struct Trajectory {
-    Trajectory(const SpiralTrajectory& s) : inner_(s) {}
-    Trajectory(const CartesianTrajectory& s) : inner_(s) {}
+struct Trajectory: public Object {
+    int nreadouts;
+    int samples_per_readout;
+    float delta_t;
 
-    const SpiralTrajectory* as_spiral() const {
-        return std::get_if<SpiralTrajectory>(&inner_);
-    }
-
-    const CartesianTrajectory* as_cartesian() const {
-        return std::get_if<CartesianTrajectory>(&inner_);
-    }
-
-  private:
-    std::variant<SpiralTrajectory, CartesianTrajectory> inner_;
+    Trajectory(int nreadouts, int samples_per_readout, float delta_t) :
+        nreadouts(nreadouts),
+        samples_per_readout(samples_per_readout),
+        delta_t(delta_t) {}
 };
 
 }  // namespace compas

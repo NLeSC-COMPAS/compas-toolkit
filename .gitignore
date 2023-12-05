@@ -37,4 +37,5 @@ lib/
 *.out
 *.app
 
-CompasToolkit.jl/src/CompasToolkit.jl
+CompasToolkit.jl/src/Constants.jl
+julia-bindings/src/constants.h

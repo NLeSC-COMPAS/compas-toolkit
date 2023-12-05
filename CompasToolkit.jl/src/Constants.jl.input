@@ -1,0 +1,2 @@
+LIBRARY = joinpath("${COMPAS_LIB_PATH}", "libcompas-julia.so")
+VERSION = "${COMPAS_VERSION}"

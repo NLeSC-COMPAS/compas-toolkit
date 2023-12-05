@@ -4,6 +4,8 @@
 #include "core/utils.h"
 #include "simulate/signal.h"
 #include "simulate/signal_kernels.cuh"
+#include "trajectories/cartesian.h"
+#include "trajectories/spiral.h"
 
 namespace compas {
 
@@ -276,9 +278,9 @@ void simulate_signal(
     cuda_view_mut<cfloat, 3> signal,
     cuda_view<cfloat, 2> echos,
     TissueParametersView parameters,
-    Trajectory trajectory,
+    const Trajectory& trajectory,
     cuda_view<float, 2> coil_sensitivities) {
-    if (const auto c = trajectory.as_cartesian()) {
+    if (const auto c = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
         simulate_signal_cartesian(
             context,
             signal,
@@ -286,7 +288,7 @@ void simulate_signal(
             parameters,
             c->view(),
             coil_sensitivities);
-    } else if (const auto s = trajectory.as_spiral()) {
+    } else if (const auto s = dynamic_cast<const SpiralTrajectory*>(&trajectory)) {
         simulate_signal_spiral(  //
             context,
             signal,

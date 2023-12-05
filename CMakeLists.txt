@@ -44,9 +44,17 @@ target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::nvrtc)
 
 # Installation of library files
 set(COMPAS_LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+string(RANDOM LENGTH 32 COMPAS_VERSION_HASH)
+string(TIMESTAMP COMPAS_VERSION_DATE "%Y%m%d")
+set(COMPAS_VERSION "${COMPAS_VERSION_DATE}-${COMPAS_VERSION_HASH}")
+
 configure_file(
-    ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.input
-    ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/CompasToolkit.jl)
+    ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/Constants.jl.input
+    ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/Constants.jl)
+configure_file(
+    ${PROJECT_SOURCE_DIR}/julia-bindings/src/constants.h.input
+    ${PROJECT_SOURCE_DIR}/julia-bindings/src/constants.h)
 
 
 add_subdirectory(thirdparty/Catch2)

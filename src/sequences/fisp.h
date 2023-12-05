@@ -6,7 +6,7 @@
 
 namespace compas {
 
-struct FISPSequence {
+struct FISPSequence: public Object {
     // Vector with flip angle for each TR with abs.(RF_train) the RF flip angles in degrees and
     // angle.(RF_train) should be the RF phases in degrees.
     CudaArray<cfloat> RF_train;
@@ -26,6 +26,20 @@ struct FISPSequence {
 
     // Inversion delay after the inversion prepulse in seconds
     float TI;
+
+    FISPSequence(
+        CudaArray<cfloat> RF_train,
+        CudaArray<cfloat, 2> sliceprofiles,
+        float TR,
+        float TE,
+        int max_state,
+        float TI) :
+        RF_train(RF_train),
+        sliceprofiles(sliceprofiles),
+        TR(TR),
+        TE(TE),
+        max_state(max_state),
+        TI(TI) {}
 
     FISPSequenceView view() const {
         return {
@@ -48,13 +62,7 @@ inline FISPSequence make_fisp_sequence(
     float TI) {
     COMPAS_ASSERT(sliceprofiles.size(1) == RF_train.size(0));
 
-    return {
-        .RF_train = context.allocate(RF_train),
-        .sliceprofiles = context.allocate(sliceprofiles),
-        .TR = TR,
-        .TE = TE,
-        .max_state = max_state,
-        .TI = TI};
+    return {context.allocate(RF_train), context.allocate(sliceprofiles), TR, TE, max_state, TI};
 }
 
 }  // namespace compas

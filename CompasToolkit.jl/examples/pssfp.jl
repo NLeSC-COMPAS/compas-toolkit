@@ -24,7 +24,7 @@ nvoxels = N*N
 
 # Finally we assemble the phantom as an array of `T₁T₂B₀ρˣρʸxy` values
 parameters_ref = map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)
-parameters = CompasToolkit.make_tissue_parameters(context, nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
+parameters = CompasToolkit.TissueParameters(context, nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
 
 # Next, we assemble a balanced sequence with constant flip angle of 60 degrees,
 nTR = N
@@ -44,14 +44,10 @@ z = SVector{nz}(LinRange(-1,1,nz)) # z locations
 pssfp_ref = pSSFP(RF_train, TR, γΔtRF, Δt, γΔtGRz, z)
 
 
-RF_train = RF_train .|> ComplexF32 # constant flip angle train
-γΔtRF = collect(γΔtRF) .|> ComplexF32 # normalize to flip angle of 1 degree
-Δt = Float32[Δt.ex, Δt.inv, Δt.pr] # time intervals during TR
-γΔtGRz = Float32[γΔtGRz.ex, γΔtGRz.inv, γΔtGRz.pr] # slice select gradient strengths during TR
-z = collect(z)  .|> Float32 # z locations
+Δt = (Δt.ex, Δt.inv, Δt.pr) # time intervals during TR
+γΔtGRz = (γΔtGRz.ex, γΔtGRz.inv, γΔtGRz.pr) # slice select gradient strengths during TR
 
-pssfp = CompasToolkit.make_pssfp_sequence(context, RF_train, Float32(TR), γΔtRF, Δt, γΔtGRz, z)
-
+pssfp = CompasToolkit.pSSFPSequence(context, RF_train, Float32(TR), γΔtRF, Δt, γΔtGRz, z)
 
 # isochromat model
 pssfp_ref = gpu(f32(pssfp_ref))
