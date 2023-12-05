@@ -80,7 +80,7 @@ signal_ref = collect(signal_ref)
 signal_ref = reshape(signal_ref, ns, nr)
 
 signal = zeros(ComplexF32, ns, nr, ncoils)
-CompasToolkit.simulate_signal(
+CompasToolkit.magnetization_to_signal(
     context,
     signal,
     echos,

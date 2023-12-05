@@ -36,7 +36,7 @@ int simulate_pssfp_sequence_batch(
     return iz;
 }
 
-void simulate_sequence(
+void simulate_magnetization(
     const CudaContext& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -92,7 +92,7 @@ void simulate_fisp_sequence_for_size(
     }
 }
 
-void simulate_sequence(
+void simulate_magnetization(
     const CudaContext& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,

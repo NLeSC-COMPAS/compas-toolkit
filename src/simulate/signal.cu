@@ -9,7 +9,7 @@
 
 namespace compas {
 
-void simulate_signal_cartesian_direct(
+void magnetization_to_signal_cartesian_direct(
     const CudaContext& context,
     cuda_view_mut<cfloat, 3> signal,
     cuda_view<cfloat, 2> echos,
@@ -81,7 +81,7 @@ void simulate_signal_cartesian_direct(
     COMPAS_CUDA_CHECK(cudaGetLastError());
 }
 
-void simulate_signal_cartesian_gemm(
+void magnetization_to_signal_cartesian_gemm(
     const CudaContext& context,
     cuda_view_mut<cfloat, 3> signal,
     cuda_view<cfloat, 2> echos,
@@ -162,7 +162,7 @@ void simulate_signal_cartesian_gemm(
     COMPAS_CUDA_CHECK(cudaGetLastError());
 }
 
-void simulate_signal_cartesian(
+void magnetization_to_signal_cartesian(
     const CudaContext& context,
     cuda_view_mut<cfloat, 3> signal,
     cuda_view<cfloat, 2> echos,
@@ -171,7 +171,7 @@ void simulate_signal_cartesian(
     cuda_view<float, 2> coil_sensitivities,
     SimulateSignalMethod method) {
     if (method == SimulateSignalMethod::Direct) {
-        simulate_signal_cartesian_direct(
+        magnetization_to_signal_cartesian_direct(
             context,
             signal,
             echos,
@@ -194,7 +194,7 @@ void simulate_signal_cartesian(
             }
         }();
 
-        simulate_signal_cartesian_gemm(
+        magnetization_to_signal_cartesian_gemm(
             context,
             signal,
             echos,
@@ -205,7 +205,7 @@ void simulate_signal_cartesian(
     }
 }
 
-void simulate_signal_spiral(
+void magnetization_to_signal_spiral(
     const CudaContext& context,
     cuda_view_mut<cfloat, 3> signal,
     cuda_view<cfloat, 2> echos,
@@ -273,7 +273,7 @@ void simulate_signal_spiral(
     COMPAS_CUDA_CHECK(cudaGetLastError());
 }
 
-void simulate_signal(
+void magnetization_to_signal(
     const CudaContext& context,
     cuda_view_mut<cfloat, 3> signal,
     cuda_view<cfloat, 2> echos,
@@ -281,7 +281,7 @@ void simulate_signal(
     const Trajectory& trajectory,
     cuda_view<float, 2> coil_sensitivities) {
     if (const auto c = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
-        simulate_signal_cartesian(
+        magnetization_to_signal_cartesian(
             context,
             signal,
             echos,
@@ -289,7 +289,7 @@ void simulate_signal(
             c->view(),
             coil_sensitivities);
     } else if (const auto s = dynamic_cast<const SpiralTrajectory*>(&trajectory)) {
-        simulate_signal_spiral(  //
+        magnetization_to_signal_spiral(  //
             context,
             signal,
             echos,

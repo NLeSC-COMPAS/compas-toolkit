@@ -5,8 +5,8 @@
 #include "simulate/sequence.h"
 #include "simulate/signal.h"
 #include "trajectories/cartesian.h"
-#include "trajectories/multi.h"
 #include "trajectories/spiral.h"
+#include "trajectories/trajectory.h"
 
 template<typename F>
 auto catch_exceptions(F fun) -> decltype(fun()) {
@@ -166,7 +166,7 @@ extern "C" const compas::FISPSequence* compas_make_fisp_sequence(
     });
 }
 
-extern "C" void compas_simulate_fisp_sequence(
+extern "C" void compas_simulate_magnetization_fisp(
     const compas::CudaContext* context,
     compas::cfloat* echos_ptr,
     const compas::TissueParameters* parameters,
@@ -178,7 +178,7 @@ extern "C" void compas_simulate_fisp_sequence(
         auto echos = make_view(echos_ptr, nreadouts, nvoxels);
         auto d_echos = context->allocate<compas::cfloat>(echos.shape());
 
-        compas::simulate_sequence(
+        compas::simulate_magnetization(
             *context,
             d_echos.view_mut(),
             parameters->view(),
@@ -188,7 +188,7 @@ extern "C" void compas_simulate_fisp_sequence(
     });
 }
 
-extern "C" void compas_simulate_pssfp_sequence(
+extern "C" void compas_simulate_magnetization_pssfp(
     const compas::CudaContext* context,
     compas::cfloat* echos_ptr,
     const compas::TissueParameters* parameters,
@@ -200,7 +200,7 @@ extern "C" void compas_simulate_pssfp_sequence(
         auto echos = make_view(echos_ptr, nreadouts, nvoxels);
         auto d_echos = context->allocate<compas::cfloat>(echos.shape());
 
-        compas::simulate_sequence(
+        compas::simulate_magnetization(
             *context,
             d_echos.view_mut(),
             parameters->view(),
@@ -210,13 +210,13 @@ extern "C" void compas_simulate_pssfp_sequence(
     });
 }
 
-extern "C" void compas_simulate_signal(
+extern "C" void compas_magnetization_to_signal(
     const compas::CudaContext* context,
     int ncoils,
     compas::cfloat* signal_ptr,
     const compas::cfloat* echos_ptr,
-    compas::TissueParameters* parameters,
-    compas::Trajectory* trajectory,
+    const compas::TissueParameters* parameters,
+    const compas::Trajectory* trajectory,
     const float* coils_ptr) {
     return catch_exceptions([&] {
         int nreadouts = trajectory->nreadouts;
@@ -231,7 +231,7 @@ extern "C" void compas_simulate_signal(
         auto d_echos = context->allocate(echos);
         auto d_coils = context->allocate(coils);
 
-        compas::simulate_signal(
+        compas::magnetization_to_signal(
             *context,
             d_signal.view_mut(),
             d_echos.view(),

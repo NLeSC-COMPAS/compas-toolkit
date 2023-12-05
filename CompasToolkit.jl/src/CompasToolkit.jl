@@ -259,7 +259,7 @@ mutable struct pSSFPSequence
     end
 end
 
-function simulate_sequence(
+function simulate_magnetization(
     context::Context,
     echos::AbstractMatrix,
     parameters::TissueParameters,
@@ -269,7 +269,7 @@ function simulate_sequence(
     nreadouts::Int64 = sequence.nreadouts
     echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
 
-    @ccall LIBRARY.compas_simulate_fisp_sequence(
+    @ccall LIBRARY.compas_simulate_magnetization_fisp(
         pointer(context)::Ptr{Cvoid},
         pointer(echos)::Ptr{ComplexF32},
         parameters.ptr::Ptr{Cvoid},
@@ -279,7 +279,7 @@ function simulate_sequence(
     return echos
 end
 
-function simulate_sequence(
+function simulate_magnetization(
     context::Context,
     echos::AbstractMatrix,
     parameters::TissueParameters,
@@ -289,7 +289,7 @@ function simulate_sequence(
     nreadouts::Int64 = sequence.nreadouts
     echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
 
-    @ccall LIBRARY.compas_simulate_pssfp_sequence(
+    @ccall LIBRARY.compas_simulate_magnetization_pssfp(
         pointer(context)::Ptr{Cvoid},
         pointer(echos)::Ptr{ComplexF32},
         parameters.ptr::Ptr{Cvoid},
@@ -299,7 +299,7 @@ function simulate_sequence(
     return echos
 end
 
-function simulate_signal(
+function magnetization_to_signal(
     context::Context,
     signal::AbstractArray{<:Any,3},
     echos::AbstractMatrix,
@@ -316,7 +316,7 @@ function simulate_signal(
     echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
     coils = convert_array(Float32, (nvoxels, ncoils), coils)
 
-    @ccall LIBRARY.compas_simulate_signal(
+    @ccall LIBRARY.compas_magnetization_to_signal
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(signal)::Ptr{ComplexF32},

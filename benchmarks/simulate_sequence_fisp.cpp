@@ -47,7 +47,7 @@ int main() {
         sequence.max_state = max_state;
 
         auto [duration, runs] = benchmark([&] {
-            simulate_sequence(context, echos.view_mut(), parameters.view(), sequence.view());
+            simulate_magnetization(context, echos.view_mut(), parameters.view(), sequence.view());
         });
 
         std::cout << "benchmark: "

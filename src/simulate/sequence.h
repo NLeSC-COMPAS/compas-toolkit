@@ -4,13 +4,13 @@
 
 namespace compas {
 
-void simulate_sequence(
+void simulate_magnetization(
     const CudaContext& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     pSSFPSequenceView sequence);
 
-void simulate_sequence(
+void simulate_magnetization(
     const CudaContext& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,

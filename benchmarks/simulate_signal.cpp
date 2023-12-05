@@ -22,7 +22,7 @@ static void benchmark_method(
     CartesianTrajectory trajectory,
     std::vector<cfloat>& signal_ref) {
     auto [duration, runs] = benchmark([&] {
-        simulate_signal_cartesian(
+        magnetization_to_signal_cartesian(
             context,
             signal.view_mut(),
             echos.view(),
@@ -100,7 +100,7 @@ int main() {
         {k_start.data(), {nreadouts}},
         delta_k);
 
-    simulate_signal_cartesian(
+    magnetization_to_signal_cartesian(
         context,
         signal.view_mut(),
         echos.view(),

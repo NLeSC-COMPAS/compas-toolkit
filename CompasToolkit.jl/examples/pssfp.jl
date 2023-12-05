@@ -56,7 +56,7 @@ echos_ref = simulate(CUDALibs(), pssfp_ref, parameters_ref);
 echos_ref = collect(echos_ref)
 
 echos = zeros(ComplexF32, nvoxels, nTR)
-CompasToolkit.simulate_sequence(context, echos, parameters, pssfp)
+CompasToolkit.simulate_magnetization(context, echos, parameters, pssfp)
 echos = transpose(echos)
 
 println("fraction equal: ", sum(echos .≈ echos_ref) / length(echos))
