@@ -4,7 +4,7 @@
 #include "pssfp_view.h"
 
 namespace compas {
-struct pSSFPSequence {
+struct pSSFPSequence: public Object {
     // Vector with flip angle for each TR with abs.(RF_train) the RF flip angles in degrees and
     // angle.(RF_train) should be the RF phases in degrees.
     CudaArray<cfloat> RF_train;
@@ -31,6 +31,23 @@ struct pSSFPSequence {
     // Vector with different positions along the slice direction.
     CudaArray<float> z;
 
+    pSSFPSequence(
+        CudaArray<cfloat> RF_train,
+        float TR,
+        CudaArray<cfloat> gamma_dt_RF,
+        RepetitionData dt,
+        RepetitionData gamma_dt_GRz,
+        CudaArray<float> z) :
+        RF_train(RF_train),
+        TR(TR),
+        nRF(gamma_dt_RF.size()),
+        nTR(RF_train.size()),
+        gamma_dt_RF(gamma_dt_RF),
+        dt(dt),
+        gamma_dt_GRz(gamma_dt_GRz),
+        nz(z.size()),
+        z(z) {}
+
     pSSFPSequenceView view() const {
         return {
             .nTR = nTR,
@@ -54,15 +71,12 @@ inline pSSFPSequence make_pssfp_sequence(
     COMPAS_ASSERT(RF_train.size() > 0);
 
     return {
-        .RF_train = context.allocate(RF_train),
-        .TR = TR,
-        .nRF = gamma_dt_RF.size(),
-        .nTR = RF_train.size(),
-        .gamma_dt_RF = context.allocate(gamma_dt_RF),
-        .dt = dt,
-        .gamma_dt_GRz = gamma_dt_GRz,
-        .nz = z.size(),
-        .z = context.allocate(z),
+        context.allocate(RF_train),
+        TR,
+        context.allocate(gamma_dt_RF),
+        dt,
+        gamma_dt_GRz,
+        context.allocate(z),
     };
 }
 

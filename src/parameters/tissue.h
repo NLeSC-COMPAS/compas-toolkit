@@ -2,16 +2,29 @@
 
 #include "core/complex_type.h"
 #include "core/context.h"
+#include "core/object.h"
 #include "parameters/tissue_view.cuh"
 
 namespace compas {
 
-struct TissueParameters {
+struct TissueParameters: public Object {
     CudaArray<float, 2> parameters;
     int nvoxels;
     bool has_z = true;
     bool has_b0 = true;
     bool has_b1 = true;
+
+    TissueParameters(
+        CudaArray<float, 2> parameters,
+        int nvoxels,
+        bool has_z,
+        bool has_b0,
+        bool has_b1) :
+        parameters(parameters),
+        nvoxels(nvoxels),
+        has_z(has_z),
+        has_b0(has_b0),
+        has_b1(has_b1) {}
 
     TissueParametersView view() const {
         return {

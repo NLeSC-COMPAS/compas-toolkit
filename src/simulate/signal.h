@@ -3,6 +3,7 @@
 #include "core/context.h"
 #include "parameters/tissue.h"
 #include "trajectories/multi.h"
+#include "trajectories/spiral_view.cuh"
 
 namespace compas {
 
@@ -11,7 +12,7 @@ void simulate_signal(
     cuda_view_mut<cfloat, 3> signal,
     cuda_view<cfloat, 2> echos,
     TissueParametersView parameters,
-    Trajectory trajectory,
+    const Trajectory& trajectory,
     cuda_view<float, 2> coil_sensitivities);
 
 enum struct SimulateSignalMethod {

@@ -1,241 +1,244 @@
-#include <jlcxx/jlcxx.hpp>
-
+#include "constants.h"
 #include "core/context.h"
 #include "parameters/tissue.h"
 #include "sequences/pssfp.h"
 #include "simulate/sequence.h"
 #include "simulate/signal.h"
+#include "trajectories/cartesian.h"
 #include "trajectories/multi.h"
+#include "trajectories/spiral.h"
 
-template<typename T, int N>
-compas::vector<int, N> to_shape(const jlcxx::ArrayRef<T, N>& array) {
-    compas::vector<int, N> shape;
-    for (int i = 0; i < N; i++) {
-        shape[i] = jl_array_dim(array.wrapped(), N - i - 1);
+template<typename F>
+auto catch_exceptions(F fun) -> decltype(fun()) {
+    try {
+        return fun();
+    } catch (const std::exception& msg) {
+        // Not sure how to pass the error to julia. Abort for now.
+        fprintf(stderr, "COMPAS: fatal error occurred: %s\n", msg.what());
+        std::abort();
     }
-    return shape;
 }
 
-template<typename T, int N>
-compas::host_view<T, N> into_view(const jlcxx::ArrayRef<T, N>& array) {
-    return {array.data(), to_shape(array)};
+template<typename T, typename... Ns>
+compas::host_view_mut<T, sizeof...(Ns)> make_view(T* ptr, Ns... sizes) {
+    return {ptr, {{sizes...}}};
 }
 
-template<typename T, int N>
-compas::host_view_mut<T, N> into_view_mut(jlcxx::ArrayRef<T, N>& array) {
-    return {array.data(), to_shape(array)};
+extern "C" const char* compas_version() {
+    return COMPAS_VERSION;
 }
 
-template<typename T, int N>
-compas::host_view<compas::complex_type<T>, N>
-into_view(const jlcxx::ArrayRef<std::complex<T>, N>& array) {
-    auto ptr = static_cast<const compas::complex_type<T>*>(static_cast<const void*>(array.data()));
-    return {ptr, to_shape(array)};
+extern "C" void compas_destroy(const compas::Object* obj) {
+    return catch_exceptions([&] { delete obj; });
 }
 
-template<typename T, int N>
-compas::host_view_mut<compas::complex_type<T>, N>
-into_view_mut(jlcxx::ArrayRef<std::complex<T>, N>& array) {
-    auto ptr = static_cast<compas::complex_type<T>*>(static_cast<void*>(array.data()));
-    return {ptr, to_shape(array)};
+extern "C" const compas::CudaContext* compas_make_context(int device) {
+    return catch_exceptions([&] {
+        auto ctx = compas::make_context(device);
+        return new compas::CudaContext(ctx);
+    });
 }
 
-JLCXX_MODULE define_julia_module(jlcxx::Module& mod) {
-    mod.add_type<compas::CudaContext>("CudaContext");
-    mod.method("make_context", compas::make_context);
+extern "C" void compas_destroy_context(const compas::CudaContext* ctx) {
+    return catch_exceptions([&] { delete ctx; });
+}
 
-    mod.add_type<compas::Trajectory>("Trajectory");
-    mod.method(
-        "make_spiral_trajectory",
-        [](const compas::CudaContext& context,
-           int nreadouts,
-           int samples_per_readout,
-           float delta_t,
-           jlcxx::ArrayRef<std::complex<float>> k_start,
-           jlcxx::ArrayRef<std::complex<float>> delta_k) -> compas::Trajectory {
-            return make_spiral_trajectory(
-                context,
-                nreadouts,
-                samples_per_readout,
-                delta_t,
-                into_view(k_start),
-                into_view(delta_k));
-        });
+extern "C" compas::Trajectory* compas_make_cartesian_trajectory(
+    const compas::CudaContext* context,
+    int nreadouts,
+    int samples_per_readout,
+    float delta_t,
+    const compas::cfloat* k_start,
+    compas::cfloat delta_k) {
+    return catch_exceptions([&] {
+        auto trajectory = compas::make_cartesian_trajectory(
+            *context,
+            nreadouts,
+            samples_per_readout,
+            delta_t,
+            make_view(k_start, nreadouts),
+            delta_k);
 
-    mod.method(
-        "make_cartesian_trajectory",
-        [](const compas::CudaContext& context,
-           int nreadouts,
-           int samples_per_readout,
-           float delta_t,
-           jlcxx::ArrayRef<std::complex<float>> k_start,
-           std::complex<float> delta_k) -> compas::Trajectory {
-            return make_cartesian_trajectory(
-                context,
-                nreadouts,
-                samples_per_readout,
-                delta_t,
-                into_view(k_start),
-                {delta_k.real(), delta_k.imag()});
-        });
+        return new compas::CartesianTrajectory(trajectory);
+    });
+}
 
-    mod.add_type<compas::TissueParameters>("TissueParameters");
-    mod.method(
-        "make_tissue_parameters",
-        [](const compas::CudaContext& context,
-           int nvoxels,
-           jlcxx::ArrayRef<float> T1,
-           jlcxx::ArrayRef<float> T2,
-           jlcxx::ArrayRef<float> B1,
-           jlcxx::ArrayRef<float> B0,
-           jlcxx::ArrayRef<float> rho_x,
-           jlcxx::ArrayRef<float> rho_y,
-           jlcxx::ArrayRef<float> x,
-           jlcxx::ArrayRef<float> y,
-           jlcxx::ArrayRef<float> z) {
-            return make_tissue_parameters(
-                context,
-                nvoxels,
-                into_view(T1),
-                into_view(T2),
-                into_view(B1),
-                into_view(B0),
-                into_view(rho_x),
-                into_view(rho_y),
-                into_view(x),
-                into_view(y),
-                into_view(z));
-        });
+extern "C" compas::Trajectory* compas_make_spiral_trajectory(
+    const compas::CudaContext* context,
+    int nreadouts,
+    int samples_per_readout,
+    float delta_t,
+    const compas::cfloat* k_start,
+    const compas::cfloat* delta_k) {
+    return catch_exceptions([&] {
+        auto trajectory = compas::make_spiral_trajectory(
+            *context,
+            nreadouts,
+            samples_per_readout,
+            delta_t,
+            make_view(k_start, nreadouts),
+            make_view(delta_k, nreadouts));
 
-    mod.method(
-        "make_tissue_parameters",
-        [](const compas::CudaContext& context,
-           int nvoxels,
-           jlcxx::ArrayRef<float> T1,
-           jlcxx::ArrayRef<float> T2,
-           jlcxx::ArrayRef<float> B1,
-           jlcxx::ArrayRef<float> B0,
-           jlcxx::ArrayRef<float> rho_x,
-           jlcxx::ArrayRef<float> rho_y,
-           jlcxx::ArrayRef<float> x,
-           jlcxx::ArrayRef<float> y) {
-            return make_tissue_parameters(
-                context,
-                nvoxels,
-                into_view(T1),
-                into_view(T2),
-                into_view(B1),
-                into_view(B0),
-                into_view(rho_x),
-                into_view(rho_y),
-                into_view(x),
-                into_view(y),
-                {});
-        });
+        return new compas::SpiralTrajectory(trajectory);
+    });
+}
 
-    mod.method(
-        "simulate_signal",
-        [](const compas::CudaContext& context,
-           jlcxx::ArrayRef<std::complex<float>, 3> julia_signal,
-           jlcxx::ArrayRef<std::complex<float>, 2> julia_echos,
-           compas::TissueParameters parameters,
-           compas::Trajectory trajectory,
-           jlcxx::ArrayRef<float, 2> julia_coil_sensitivities) {
-            auto signal = into_view_mut(julia_signal);
-            auto echos = into_view(julia_echos);
-            auto coil_sensitivities = into_view(julia_coil_sensitivities);
+extern "C" const compas::TissueParameters* compas_make_tissue_parameters(
+    const compas::CudaContext* context,
+    int nvoxels,
+    const float* T1,
+    const float* T2,
+    const float* B1,
+    const float* B0,
+    const float* rho_x,
+    const float* rho_y,
+    const float* x,
+    const float* y,
+    const float* z) {
+    return catch_exceptions([&] {
+        auto params = compas::make_tissue_parameters(
+            *context,
+            nvoxels,
+            make_view(T1, nvoxels),
+            make_view(T2, nvoxels),
+            make_view(B1, nvoxels),
+            make_view(B0, nvoxels),
+            make_view(rho_x, nvoxels),
+            make_view(rho_y, nvoxels),
+            make_view(x, nvoxels),
+            make_view(y, nvoxels),
+            make_view(z, nvoxels));
 
-            auto d_signal = context.allocate(signal);
-            auto d_echos = context.allocate(echos);
-            auto d_coil_sensitivities = context.allocate(coil_sensitivities);
+        return new compas::TissueParameters(params);
+    });
+}
 
-            compas::simulate_signal(
-                context,
-                d_signal.view_mut(),
-                d_echos.view(),
-                parameters.view(),
-                trajectory,
-                d_coil_sensitivities.view());
+extern "C" const compas::pSSFPSequence* compas_make_pssfp_sequence(
+    const compas::CudaContext* context,
+    int nRF,
+    int nreadouts,
+    int nslices,
+    const compas::cfloat* RF_train,
+    float TR,
+    const compas::cfloat* gamma_dt_RF,
+    float dt_ex,
+    float dt_inv,
+    float dt_pr,
+    float gamma_dt_GRz_ex,
+    float gamma_dt_GRz_inv,
+    float gamma_dt_GRz_pr,
+    const float* z) {
+    return catch_exceptions([&] {
+        auto seq = compas::make_pssfp_sequence(
+            *context,
+            make_view(RF_train, nreadouts),
+            TR,
+            make_view(gamma_dt_RF, nRF),
+            {dt_ex, dt_inv, dt_pr},
+            {gamma_dt_GRz_ex, gamma_dt_GRz_inv, gamma_dt_GRz_pr},
+            make_view(z, nslices));
 
-            d_signal.copy_to(signal);
-        });
+        return new compas::pSSFPSequence(seq);
+    });
+}
 
-    mod.add_type<compas::pSSFPSequence>("pSSFPSequence");
-    mod.method(
-        "make_pssfp_sequence",
-        [](const compas::CudaContext& context,
-           jlcxx::ArrayRef<std::complex<float>> RF_train,
-           float TR,
-           jlcxx::ArrayRef<std::complex<float>> gamma_dt_RF,
-           jlcxx::ArrayRef<float> dt,
-           jlcxx::ArrayRef<float> gamma_dt_GRz,
-           jlcxx::ArrayRef<float> z) {
-            COMPAS_ASSERT(dt.size() == 3);
-            COMPAS_ASSERT(gamma_dt_GRz.size() == 3);
+extern "C" const compas::FISPSequence* compas_make_fisp_sequence(
+    const compas::CudaContext* context,
+    int nreadouts,
+    int nslices,
+    const compas::cfloat* RF_train,
+    const compas::cfloat* slice_profiles,
+    float TR,
+    float TE,
+    int max_state,
+    float TI) {
+    return catch_exceptions([&] {
+        auto seq = compas::make_fisp_sequence(
+            *context,
+            make_view(RF_train, nreadouts),
+            make_view(slice_profiles, nslices, nreadouts),
+            TR,
+            TE,
+            max_state,
+            TI);
 
-            return make_pssfp_sequence(
-                context,
-                into_view(RF_train),
-                TR,
-                into_view(gamma_dt_RF),
-                {dt[0], dt[1], dt[2]},
-                {gamma_dt_GRz[0], gamma_dt_GRz[1], gamma_dt_GRz[2]},
-                into_view(z));
-        });
+        return new compas::FISPSequence(seq);
+    });
+}
 
-    mod.method(
-        "simulate_sequence",
-        [](const compas::CudaContext& context,
-           jlcxx::ArrayRef<std::complex<float>, 2> julia_echos,
-           compas::TissueParameters parameters,
-           compas::pSSFPSequence sequence) {
-            auto echos = into_view_mut(julia_echos);
-            auto d_echos = context.allocate<compas::cfloat>(echos.shape());
+extern "C" void compas_simulate_fisp_sequence(
+    const compas::CudaContext* context,
+    compas::cfloat* echos_ptr,
+    const compas::TissueParameters* parameters,
+    const compas::FISPSequence* sequence) {
+    return catch_exceptions([&] {
+        int nreadouts = sequence->RF_train.size();
+        int nvoxels = parameters->nvoxels;
 
-            compas::simulate_sequence(
-                context,
-                d_echos.view_mut(),
-                parameters.view(),
-                sequence.view());
+        auto echos = make_view(echos_ptr, nreadouts, nvoxels);
+        auto d_echos = context->allocate<compas::cfloat>(echos.shape());
 
-            d_echos.copy_to(echos);
-        });
+        compas::simulate_sequence(
+            *context,
+            d_echos.view_mut(),
+            parameters->view(),
+            sequence->view());
 
-    mod.add_type<compas::FISPSequence>("FISPSequence");
-    mod.method(
-        "make_fisp_sequence",
-        [](const compas::CudaContext& context,
-           jlcxx::ArrayRef<std::complex<float>> RF_train,
-           jlcxx::ArrayRef<std::complex<float>, 2> slice_profiles,
-           float TR,
-           float TE,
-           int max_state,
-           float TI) {
-            return make_fisp_sequence(
-                context,
-                into_view(RF_train),
-                into_view(slice_profiles),
-                TR,
-                TE,
-                max_state,
-                TI);
-        });
+        d_echos.copy_to(echos);
+    });
+}
 
-    mod.method(
-        "simulate_sequence",
-        [](const compas::CudaContext& context,
-           jlcxx::ArrayRef<std::complex<float>, 2> julia_echos,
-           compas::TissueParameters parameters,
-           compas::FISPSequence sequence) {
-            auto echos = into_view_mut(julia_echos);
-            auto d_echos = context.allocate<compas::cfloat>(echos.shape());
+extern "C" void compas_simulate_pssfp_sequence(
+    const compas::CudaContext* context,
+    compas::cfloat* echos_ptr,
+    const compas::TissueParameters* parameters,
+    const compas::pSSFPSequence* sequence) {
+    return catch_exceptions([&] {
+        int nreadouts = sequence->RF_train.size();
+        int nvoxels = parameters->nvoxels;
 
-            compas::simulate_sequence(
-                context,
-                d_echos.view_mut(),
-                parameters.view(),
-                sequence.view());
+        auto echos = make_view(echos_ptr, nreadouts, nvoxels);
+        auto d_echos = context->allocate<compas::cfloat>(echos.shape());
 
-            d_echos.copy_to(echos);
-        });
+        compas::simulate_sequence(
+            *context,
+            d_echos.view_mut(),
+            parameters->view(),
+            sequence->view());
+
+        d_echos.copy_to(echos);
+    });
+}
+
+extern "C" void compas_simulate_signal(
+    const compas::CudaContext* context,
+    int ncoils,
+    compas::cfloat* signal_ptr,
+    const compas::cfloat* echos_ptr,
+    compas::TissueParameters* parameters,
+    compas::Trajectory* trajectory,
+    const float* coils_ptr) {
+    return catch_exceptions([&] {
+        int nreadouts = trajectory->nreadouts;
+        int samples_per_readout = trajectory->samples_per_readout;
+        int nvoxels = parameters->nvoxels;
+
+        auto signal = make_view(signal_ptr, ncoils, nreadouts, samples_per_readout);
+        auto echos = make_view(echos_ptr, nreadouts, nvoxels);
+        auto coils = make_view(coils_ptr, ncoils, nvoxels);
+
+        auto d_signal = context->allocate(signal);
+        auto d_echos = context->allocate(echos);
+        auto d_coils = context->allocate(coils);
+
+        compas::simulate_signal(
+            *context,
+            d_signal.view_mut(),
+            d_echos.view(),
+            parameters->view(),
+            *trajectory,
+            d_coils.view());
+
+        d_signal.copy_to(signal);
+    });
 }

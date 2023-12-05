@@ -47,11 +47,11 @@ TissueParameters make_tissue_parameters(
     }
 
     return {
-        .parameters = params,
-        .nvoxels = num_voxels,
-        .has_z = has_z,
-        .has_b0 = has_b0,
-        .has_b1 = has_b1,
+        params,
+        num_voxels,
+        has_z,
+        has_b0,
+        has_b1,
     };
 }
 }  // namespace compas

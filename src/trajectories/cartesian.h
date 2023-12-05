@@ -3,15 +3,23 @@
 #include "core/complex_type.h"
 #include "core/context.h"
 #include "trajectories/cartesian_view.cuh"
+#include "trajectories/multi.h"
 
 namespace compas {
 
-struct CartesianTrajectory {
-    int nreadouts;
-    int samples_per_readout;
-    float delta_t;
+struct CartesianTrajectory: public Trajectory {
     CudaArray<cfloat> k_start;
     cfloat delta_k;
+
+    CartesianTrajectory(
+        int nreadouts,
+        int samples_per_readout,
+        float delta_t,
+        CudaArray<cfloat> k_start,
+        cfloat delta_k) :
+        Trajectory(nreadouts, samples_per_readout, delta_t),
+        k_start(k_start),
+        delta_k(delta_k) {}
 
     CartesianTrajectoryView view() const {
         return {
