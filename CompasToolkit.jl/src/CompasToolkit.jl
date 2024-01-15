@@ -329,6 +329,78 @@ function magnetization_to_signal(
     return signal
 end
 
+function compute_jacobian(
+    context::Context,
+    Jv::AbstractMatrix,
+    echos::AbstractMatrix,
+    𝜕echos::AbstractArray{<:Any,3},
+    parameters::TissueParameters,
+    trajectory::Trajectory,
+    coils::AbstractMatrix,
+    v::AbstractMatrix
+)
+    ncoils = size(coils, 2)
+    nreadouts::Int64 = trajectory.nreadouts
+    samples_per_readout::Int64 = trajectory.samples_per_readout
+    nvoxels::Int64 = parameters.nvoxels
+
+    Jv = convert_array(ComplexF32, (nreadouts * samples_per_readout, ncoils), Jv)
+    echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
+    𝜕echos = convert_array(ComplexF32, (nvoxels, nreadouts, 2), 𝜕echos)
+    coils = convert_array(Float32, (nvoxels, ncoils), coils)
+    v = convert_array(ComplexF32, (nvoxels, 4), v)
+
+    @ccall LIBRARY.compas_compute_jacobian(
+        pointer(context)::Ptr{Cvoid},
+        ncoils::Int32,
+        pointer(Jv)::Ptr{ComplexF32},
+        pointer(echos)::Ptr{ComplexF32},
+        pointer(𝜕echos)::Ptr{ComplexF32},
+        parameters.ptr::Ptr{Cvoid},
+        trajectory.ptr::Ptr{Cvoid},
+        pointer(coils)::Ptr{Float32},
+        pointer(v)::Ptr{ComplexF32}
+    )::Cvoid
+
+    return Jv
+end
+
+function compute_jacobian_transposed(
+    context::Context,
+    Jᴴv::AbstractMatrix,
+    echos::AbstractMatrix,
+    𝜕echos::AbstractArray{<:Any,3},
+    parameters::TissueParameters,
+    trajectory::Trajectory,
+    coils::AbstractMatrix,
+    v::AbstractMatrix
+)
+    ncoils = size(coils, 2)
+    nreadouts::Int64 = trajectory.nreadouts
+    samples_per_readout::Int64 = trajectory.samples_per_readout
+    nvoxels::Int64 = parameters.nvoxels
+
+    Jᴴv = convert_array(ComplexF32, (nvoxels, 4), Jᴴv)
+    echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
+    𝜕echos = convert_array(ComplexF32, (nvoxels, nreadouts, 2), 𝜕echos)
+    coils = convert_array(Float32, (nvoxels, ncoils), coils)
+    v = convert_array(ComplexF32, (nreadouts * samples_per_readout, ncoils), v)
+
+    @ccall LIBRARY.compas_compute_jacobian_transposed(
+        pointer(context)::Ptr{Cvoid},
+        ncoils::Int32,
+        pointer(Jᴴv)::Ptr{ComplexF32},
+        pointer(echos)::Ptr{ComplexF32},
+        pointer(𝜕echos)::Ptr{ComplexF32},
+        parameters.ptr::Ptr{Cvoid},
+        trajectory.ptr::Ptr{Cvoid},
+        pointer(coils)::Ptr{Float32},
+        pointer(v)::Ptr{ComplexF32}
+    )::Cvoid
+
+    return Jᴴv
+end
+
 Base.pointer(c::Context) = c.ptr
 Base.pointer(c::Trajectory) = c.ptr
 Base.pointer(c::TissueParameters) = c.ptr

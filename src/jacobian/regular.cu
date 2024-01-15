@@ -1,5 +1,5 @@
 #include "core/utils.h"
-#include "product.h"
+#include "jacobian/product.h"
 
 namespace compas {
 
@@ -27,7 +27,7 @@ __device__ DeltaMagnetization delta_to_sample_point(
 
     // There are ns samples per readout, echo time is assumed to occur
     // at index (ns÷2)+1. Now compute sample index relative to the echo time
-    float s = float(sample_idx) - float(0.5f * ns);
+    float s = float(sample_idx) - 0.5f * float(ns);
 
     // Apply readout gradient, T₂ decay and B₀ rotation
     auto Theta = delta_k0.re * x + delta_k0.im * y;

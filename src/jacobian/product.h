@@ -7,7 +7,7 @@ namespace compas {
 
 void compute_jacobian(
     const CudaContext& ctx,
-    cuda_view_mut<cfloat> Jv,
+    cuda_view_mut<cfloat, 2> Jv,
     cuda_view<cfloat, 2> echos,
     cuda_view<cfloat, 3> delta_echos,
     TissueParametersView parameters,
@@ -17,6 +17,7 @@ void compute_jacobian(
 
 void compute_jacobian_transposed(
     const CudaContext& ctx,
+    cuda_view_mut<cfloat, 2> JHv,
     cuda_view<cfloat, 2> echos,
     cuda_view<cfloat, 3> delta_echos,
     TissueParametersView parameters,
