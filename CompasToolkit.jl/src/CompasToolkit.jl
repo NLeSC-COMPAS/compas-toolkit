@@ -316,7 +316,7 @@ function magnetization_to_signal(
     echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
     coils = convert_array(Float32, (nvoxels, ncoils), coils)
 
-    @ccall LIBRARY.compas_magnetization_to_signal
+    @ccall LIBRARY.compas_magnetization_to_signal(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(signal)::Ptr{ComplexF32},

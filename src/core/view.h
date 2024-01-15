@@ -206,7 +206,7 @@ template<typename T, typename L, memory_space M = memory_space::HOST, index_t N 
 struct basic_view;
 
 template<typename T, typename L, memory_space M>
-struct view_base {
+struct basic_view_base {
     static constexpr index_t rank = L::rank;
     static constexpr memory_space space = M;
     using value_type = T;
@@ -216,10 +216,10 @@ struct view_base {
     using shape_type = vector<index_t, rank>;
 
     COMPAS_HOST_DEVICE
-    view_base(T* ptr, L layout) : ptr_(ptr), layout_(layout) {}
+    basic_view_base(T* ptr, L layout) : ptr_(ptr), layout_(layout) {}
 
     template<typename T2, typename L2>
-    COMPAS_HOST_DEVICE view_base(const view_base<T2, L2, M>& that) :
+    COMPAS_HOST_DEVICE basic_view_base(const basic_view_base<T2, L2, M>& that) :
         ptr_(that.data()),
         layout_(that.layout()) {}
 
@@ -346,14 +346,14 @@ struct view_base {
 };
 
 template<typename T, typename L, memory_space M, index_t N>
-struct basic_view: view_base<T, L, M> {
-    using base_type = view_base<T, L, M>;
+struct basic_view: basic_view_base<T, L, M> {
+    using base_type = basic_view_base<T, L, M>;
 
     COMPAS_HOST_DEVICE
     basic_view(T* ptr = nullptr, L layout = {}) : base_type(ptr, layout) {}
 
     template<typename T2, typename L2>
-    COMPAS_HOST_DEVICE basic_view(const view_base<T2, L2, M>& that) : base_type(that) {}
+    COMPAS_HOST_DEVICE basic_view(const basic_view_base<T2, L2, M>& that) : base_type(that) {}
 
     COMPAS_HOST_DEVICE
     basic_view<T, typename drop_axis_impl<L>::type, M> operator[](index_t index) const {
@@ -367,14 +367,14 @@ struct basic_view: view_base<T, L, M> {
 };
 
 template<typename T, typename L, memory_space M>
-struct basic_view<T, L, M, 1>: view_base<T, L, M> {
-    using base_type = view_base<T, L, M>;
+struct basic_view<T, L, M, 1>: basic_view_base<T, L, M> {
+    using base_type = basic_view_base<T, L, M>;
 
     COMPAS_HOST_DEVICE
     basic_view(T* ptr = nullptr, L layout = {}) : base_type(ptr, layout) {}
 
     template<typename T2, typename L2>
-    COMPAS_HOST_DEVICE basic_view(const view_base<T2, L2, M>& that) : base_type(that) {}
+    COMPAS_HOST_DEVICE basic_view(const basic_view_base<T2, L2, M>& that) : base_type(that) {}
 
     COMPAS_HOST_DEVICE
     T& operator[](index_t index) const {
