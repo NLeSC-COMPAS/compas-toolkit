@@ -58,6 +58,13 @@ configure_file(
 
 
 add_subdirectory(thirdparty/Catch2)
+
+set(USE_CUDA ON)
+target_compile_definitions(${PROJECT_NAME} PUBLIC -DKMM_USE_CUDA=1)
+add_subdirectory(thirdparty/kmm)
+target_link_libraries(${PROJECT_NAME} PUBLIC kmm)
+
+
 add_subdirectory(julia-bindings)
 add_subdirectory(tests)
 add_subdirectory(benchmarks)
