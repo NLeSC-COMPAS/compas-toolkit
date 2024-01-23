@@ -7,6 +7,7 @@ namespace compas {
 
 template<int batch_size>
 int simulate_pssfp_sequence_batch(
+    const kmm::CudaDevice& context,
     int iz,
     const cuda_view_mut<cfloat, 2>& echos,
     const TissueParametersView& parameters,
@@ -24,7 +25,7 @@ int simulate_pssfp_sequence_batch(
     while (iz + batch_size <= nz) {
         auto z_subslices = cuda_view<float> {sequence.z.data() + iz, {batch_size}};
 
-        kernels::simulate_pssfp<batch_size><<<grid_size, block_size>>>(  //
+        kernels::simulate_pssfp<batch_size><<<grid_size, block_size, 0, context.stream()>>>(  //
             echos,
             z_subslices,
             parameters,
@@ -36,13 +37,11 @@ int simulate_pssfp_sequence_batch(
     return iz;
 }
 
-void simulate_magnetization(
-    const CudaContext& context,
+void simulate_magnetization_pssfp(
+    const kmm::CudaDevice& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     pSSFPSequenceView sequence) {
-    CudaContextGuard guard {context};
-
     // Initialize echos to zero
     context.fill(echos, cfloat(0));
 
@@ -51,24 +50,22 @@ void simulate_magnetization(
     // must powers of two and cannot exceed 32.  The offset keeps track of how many slices have already been processed
     // and is incremented by each call to `simulate_pssfp_sequence_batch`.
     int offset = 0;
-    offset = simulate_pssfp_sequence_batch<32>(offset, echos, parameters, sequence);
-    offset = simulate_pssfp_sequence_batch<16>(offset, echos, parameters, sequence);
-    offset = simulate_pssfp_sequence_batch<8>(offset, echos, parameters, sequence);
-    offset = simulate_pssfp_sequence_batch<4>(offset, echos, parameters, sequence);
-    offset = simulate_pssfp_sequence_batch<2>(offset, echos, parameters, sequence);
-    offset = simulate_pssfp_sequence_batch<1>(offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<32>(context, offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<16>(context, offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<8>(context, offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<4>(context, offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<2>(context, offset, echos, parameters, sequence);
+    offset = simulate_pssfp_sequence_batch<1>(context, offset, echos, parameters, sequence);
 
     COMPAS_ASSERT(offset == sequence.z.size());
 }
 
 template<int max_N, int warp_size = max_N>
 void simulate_fisp_sequence_for_size(
-    const CudaContext& context,
+    const kmm::CudaDevice& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
-    CudaContextGuard guard {context};
-
     COMPAS_ASSERT(sequence.max_state <= max_N);
     COMPAS_ASSERT(is_power_of_two(warp_size) && warp_size <= 32);
 
@@ -86,14 +83,14 @@ void simulate_fisp_sequence_for_size(
 
         kernels::simulate_fisp<max_N, warp_size><<<grid_size, block_size>>>(
             echos,
-            sequence.sliceprofiles.drop_leading_axis(i),
+            sequence.sliceprofiles.drop_axis<0>(i),
             parameters,
             sequence);
     }
 }
 
-void simulate_magnetization(
-    const CudaContext& context,
+void simulate_magnetization_fisp(
+    const kmm::CudaDevice& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {

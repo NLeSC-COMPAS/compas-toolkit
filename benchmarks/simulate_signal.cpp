@@ -21,19 +21,22 @@ static void benchmark_method(
     TissueParameters parameters,
     CartesianTrajectory trajectory,
     std::vector<cfloat>& signal_ref) {
+    context.synchronize();
+
     auto [duration, runs] = benchmark([&] {
-        magnetization_to_signal_cartesian(
+        compas::magnetization_to_signal(
             context,
-            signal.view_mut(),
-            echos.view(),
-            parameters.view(),
-            trajectory.view(),
-            coil_sensitivities.view(),
+            signal,
+            echos,
+            parameters,
+            trajectory,
+            coil_sensitivities,
             method);
+
+        context.synchronize();
     });
 
-    auto signal_result = std::vector<cfloat>(signal.size());
-    signal.copy_to(signal_result);
+    auto signal_result = signal.read();
 
     double max_abs_error = 0;
     double max_rel_error = 0;
@@ -79,12 +82,9 @@ int main() {
         std::fill_n(h_coils.data() + nvoxels * i, nvoxels, float(i + 1) / ncoils);
     }
 
-    auto signal = context.allocate<cfloat, 3>({ncoils, nreadouts, samples_per_readout});
-    auto echos = context.allocate<cfloat, 2>({nreadouts, nvoxels});
-    auto coil_sensitivities = context.allocate<float, 2>({ncoils, nvoxels});
-
-    echos.copy_from(h_echos);
-    coil_sensitivities.copy_from(h_coils);
+    auto signal = compas::CudaArray<cfloat, 3>(ncoils, nreadouts, samples_per_readout);
+    auto echos = context.allocate(h_echos).reshape(nreadouts, nvoxels);
+    auto coil_sensitivities = context.allocate(h_coils).reshape(ncoils, nvoxels);
 
     TissueParameters parameters = generate_tissue_parameters(context, nvoxels);
 
@@ -100,16 +100,16 @@ int main() {
         {k_start.data(), {nreadouts}},
         delta_k);
 
-    magnetization_to_signal_cartesian(
+    compas::magnetization_to_signal(
         context,
-        signal.view_mut(),
-        echos.view(),
-        parameters.view(),
-        trajectory.view(),
-        coil_sensitivities.view());
+        signal,
+        echos,
+        parameters,
+        trajectory,
+        coil_sensitivities,
+        SimulateSignalMethod::Direct);
 
-    auto signal_ref = std::vector<cfloat>(signal.size());
-    signal.copy_to(signal_ref);
+    auto signal_ref = signal.read();
 
     benchmark_method(
         "direct",

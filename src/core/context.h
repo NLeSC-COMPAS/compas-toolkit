@@ -9,294 +9,58 @@
 #include <vector>
 
 #include "core/view.h"
+#include "kmm/array.hpp"
+#include "kmm/cuda/cuda.hpp"
+#include "kmm/host/host.hpp"
+#include "kmm/runtime.hpp"
+
+#define COMPAS_CUDA_CHECK(...) KMM_CUDA_CHECK(__VA_ARGS__)
 
 namespace compas {
 
-template<typename T, index_t N = 1>
-struct CudaArray;
-struct CudaContext;
-struct CudaContextImpl;
-struct CudaBuffer;
-struct CudaContextGuard;
-
-struct CudaException: public std::exception {
-    CudaException(std::string msg);
-    CudaException(CUresult err, const char* file, int line);
-    CudaException(cudaError_t err, const char* file, int line);
-    CudaException(cublasStatus_t err, const char* file, int line);
-
-    const char* what() const noexcept {
-        return message_.c_str();
-    }
-
-  private:
-    std::string message_;
-};
-
-#define COMPAS_CUDA_CHECK(expr)                                      \
-    do {                                                             \
-        auto code = (expr);                                          \
-        if (code != decltype(code)(0)) {                             \
-            throw ::compas::CudaException(code, __FILE__, __LINE__); \
-        }                                                            \
-    } while (0)
+template<typename T, size_t N = 1>
+using CudaArray = kmm::Array<T, N>;
 
 struct CudaContext {
-    friend CudaContextGuard;
+    CudaContext(kmm::Runtime runtime, kmm::Cuda device) : m_runtime(runtime), m_device(device) {}
 
-    CudaContext(std::shared_ptr<CudaContextImpl> impl) : impl_(impl) {
-        COMPAS_ASSERT(impl != nullptr);
-    }
-
-    std::string device_name() const;
-    std::shared_ptr<CudaBuffer> allocate_buffer(size_t nbytes) const;
-    cublasHandle_t cublas_handle() const;
-
-    void fill_buffer(
-        CUdeviceptr output_ptr,
-        size_t num_elements,
-        const void* fill_value,
-        size_t element_size) const;
-
-    template<typename F>
-    void launch(F fun) const {
-        F x = 1;
-        fun();
-    }
-
-    template<typename T, int N = 1>
-    CudaArray<T, N> allocate(vector<index_t, N> shape) const {
-        size_t nbytes = sizeof(T);
-        for (index_t i = 0; i < N; i++) {
-            nbytes *= size_t(shape[i]);
+    template<typename T, size_t N>
+    CudaArray<std::decay_t<T>, N> allocate(view_mut<T, N> content) const {
+        std::array<index_t, N> sizes;
+        for (size_t i = 0; i < N; i++) {
+            sizes[i] = content.size(i);
         }
 
-        return {allocate_buffer(nbytes), shape};
+        return m_runtime.allocate_array(content.data(), sizes);
+    }
+
+    template<typename T, typename... Sizes>
+    CudaArray<std::decay_t<T>, sizeof...(Sizes)>
+    allocate(const T* content_ptr, Sizes... sizes) const {
+        std::array<index_t, sizeof...(Sizes)> sizes_array = {kmm::checked_cast<index_t>(sizes)...};
+        return m_runtime.allocate_array(content_ptr, sizes_array);
     }
 
     template<typename T>
-    CudaArray<T> allocate(index_t n) const {
-        return allocate<T>(vector<index_t, 1> {n});
+    CudaArray<std::decay_t<T>> allocate(const std::vector<T>& content) const {
+        std::array<index_t, 1> sizes_array = {kmm::checked_cast<index_t>(content.size())};
+        return m_runtime.allocate_array(content.data(), sizes_array);
     }
 
-    template<typename T, int N, memory_space M>
-    CudaArray<std::decay_t<T>, N> allocate(basic_view<T, layouts::row_major<N>, M> buffer) const {
-        auto result = allocate<std::decay_t<T>, N>(buffer.shape());
-        result.copy_from(buffer);
-        return result;
+    template<typename... Args>
+    void submit_device(Args... args) const {
+        m_runtime.submit(m_device, args...);
     }
 
-    template<typename T, int N>
-    CudaArray<T, N> allocate(const CudaArray<T, N>& input) const {
-        return allocate(input.view());
-    }
-
-    template<typename T, int N = 1>
-    CudaArray<T, N> zeros(vector<index_t, N> shape) const {
-        auto buffer = allocate<T>(shape);
-        buffer.fill(T {});
-        return buffer;
-    }
-
-    template<typename T>
-    CudaArray<T> zeros(index_t n) const {
-        return zeros<T>({n});
-    }
-
-    template<typename T, int N>
-    void fill(cuda_view_mut<T, N> output, const T& value) const {
-        fill_buffer(
-            reinterpret_cast<CUdeviceptr>(static_cast<void*>(output.data())),
-            static_cast<size_t>(output.size()),
-            &value,
-            sizeof(T));
+    void synchronize() const {
+        m_runtime.synchronize();
     }
 
   private:
-    std::shared_ptr<CudaContextImpl> impl_;
+    kmm::Runtime m_runtime;
+    kmm::Cuda m_device;
 };
 
 CudaContext make_context(int device = 0);
-
-struct CudaContextGuard {
-    CudaContextGuard(std::shared_ptr<CudaContextImpl> impl);
-    CudaContextGuard(const CudaContext& ctx) : CudaContextGuard(ctx.impl_) {}
-    ~CudaContextGuard() noexcept(false);
-
-  private:
-    std::shared_ptr<CudaContextImpl> impl_;
-};
-
-struct CudaBuffer {
-    CudaBuffer(const CudaContext& context, CUdeviceptr ptr, size_t nbytes);
-    CudaBuffer(const CudaContext& context, size_t nbytes);
-    ~CudaBuffer();
-
-    void copy_from_host(const void* host_ptr, size_t offset, size_t nbytes);
-    void copy_to_host(void* host_ptr, size_t offset, size_t nbytes);
-
-    void copy_from_device(CUdeviceptr src_ptr, size_t offset, size_t nbytes);
-    void copy_to_device(CUdeviceptr dst_ptr, size_t offset, size_t nbytes);
-
-    CUdeviceptr device_data() {
-        return device_ptr_;
-    }
-
-    const CudaContext& context() const {
-        return context_;
-    }
-
-    size_t size_in_bytes() const {
-        return nbytes_;
-    }
-
-  private:
-    CudaContext context_;
-    bool is_owned_;
-    CUdeviceptr device_ptr_;
-    size_t nbytes_;
-};
-
-template<typename T, index_t N>
-struct CudaArray {
-    CudaArray(std::shared_ptr<CudaBuffer> buffer, vector<index_t, N> shape, size_t offset = 0) :
-        buffer_(std::move(buffer)),
-        shape_(shape),
-        offset_(offset) {}
-
-    const CudaContext& context() const {
-        return buffer_->context();
-    }
-
-    index_t size(int axis) const {
-        COMPAS_ASSERT(axis >= 0 && axis < N);
-        return shape_[axis];
-    }
-
-    index_t size() const {
-        index_t total = 1;
-        for (index_t axis = 0; axis < N; axis++) {
-            total *= size(axis);
-        }
-        return total;
-    }
-
-    size_t size_in_bytes() const {
-        return size_t(size()) * sizeof(T);
-    }
-
-    vector<int, N> shape() const {
-        return shape_;
-    }
-
-    template<index_t M>
-    CudaArray<T, M> reshape(vector<index_t, M> new_shape) const {
-        index_t total = 1;
-        for (index_t i = 0; i < M; i++) {
-            total *= new_shape[i];
-        }
-
-        COMPAS_ASSERT(total == size());
-        return {buffer_, new_shape};
-    }
-
-    CudaArray<T> flatten() const {
-        vector<index_t, 1> new_shape = {size()};
-        return {buffer_, new_shape};
-    }
-
-    CudaArray<T, N> slice(index_t begin, index_t end) const {
-        COMPAS_ASSERT(N > 0 && 0 <= begin && begin <= end && end <= size(0));
-        size_t stride = size_t(begin);
-        vector<index_t, N> new_shape;
-        new_shape[0] = end - begin;
-
-        for (int i = 0; i < N - 1; i++) {
-            new_shape[i + 1] = shape_[i + 1];
-            stride *= size_t(shape_[i + 1]);
-        }
-
-        return {buffer_, new_shape, offset_ + stride};
-    }
-
-    CudaArray<T, N - 1> slice(index_t index) const {
-        COMPAS_ASSERT(N > 0 && index >= 0 && index < size(0));
-        size_t stride = size_t(index);
-        vector<index_t, N - 1> new_shape;
-
-        for (int i = 0; i < N - 1; i++) {
-            new_shape[i] = shape_[i + 1];
-            stride *= size_t(shape_[i + 1]);
-        }
-
-        return {buffer_, new_shape, offset_ + stride};
-    }
-
-    const T* device_data() const {
-        return (const T*)(buffer_->device_data()) + offset_;
-    }
-
-    T* device_data_mut() const {
-        return (T*)(buffer_->device_data()) + offset_;
-    }
-
-    cuda_view<T, N> view() const {
-        return {device_data(), shape_};
-    }
-
-    cuda_view_mut<T, N> view_mut() const {
-        return {device_data_mut(), shape_};
-    }
-
-    void copy_from(const T* input_ptr, size_t num_elements) const {
-        COMPAS_ASSERT(num_elements == static_cast<size_t>(size()));
-        buffer_->copy_from_host(input_ptr, offset_ * sizeof(T), size_in_bytes());
-    }
-
-    void copy_to(T* output_ptr, size_t num_elements) const {
-        COMPAS_ASSERT(num_elements == static_cast<size_t>(size()));
-        buffer_->copy_to_host(output_ptr, offset_ * sizeof(T), size_in_bytes());
-    }
-
-    void copy_from(const std::vector<T>& input) const {
-        copy_from(input.data(), input.size());
-    }
-
-    void copy_to(std::vector<T>& output) const {
-        copy_to(output.data(), output.size());
-    }
-
-    void copy_from(host_view<T, N> input) const {
-        COMPAS_ASSERT(input.shape() == shape());
-        copy_from(input.data(), input.size());
-    }
-
-    void copy_to(host_view_mut<T, N> output) const {
-        COMPAS_ASSERT(output.shape() == shape());
-        copy_to(output.data(), output.size());
-    }
-
-    void copy_from(const CudaArray<T, N>& input) const {
-        COMPAS_ASSERT(input.shape() == shape());
-        buffer_->copy_from_device(input.data(), offset_ * sizeof(T), size_in_bytes());
-    }
-
-    void copy_to(const CudaArray<T, N>& output) const {
-        return output.copy_from(*this);
-    }
-
-    void fill(const T& value) const {
-        context().fill_buffer(
-            reinterpret_cast<CUdeviceptr>(static_cast<const void*>(device_data_mut() + offset_)),
-            size(),
-            &value,
-            sizeof(T));
-    }
-
-  private:
-    std::shared_ptr<CudaBuffer> buffer_;
-    vector<index_t, N> shape_;
-    size_t offset_;
-};
 
 }  // namespace compas

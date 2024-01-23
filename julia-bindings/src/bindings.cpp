@@ -21,7 +21,7 @@ auto catch_exceptions(F fun) -> decltype(fun()) {
 
 template<typename T, typename... Ns>
 compas::host_view_mut<T, sizeof...(Ns)> make_view(T* ptr, Ns... sizes) {
-    return {ptr, {{sizes...}}};
+    return {ptr, kmm::fixed_array<kmm::index_t, sizeof...(Ns)> {sizes...}};
 }
 
 extern "C" const char* compas_version() {
@@ -176,15 +176,15 @@ extern "C" void compas_simulate_magnetization_fisp(
         int nvoxels = parameters->nvoxels;
 
         auto echos = make_view(echos_ptr, nreadouts, nvoxels);
-        auto d_echos = context->allocate<compas::cfloat>(echos.shape());
+        auto d_echos = compas::CudaArray<compas::cfloat, 2>(nreadouts, nvoxels);
 
-        compas::simulate_magnetization(
-            *context,
-            d_echos.view_mut(),
-            parameters->view(),
-            sequence->view());
+        context->submit_device(
+            compas::simulate_magnetization_fisp,
+            write(d_echos),
+            *parameters,
+            *sequence);
 
-        d_echos.copy_to(echos);
+        d_echos.read(echos);
     });
 }
 
@@ -198,15 +198,15 @@ extern "C" void compas_simulate_magnetization_pssfp(
         int nvoxels = parameters->nvoxels;
 
         auto echos = make_view(echos_ptr, nreadouts, nvoxels);
-        auto d_echos = context->allocate<compas::cfloat>(echos.shape());
+        auto d_echos = context->allocate(echos);
 
-        compas::simulate_magnetization(
-            *context,
-            d_echos.view_mut(),
-            parameters->view(),
-            sequence->view());
+        context->submit_device(
+            compas::simulate_magnetization_pssfp,
+            write(d_echos),
+            *parameters,
+            *sequence);
 
-        d_echos.copy_to(echos);
+        d_echos.read(echos);
     });
 }
 
@@ -233,12 +233,12 @@ extern "C" void compas_magnetization_to_signal(
 
         compas::magnetization_to_signal(
             *context,
-            d_signal.view_mut(),
-            d_echos.view(),
-            parameters->view(),
+            d_signal,
+            d_echos,
+            *parameters,
             *trajectory,
-            d_coils.view());
+            d_coils);
 
-        d_signal.copy_to(signal);
+        d_signal.read(signal);
     });
 }

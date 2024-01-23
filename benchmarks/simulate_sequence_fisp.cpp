@@ -18,7 +18,7 @@ int main() {
     int max_state = 25;
     int num_slices = 35;
 
-    auto echos = context.allocate<cfloat, 2>({nreadouts, nvoxels});
+    auto echos = CudaArray<cfloat, 2>(nreadouts, nvoxels);
 
     auto RF_train = std::vector<cfloat>(nreadouts);
     for (size_t i = 0; i < nreadouts; i++) {
@@ -47,7 +47,13 @@ int main() {
         sequence.max_state = max_state;
 
         auto [duration, runs] = benchmark([&] {
-            simulate_magnetization(context, echos.view_mut(), parameters.view(), sequence.view());
+            context.submit_device(
+                compas::simulate_magnetization_fisp,
+                write(echos),
+                parameters,
+                sequence);
+
+            context.synchronize();
         });
 
         std::cout << "benchmark: "

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/assertion.h"
 #include "core/complex_type.h"
 #include "core/context.h"
 #include "fisp_view.h"
@@ -40,16 +41,6 @@ struct FISPSequence: public Object {
         TE(TE),
         max_state(max_state),
         TI(TI) {}
-
-    FISPSequenceView view() const {
-        return {
-            .RF_train = RF_train.view(),
-            .sliceprofiles = sliceprofiles.view(),
-            .TR = TR,
-            .TE = TE,
-            .max_state = max_state,
-            .TI = TI};
-    }
 };
 
 inline FISPSequence make_fisp_sequence(
@@ -61,8 +52,40 @@ inline FISPSequence make_fisp_sequence(
     int max_state,
     float TI) {
     COMPAS_ASSERT(sliceprofiles.size(1) == RF_train.size(0));
-
     return {context.allocate(RF_train), context.allocate(sliceprofiles), TR, TE, max_state, TI};
 }
 
 }  // namespace compas
+
+namespace kmm {
+
+template<>
+struct TaskArgument<ExecutionSpace::Cuda, compas::FISPSequence> {
+    using type = compas::FISPSequenceView;
+
+    static TaskArgument pack(RuntimeImpl& rt, TaskRequirements& reqs, compas::FISPSequence p) {
+        return {
+            {.RF_train = {},
+             .sliceprofiles = {},
+             .TR = p.TR,
+             .TE = p.TE,
+             .max_state = p.max_state,
+             .TI = p.TI},
+            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.RF_train),
+            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.sliceprofiles)};
+    }
+
+    type unpack(TaskContext& context) {
+        view.RF_train =
+            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat>>(context, RF_train);
+        view.sliceprofiles =
+            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat, 2>>(context, sliceprofiles);
+        return view;
+    }
+
+    type view;
+    pack_argument_type<ExecutionSpace::Cuda, Array<compas::cfloat>> RF_train;
+    pack_argument_type<ExecutionSpace::Cuda, Array<compas::cfloat, 2>> sliceprofiles;
+};
+
+};  // namespace kmm

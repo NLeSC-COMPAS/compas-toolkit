@@ -25,15 +25,6 @@ struct TissueParameters: public Object {
         has_z(has_z),
         has_b0(has_b0),
         has_b1(has_b1) {}
-
-    TissueParametersView view() const {
-        return {
-            .parameters = parameters.view(),
-            .nvoxels = nvoxels,
-            .has_z = has_z,
-            .has_b0 = has_b0,
-            .has_b1 = has_b1};
-    }
 };
 
 TissueParameters make_tissue_parameters(
@@ -50,3 +41,28 @@ TissueParameters make_tissue_parameters(
     view<float> z);
 
 }  // namespace compas
+
+namespace kmm {
+template<>
+struct TaskArgument<ExecutionSpace::Cuda, compas::TissueParameters> {
+    using type = compas::TissueParametersView;
+
+    static TaskArgument pack(RuntimeImpl& rt, TaskRequirements& reqs, compas::TissueParameters p) {
+        return {
+            {.parameters = {},  //
+             .nvoxels = p.nvoxels,
+             .has_z = p.has_z,
+             .has_b0 = p.has_b0,
+             .has_b1 = p.has_b1},
+            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.parameters)};
+    }
+
+    type unpack(TaskContext& context) {
+        view.parameters = unpack_argument<ExecutionSpace::Cuda, Array<float, 2>>(context, params);
+        return view;
+    }
+
+    compas::TissueParametersView view;
+    PackedArray<const float, 2> params;
+};
+}  // namespace kmm

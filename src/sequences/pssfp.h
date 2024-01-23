@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/assertion.h"
 #include "core/context.h"
 #include "pssfp_view.h"
 
@@ -47,17 +48,6 @@ struct pSSFPSequence: public Object {
         gamma_dt_GRz(gamma_dt_GRz),
         nz(z.size()),
         z(z) {}
-
-    pSSFPSequenceView view() const {
-        return {
-            .nTR = nTR,
-            .RF_train = RF_train.view(),
-            .TR = TR,
-            .gamma_dt_RF = gamma_dt_RF.view(),
-            .dt = dt,
-            .gamma_dt_GRz = gamma_dt_GRz,
-            .z = z.view()};
-    }
 };
 
 inline pSSFPSequence make_pssfp_sequence(
@@ -81,3 +71,40 @@ inline pSSFPSequence make_pssfp_sequence(
 }
 
 }  // namespace compas
+
+namespace kmm {
+template<>
+struct TaskArgument<ExecutionSpace::Cuda, compas::pSSFPSequence> {
+    using type = compas::pSSFPSequenceView;
+
+    static TaskArgument pack(RuntimeImpl& rt, TaskRequirements& reqs, compas::pSSFPSequence p) {
+        return {
+            {.nTR = p.nTR,
+             .RF_train = {},
+             .TR = p.TR,
+             .gamma_dt_RF = {},
+             .dt = p.dt,
+             .gamma_dt_GRz = p.gamma_dt_GRz,
+             .z = {}},
+            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.RF_train),
+            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.gamma_dt_RF),
+            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.z),
+        };
+    }
+
+    type unpack(TaskContext& context) {
+        view.RF_train =
+            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat>>(context, RF_train);
+        view.gamma_dt_RF =
+            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat>>(context, gamma_dt_RF);
+        view.z = unpack_argument<ExecutionSpace::Cuda, Array<float>>(context, z);
+        return view;
+    }
+
+    compas::pSSFPSequenceView view;
+    pack_argument_type<ExecutionSpace::Cuda, Array<compas::cfloat>> RF_train;
+    pack_argument_type<ExecutionSpace::Cuda, Array<compas::cfloat>> gamma_dt_RF;
+    pack_argument_type<ExecutionSpace::Cuda, Array<float>> z;
+};
+
+};  // namespace kmm
