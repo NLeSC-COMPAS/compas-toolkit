@@ -214,17 +214,34 @@ void magnetization_to_signal_spiral(
     COMPAS_CUDA_CHECK(cudaGetLastError());
 }
 
-void magnetization_to_signal(
+cublasComputeType_t cublas_compute_type_from_simulate_method(SimulateSignalMethod method) {
+    switch (method) {
+        case SimulateSignalMethod::MatmulPedantic:
+            return CUBLAS_COMPUTE_32F_PEDANTIC;
+        case SimulateSignalMethod::Matmul:
+            return CUBLAS_COMPUTE_32F;
+        case SimulateSignalMethod::MatmulBF16:
+            return CUBLAS_COMPUTE_32F_FAST_16BF;
+        case SimulateSignalMethod::MatmulTF32:
+            return CUBLAS_COMPUTE_32F_FAST_TF32;
+        default:
+            COMPAS_PANIC("invalid value for `SimulateSignalMethod`");
+    }
+}
+
+CudaArray<cfloat, 3> magnetization_to_signal(
     const CudaContext& context,
-    CudaArray<cfloat, 3>& signal,
     CudaArray<cfloat, 2> echos,
     TissueParameters parameters,
-    Trajectory trajectory,
+    const Trajectory& trajectory,
     CudaArray<float, 2> coil_sensitivities,
     SimulateSignalMethod method) {
+    int ncoils = coil_sensitivities.size(0);
     int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
+
+    auto signal = compas::CudaArray<cfloat, 3>(ncoils, nreadouts, samples_per_readout);
 
     if (const auto c = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
         auto temp_exponents = CudaArray<cfloat, 2>(samples_per_readout, nvoxels);
@@ -241,21 +258,6 @@ void magnetization_to_signal(
                 write(temp_exponents),
                 write(temp_factors));
         } else {
-            cublasComputeType_t compute_type = [&] {
-                switch (method) {
-                    case SimulateSignalMethod::MatmulPedantic:
-                        return CUBLAS_COMPUTE_32F_PEDANTIC;
-                    case SimulateSignalMethod::Matmul:
-                        return CUBLAS_COMPUTE_32F;
-                    case SimulateSignalMethod::MatmulBF16:
-                        return CUBLAS_COMPUTE_32F_FAST_16BF;
-                    case SimulateSignalMethod::MatmulTF32:
-                        return CUBLAS_COMPUTE_32F_FAST_TF32;
-                    default:
-                        COMPAS_PANIC("invalid value for `SimulateSignalMethod`");
-                }
-            }();
-
             context.submit_device(
                 magnetization_to_signal_cartesian_gemm,
                 write(signal),
@@ -265,7 +267,7 @@ void magnetization_to_signal(
                 coil_sensitivities,
                 write(temp_exponents),
                 write(temp_factors),
-                compute_type);
+                cublas_compute_type_from_simulate_method(method));
         }
     } else if (const auto s = dynamic_cast<const SpiralTrajectory*>(&trajectory)) {
         auto temp_exponents = CudaArray<cfloat, 2>(echos.sizes());
@@ -283,5 +285,7 @@ void magnetization_to_signal(
     } else {
         COMPAS_PANIC("invalid trajectory type");
     }
+
+    return signal;
 }
 }  // namespace compas

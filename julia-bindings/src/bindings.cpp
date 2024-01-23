@@ -227,17 +227,11 @@ extern "C" void compas_magnetization_to_signal(
         auto echos = make_view(echos_ptr, nreadouts, nvoxels);
         auto coils = make_view(coils_ptr, ncoils, nvoxels);
 
-        auto d_signal = context->allocate(signal);
         auto d_echos = context->allocate(echos);
         auto d_coils = context->allocate(coils);
 
-        compas::magnetization_to_signal(
-            *context,
-            d_signal,
-            d_echos,
-            *parameters,
-            *trajectory,
-            d_coils);
+        auto d_signal =
+            compas::magnetization_to_signal(*context, d_echos, *parameters, *trajectory, d_coils);
 
         d_signal.read(signal);
     });

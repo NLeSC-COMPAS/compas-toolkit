@@ -15,12 +15,11 @@ enum struct SimulateSignalMethod {
     MatmulBF16,
 };
 
-void magnetization_to_signal(
+CudaArray<cfloat, 3> magnetization_to_signal(
     const CudaContext& context,
-    CudaArray<cfloat, 3>& signal,
     CudaArray<cfloat, 2> echos,
     TissueParameters parameters,
-    Trajectory trajectory,
+    const Trajectory& trajectory,
     CudaArray<float, 2> coil_sensitivities,
     SimulateSignalMethod method = SimulateSignalMethod::Direct);
 

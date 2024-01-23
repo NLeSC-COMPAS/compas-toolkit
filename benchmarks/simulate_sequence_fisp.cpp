@@ -12,21 +12,21 @@ int main() {
     auto context = make_context();
     int nvoxels = 256 * 256;
     int nreadouts = 256;
-    float TR = 0.010;
-    float TE = 0.005;
-    float TI = 0.100;
+    float TR = 0.010f;
+    float TE = 0.005f;
+    float TI = 0.100f;
     int max_state = 25;
     int num_slices = 35;
 
     auto echos = CudaArray<cfloat, 2>(nreadouts, nvoxels);
 
-    auto RF_train = std::vector<cfloat>(nreadouts);
-    for (size_t i = 0; i < nreadouts; i++) {
+    auto RF_train = std::vector<cfloat>(size_t(nreadouts));
+    for (size_t i = 0; i < RF_train.size(); i++) {
         RF_train[i] = float(i * 90) / float(nreadouts - 1);
     }
 
-    auto sliceprofiles = std::vector<cfloat>(nreadouts * num_slices);
-    for (size_t i = 0; i < nreadouts * num_slices; i++) {
+    auto sliceprofiles = std::vector<cfloat>(size_t(nreadouts * num_slices));
+    for (size_t i = 0; i < sliceprofiles.size(); i++) {
         sliceprofiles[i] = 1;
     }
 

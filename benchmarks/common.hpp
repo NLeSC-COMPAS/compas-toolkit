@@ -22,7 +22,7 @@ static std::pair<double, int> benchmark(F fun) {
     } while (after < before + std::chrono::seconds(1));
 
     double duration =
-            std::chrono::duration_cast<std::chrono::nanoseconds>(after - before).count() * 1e-6 / runs;
+            static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(after - before).count()) * 1e-6 / runs;
 
     return {duration, runs};
 }
@@ -39,16 +39,16 @@ static compas::TissueParameters generate_tissue_parameters(const compas::CudaCon
     auto z = std::vector<float>(nvoxels);
 
     int width = int(sqrt(nvoxels));
-    for (int i = 0; i < nvoxels; i++) {
-        T1[i] = 0.85;
-        T2[i] = 0.05;
-        B1[i] = 1;
-        B0[i] = 0;
-        rho_x[i] = 3;
-        rho_y[i] = 4;
-        x[i] = float(i / width) * 25.6;
-        y[i] = float(i % width) * 25.6;
-        z[i] = 0;
+    for (size_t i = 0; i < size_t(nvoxels); i++) {
+        T1[i] = 0.85f;
+        T2[i] = 0.05f;
+        B1[i] = 1.0f;
+        B0[i] = 0.0f;
+        rho_x[i] = 3.0f;
+        rho_y[i] = 4.0f;
+        x[i] = float(i / width) * 25.6f;
+        y[i] = float(i % width) * 25.6f;
+        z[i] = 0.0f;
     }
 
     auto parameters = make_tissue_parameters(
