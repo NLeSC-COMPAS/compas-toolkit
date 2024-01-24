@@ -56,11 +56,11 @@ configure_file(
     ${PROJECT_SOURCE_DIR}/julia-bindings/src/constants.h.input
     ${PROJECT_SOURCE_DIR}/julia-bindings/src/constants.h)
 
-
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 add_subdirectory(thirdparty/Catch2)
-add_subdirectory(thirdparty/kmm)
 set(KMM_USE_CUDA ON)
 set(KMM_STATIC ON)
+add_subdirectory(thirdparty/kmm)
 target_link_libraries(${PROJECT_NAME} PUBLIC kmm)
 
 
