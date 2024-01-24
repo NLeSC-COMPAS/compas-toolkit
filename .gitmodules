@@ -6,4 +6,4 @@
 	url = https://github.com/KernelTuner/kernel_launcher.git
 [submodule "thirdparty/kmm"]
 	path = thirdparty/kmm
-	url = git@github.com:NLeSC-COMPAS/kmm.git
+	url = https://github.com/NLeSC-COMPAS/kmm.git
