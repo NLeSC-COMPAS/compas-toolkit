@@ -58,10 +58,9 @@ configure_file(
 
 
 add_subdirectory(thirdparty/Catch2)
-
-set(USE_CUDA ON)
-target_compile_definitions(${PROJECT_NAME} PUBLIC -DKMM_USE_CUDA=1)
 add_subdirectory(thirdparty/kmm)
+set(KMM_USE_CUDA ON)
+set(KMM_STATIC ON)
 target_link_libraries(${PROJECT_NAME} PUBLIC kmm)
 
 
