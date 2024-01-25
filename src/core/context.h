@@ -48,6 +48,11 @@ struct CudaContext {
     }
 
     template<typename... Args>
+    void submit_host(Args... args) const {
+        m_runtime.submit(kmm::Host(), args...);
+    }
+
+    template<typename... Args>
     void submit_device(Args... args) const {
         m_runtime.submit(m_device, args...);
     }
