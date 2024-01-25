@@ -1,0 +1,3 @@
+Checks:
+  -*,readability-*,bugprone-*,-readability-magic-numbers,-readability-use-anyofallof,-readability-else-after-return,
+  -readability-identifier-length, -readability-function-cognitive-complexity

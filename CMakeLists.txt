@@ -33,7 +33,7 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 # Enable PIC
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-set(PROJECT_CLANG_TIDY clang-tidy -checks=-*,readability-*,bugprone-*,-readability-magic-numbers,-readability-use-anyofallof,-readability-else-after-return)
+set(PROJECT_CLANG_TIDY clang-tidy)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${PROJECT_CLANG_TIDY}")
 
 find_package(CUDAToolkit REQUIRED)
