@@ -19,6 +19,56 @@ function version()::String
     return unsafe_string(ptr)
 end
 
+mutable struct Context
+    ptr::Ptr{Cvoid}
+
+    function Context(device::Integer)
+        ptr = @ccall LIBRARY.compas_make_context(device::Int32)::Ptr{Cvoid}
+        obj = new(ptr)
+        destroy = (obj) -> @ccall LIBRARY.compas_destroy_context(ptr::Ptr{Cvoid})::Cvoid
+        finalizer(destroy, obj)
+    end
+end
+
+make_context(device::Integer)::Context = Context(device)
+make_context() = make_context(0)
+
+mutable struct CompasArray{T, N} <: AbstractArray{T, N}
+    ptr::Ptr{Cvoid}
+    sizes::Dims{N}
+
+    function CompasArray{T, N}(ptr::Ptr{Cvoid}, sizes::Dims{N}) where {T, N}
+        obj = new(ptr, sizes)
+        destroy = (obj) -> @ccall LIBRARY.compas_destroy_array(ptr::Ptr{Cvoid})::Cvoid
+        finalizer(destroy, obj)
+    end
+end
+
+Base.size(array::CompasArray) = reverse(array.sizes)
+Base.getindex(array::CompasArray, i) = throw(ArgumentError("cannot index into a 'CompasArray'"))
+
+function make_array(context::Context, input::Array{Float32, N})::CompasArray{Float32, N} where {N}
+    sizes::Vector{Int64} = [reverse(size(input))...]
+
+    @ccall LIBRARY.compas_make_array_float(
+        context.ptr::Ptr{Cvoid},
+        pointer(input)::Ptr{Float32},
+        N::Int32,
+        pointer(sizes)::Ptr{Int64}
+    )::Cvoid
+end
+
+function make_array(context::Context, input::Array{ComplexF32, N})::CompasArray{ComplexF32, N} where {N}
+    sizes::Vector{Int64} = [reverse(size(input))...]
+
+    @ccall LIBRARY.compas_make_array_complex(
+        context.ptr::Ptr{Cvoid},
+        pointer(input)::Ptr{ComplexF32},
+        N::Int32,
+        pointer(sizes)::Ptr{Int64}
+    )::Cvoid
+end
+
 function assert_size(input::AbstractArray, expected::Dims{N}) where {N}
     gotten = size(input)
     if gotten != expected
@@ -51,20 +101,6 @@ end
 function unsafe_destroy_object!(obj)
     @ccall LIBRARY.compas_destroy(obj.ptr::Ptr{Cvoid})::Cvoid
 end
-
-mutable struct Context
-    ptr::Ptr{Cvoid}
-
-    function Context(device::Integer)
-        ptr = @ccall LIBRARY.compas_make_context(device::Int32)::Ptr{Cvoid}
-        obj = new(ptr)
-        destroy = (obj) -> @ccall LIBRARY.compas_destroy_context(ptr::Ptr{Cvoid})::Cvoid
-        finalizer(destroy, obj)
-    end
-end
-
-make_context(device::Integer)::Context = Context(device)
-make_context() = make_context(0)
 
 abstract type Trajectory end
 
@@ -235,7 +271,7 @@ mutable struct pSSFPSequence
 
         RF_train = convert_array(ComplexF32, (nreadouts,), RF_train)
         gamma_dt_RF = convert_array(ComplexF32, (nRF,), gamma_dt_RF)
-        z = convert_array(ComplexF32, (nslices,), z)
+        z = convert_array(Float32, (nslices,), z)
 
         ptr = @ccall LIBRARY.compas_make_pssfp_sequence(
             pointer(context)::Ptr{Cvoid},
@@ -316,14 +352,14 @@ function magnetization_to_signal(
     echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
     coils = convert_array(Float32, (nvoxels, ncoils), coils)
 
-    @ccall LIBRARY.compas_magnetization_to_signal
+    @ccall LIBRARY.compas_magnetization_to_signal(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(signal)::Ptr{ComplexF32},
         pointer(echos)::Ptr{ComplexF32},
         parameters.ptr::Ptr{Cvoid},
         trajectory.ptr::Ptr{Cvoid},
-        pointer(coils)::Ptr{Float32},
+        pointer(coils)::Ptr{Float32}
     )::Cvoid
 
     return signal
@@ -334,5 +370,6 @@ Base.pointer(c::Trajectory) = c.ptr
 Base.pointer(c::TissueParameters) = c.ptr
 Base.pointer(c::FispSequence) = c.ptr
 Base.pointer(c::pSSFPSequence) = c.ptr
+Base.pointer(c::CompasArray) = c.ptr
 
 end
