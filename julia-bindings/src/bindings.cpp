@@ -43,6 +43,49 @@ extern "C" void compas_destroy_context(const compas::CudaContext* ctx) {
     return catch_exceptions([&] { delete ctx; });
 }
 
+extern "C" const kmm::ArrayBase* compas_make_array_float(
+    const compas::CudaContext* context,
+    const float* data_ptr,
+    int rank,
+    int64_t* sizes) {
+    return catch_exceptions([&]() -> kmm::ArrayBase* {
+        if (rank == 1) {
+            return new kmm::Array<float>(context->allocate(data_ptr, sizes[0]));
+        } else if (rank == 2) {
+            return new kmm::Array<float, 2>(context->allocate(data_ptr, sizes[0], sizes[1]));
+        } else if (rank == 3) {
+            return new kmm::Array<float, 3>(
+                context->allocate(data_ptr, sizes[0], sizes[1], sizes[2]));
+        } else {
+            COMPAS_PANIC("cannot support rank > 3");
+        }
+    });
+}
+
+extern "C" const kmm::ArrayBase* compas_make_array_complex(
+    const compas::CudaContext* context,
+    const compas::cfloat* data_ptr,
+    int rank,
+    int64_t* sizes) {
+    return catch_exceptions([&]() -> kmm::ArrayBase* {
+        if (rank == 1) {
+            return new kmm::Array<compas::cfloat>(context->allocate(data_ptr, sizes[0]));
+        } else if (rank == 2) {
+            return new kmm::Array<compas::cfloat, 2>(
+                context->allocate(data_ptr, sizes[0], sizes[1]));
+        } else if (rank == 3) {
+            return new kmm::Array<compas::cfloat, 3>(
+                context->allocate(data_ptr, sizes[0], sizes[1], sizes[2]));
+        } else {
+            COMPAS_PANIC("cannot support rank > 3");
+        }
+    });
+}
+
+extern "C" void compas_destroy_array(const kmm::ArrayBase* array) {
+    return catch_exceptions([&] { delete array; });
+}
+
 extern "C" compas::Trajectory* compas_make_cartesian_trajectory(
     const compas::CudaContext* context,
     int nreadouts,
