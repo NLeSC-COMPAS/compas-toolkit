@@ -331,7 +331,6 @@ end
 
 function compute_jacobian(
     context::Context,
-    Jv::AbstractMatrix,
     echos::AbstractMatrix,
     𝜕echos::AbstractArray{<:Any,3},
     parameters::TissueParameters,
@@ -344,7 +343,7 @@ function compute_jacobian(
     samples_per_readout::Int64 = trajectory.samples_per_readout
     nvoxels::Int64 = parameters.nvoxels
 
-    Jv = convert_array(ComplexF32, (nreadouts * samples_per_readout, ncoils), Jv)
+    Jv = Array{ComplexF32}(undef, nreadouts * samples_per_readout, ncoils)
     echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
     𝜕echos = convert_array(ComplexF32, (nvoxels, nreadouts, 2), 𝜕echos)
     coils = convert_array(Float32, (nvoxels, ncoils), coils)
@@ -367,7 +366,6 @@ end
 
 function compute_jacobian_transposed(
     context::Context,
-    Jᴴv::AbstractMatrix,
     echos::AbstractMatrix,
     𝜕echos::AbstractArray{<:Any,3},
     parameters::TissueParameters,
@@ -380,7 +378,7 @@ function compute_jacobian_transposed(
     samples_per_readout::Int64 = trajectory.samples_per_readout
     nvoxels::Int64 = parameters.nvoxels
 
-    Jᴴv = convert_array(ComplexF32, (nvoxels, 4), Jᴴv)
+    Jᴴv = Array{ComplexF32}(undef, nvoxels, 4)
     echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
     𝜕echos = convert_array(ComplexF32, (nvoxels, nreadouts, 2), 𝜕echos)
     coils = convert_array(Float32, (nvoxels, ncoils), coils)
