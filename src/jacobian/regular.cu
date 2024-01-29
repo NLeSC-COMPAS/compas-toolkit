@@ -42,31 +42,36 @@ __device__ DeltaMagnetization delta_to_sample_point(
     return {ms, dms};
 }
 
+template<int ncoils, int threads_per_sample = 1>
 __global__ void jacobian_product(
-    cuda_view_mut<cfloat> Jv,
+    cuda_view_mut<cfloat, 2> Jv,
     cuda_view<cfloat, 2> echos,
     cuda_view<cfloat, 3> delta_echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
-    cuda_view<float> coil_sensitivities,
+    cuda_view<float, 2> coil_sensitivities,
     cuda_view<cfloat, 2> v) {
-    auto i = index_t(blockIdx.x * blockDim.x + threadIdx.x);
+    index_t i = index_t(blockIdx.x * blockDim.x + threadIdx.x) / threads_per_sample;
+    index_t lane_id = threadIdx.x % threads_per_sample;
 
     int ns = trajectory.samples_per_readout;
     int nr = trajectory.nreadouts;
-    auto result = cfloat();
+    cfloat result[ncoils];
+
+#pragma unroll
+    for (int icoil = 0; icoil < ncoils; icoil++) {
+        result[icoil] = cfloat(0);
+    }
 
     if (i < nr * ns) {
         int r = i / ns;
         int s = i % ns;
         int nvoxels = parameters.nvoxels;
 
-        for (index_t voxel = 0; voxel < nvoxels; voxel++) {
+        for (index_t voxel = lane_id; voxel < nvoxels; voxel += threads_per_sample) {
             // load coordinates, parameters, coil sensitivities and proton density for voxel
             auto p = parameters.get(voxel);
             auto rho = p.rho;
-
-            auto C = coil_sensitivities[voxel];
 
             // load magnetization and partial derivatives at echo time of the r-th readout
             auto me = echos[r][voxel];
@@ -79,12 +84,30 @@ __global__ void jacobian_product(
             auto dmv = vec4<cfloat>(v[0][voxel], v[1][voxel], v[2][voxel], v[3][voxel])
                 * vec4<cfloat>(dm[0], dm[1], m, m * cfloat(0, 1));
 
-            auto lin_scale = vec4<cfloat>(p.T1 * C * rho, p.T2 * C * rho, C, C);
+            for (int icoil = 0; icoil < ncoils; icoil++) {
+                auto C = coil_sensitivities[icoil][voxel];
+                auto lin_scale = vec4<cfloat>(p.T1 * C * rho, p.T2 * C * rho, C, C);
 
-            result += dot(lin_scale, dmv);
+                result[icoil] += dot(lin_scale, dmv);
+            }
         }
 
-        Jv[i] = result;
+#pragma unroll
+        for (int icoil = 0; icoil < ncoils; icoil++) {
+            cfloat value = result[icoil];
+
+#pragma unroll 6
+            for (uint delta = threads_per_sample / 2; delta > 0; delta /= 2) {
+                static constexpr uint mask = uint((1L << threads_per_sample) - 1);
+
+                value.re += __shfl_down_sync(mask, value.re, delta, threads_per_sample);
+                value.im += __shfl_down_sync(mask, value.im, delta, threads_per_sample);
+            }
+
+            if (lane_id == 0) {
+                Jv[icoil][i] = value;
+            }
+        }
     }
 }
 }  // namespace kernels
@@ -100,6 +123,7 @@ void compute_jacobian(
     cuda_view<cfloat, 2> vector) {
     CudaContextGuard guard {ctx};
 
+    static constexpr int threads_per_sample = 8;
     int ns = trajectory.samples_per_readout;
     int nreadouts = trajectory.nreadouts;
     int nvoxels = parameters.nvoxels;
@@ -118,18 +142,32 @@ void compute_jacobian(
     COMPAS_ASSERT(vector.size(1) == nvoxels);
 
     dim3 block_dim = 256;
-    dim3 grid_dim = div_ceil(uint(nreadouts * ns), block_dim.x);
+    dim3 grid_dim = div_ceil(uint(nreadouts * ns * threads_per_sample), block_dim.x);
 
     // Repeat for each coil
-    for (int icoil = 0; icoil < ncoils; icoil++) {
-        kernels::jacobian_product<<<grid_dim, block_dim>>>(
-            Jv.drop_leading_axis(icoil),
-            echos,
-            delta_echos,
-            parameters,
-            trajectory,
-            coil_sensitivities.drop_leading_axis(icoil),
-            vector);
+#define COMPAS_COMPUTE_JACOBIAN_IMPL(N)                                              \
+    if (ncoils == (N)) {                                                             \
+        kernels::jacobian_product<(N), threads_per_sample><<<grid_dim, block_dim>>>( \
+            Jv,                                                                      \
+            echos,                                                                   \
+            delta_echos,                                                             \
+            parameters,                                                              \
+            trajectory,                                                              \
+            coil_sensitivities,                                                      \
+            vector);                                                                 \
+        return;                                                                      \
     }
+
+    COMPAS_COMPUTE_JACOBIAN_IMPL(1)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(2)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(3)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(4)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(5)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(6)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(7)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(8)
+
+    throw std::runtime_error("cannot support more than 8 coils");
 }
+
 }  // namespace compas
