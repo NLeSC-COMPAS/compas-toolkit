@@ -79,15 +79,14 @@ signal_ref = simulate(CUDALibs(), pssfp_ref, parameters_ref, trajectory_ref, coi
 signal_ref = collect(signal_ref)
 signal_ref = reshape(signal_ref, ns, nr)
 
-signal = zeros(ComplexF32, ns, nr, ncoils)
-CompasToolkit.magnetization_to_signal(
+signal = CompasToolkit.magnetization_to_signal(
     context,
-    signal,
     echos,
     parameters,
     trajectory,
     coil_sensitivities)
 
+signal = collect(signal)
 
 for c in 1:ncoils
     expected = map(x -> x[c], signal_ref)

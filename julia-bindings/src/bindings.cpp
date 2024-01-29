@@ -62,6 +62,15 @@ extern "C" const kmm::ArrayBase* compas_make_array_float(
     });
 }
 
+extern "C" void compas_read_array_float(
+    const compas::CudaContext* context,
+    const kmm::ArrayBase* input_array,
+    float* dest_ptr) {
+    catch_exceptions([&]() -> kmm::ArrayBase* {
+        input_array->block()->read(dest_ptr, input_array->size() * sizeof(float));
+    });
+}
+
 extern "C" const kmm::ArrayBase* compas_make_array_complex(
     const compas::CudaContext* context,
     const compas::cfloat* data_ptr,
@@ -79,6 +88,15 @@ extern "C" const kmm::ArrayBase* compas_make_array_complex(
         } else {
             COMPAS_PANIC("cannot support rank > 3");
         }
+    });
+}
+
+extern "C" void compas_read_array_complex(
+    const compas::CudaContext* context,
+    const kmm::ArrayBase* input_array,
+    compas::cfloat* dest_ptr) {
+    catch_exceptions([&]() -> kmm::ArrayBase* {
+        input_array->block()->read(dest_ptr, input_array->size() * sizeof(compas::cfloat));
     });
 }
 
@@ -156,76 +174,38 @@ extern "C" const compas::TissueParameters* compas_make_tissue_parameters(
     });
 }
 
-extern "C" const compas::pSSFPSequence* compas_make_pssfp_sequence(
-    const compas::CudaContext* context,
-    int nRF,
-    int nreadouts,
-    int nslices,
-    const compas::cfloat* RF_train,
-    float TR,
-    const compas::cfloat* gamma_dt_RF,
-    float dt_ex,
-    float dt_inv,
-    float dt_pr,
-    float gamma_dt_GRz_ex,
-    float gamma_dt_GRz_inv,
-    float gamma_dt_GRz_pr,
-    const float* z) {
-    return catch_exceptions([&] {
-        auto seq = compas::make_pssfp_sequence(
-            *context,
-            make_view(RF_train, nreadouts),
-            TR,
-            make_view(gamma_dt_RF, nRF),
-            {dt_ex, dt_inv, dt_pr},
-            {gamma_dt_GRz_ex, gamma_dt_GRz_inv, gamma_dt_GRz_pr},
-            make_view(z, nslices));
-
-        return new compas::pSSFPSequence(seq);
-    });
-}
-
-extern "C" const compas::FISPSequence* compas_make_fisp_sequence(
-    const compas::CudaContext* context,
-    int nreadouts,
-    int nslices,
-    const compas::cfloat* RF_train,
-    const compas::cfloat* slice_profiles,
-    float TR,
-    float TE,
-    int max_state,
-    float TI) {
-    return catch_exceptions([&] {
-        auto seq = compas::make_fisp_sequence(
-            *context,
-            make_view(RF_train, nreadouts),
-            make_view(slice_profiles, nslices, nreadouts),
-            TR,
-            TE,
-            max_state,
-            TI);
-
-        return new compas::FISPSequence(seq);
-    });
-}
-
 extern "C" void compas_simulate_magnetization_fisp(
     const compas::CudaContext* context,
     compas::cfloat* echos_ptr,
     const compas::TissueParameters* parameters,
-    const compas::FISPSequence* sequence) {
+    compas::CudaArray<compas::cfloat>* RF_train,
+    compas::CudaArray<compas::cfloat, 2>* sliceprofiles,
+    float TR,
+    float TE,
+    int max_state,
+    float TI
+    ) {
     return catch_exceptions([&] {
-        int nreadouts = sequence->RF_train.size();
+        int nreadouts = RF_train->size();
         int nvoxels = parameters->nvoxels;
 
         auto echos = make_view(echos_ptr, nreadouts, nvoxels);
         auto d_echos = compas::CudaArray<compas::cfloat, 2>(nreadouts, nvoxels);
 
+        auto sequence = compas::FISPSequence {
+                *RF_train,
+                *sliceprofiles,
+                TR,
+                TE,
+                max_state,
+                TI
+        };
+
         context->submit_device(
             compas::simulate_magnetization_fisp,
             write(d_echos),
             *parameters,
-            *sequence);
+            sequence);
 
         d_echos.read(echos);
     });
@@ -235,29 +215,46 @@ extern "C" void compas_simulate_magnetization_pssfp(
     const compas::CudaContext* context,
     compas::cfloat* echos_ptr,
     const compas::TissueParameters* parameters,
-    const compas::pSSFPSequence* sequence) {
+    const compas::CudaArray<compas::cfloat>* RF_train,
+    float TR,
+    const compas::CudaArray<compas::cfloat>* gamma_dt_RF,
+    float dt_ex,
+    float dt_inv,
+    float dt_pr,
+    float gamma_dt_GRz_ex,
+    float gamma_dt_GRz_inv,
+    float gamma_dt_GRz_pr,
+    const compas::CudaArray<float>* z) {
     return catch_exceptions([&] {
-        int nreadouts = sequence->RF_train.size();
+        int nreadouts = RF_train->size();
         int nvoxels = parameters->nvoxels;
 
         auto echos = make_view(echos_ptr, nreadouts, nvoxels);
         auto d_echos = context->allocate(echos);
 
+        auto sequence = compas::pSSFPSequence {
+                *RF_train,
+                TR,
+                *gamma_dt_RF,
+                {dt_ex, dt_inv, dt_pr},
+                {gamma_dt_GRz_ex, gamma_dt_GRz_inv, gamma_dt_GRz_pr},
+                *z
+        };
+
         context->submit_device(
             compas::simulate_magnetization_pssfp,
             write(d_echos),
             *parameters,
-            *sequence);
+            sequence);
 
         d_echos.read(echos);
     });
 }
 
-extern "C" void compas_magnetization_to_signal(
+extern "C" kmm::ArrayBase* compas_magnetization_to_signal(
     const compas::CudaContext* context,
     int ncoils,
-    compas::cfloat* signal_ptr,
-    const compas::cfloat* echos_ptr,
+    const compas::CudaArray<compas::cfloat, 2>* echos,
     const compas::TissueParameters* parameters,
     const compas::Trajectory* trajectory,
     const float* coils_ptr) {
@@ -266,16 +263,13 @@ extern "C" void compas_magnetization_to_signal(
         int samples_per_readout = trajectory->samples_per_readout;
         int nvoxels = parameters->nvoxels;
 
-        auto signal = make_view(signal_ptr, ncoils, nreadouts, samples_per_readout);
-        auto echos = make_view(echos_ptr, nreadouts, nvoxels);
         auto coils = make_view(coils_ptr, ncoils, nvoxels);
 
-        auto d_echos = context->allocate(echos);
         auto d_coils = context->allocate(coils);
 
-        auto d_signal =
-            compas::magnetization_to_signal(*context, d_echos, *parameters, *trajectory, d_coils);
+        auto signal =
+            compas::magnetization_to_signal(*context, *echos, *parameters, *trajectory, d_coils);
 
-        d_signal.read(signal);
+        return new compas::CudaArray<compas::cfloat, 3>(signal);
     });
 }
