@@ -5,7 +5,7 @@ namespace compas {
 
 namespace kernels {
 
-__device__ void expand_readout_and_accumulate_mhv(
+static __device__ void expand_readout_and_accumulate_mhv(
     cfloat& mHv,
     vec2<cfloat>& dmHv,
     cfloat me,
@@ -17,7 +17,7 @@ __device__ void expand_readout_and_accumulate_mhv(
     auto ns = trajectory.samples_per_readout;
     auto delta_t = trajectory.delta_t;
     auto delta_k = trajectory.delta_k;
-    auto R2 = float(1 / p.T2);
+    auto R2 = float(1.0f / p.T2);
     auto x = p.x;
     auto y = p.y;
 
@@ -65,25 +65,22 @@ __global__ void jacobian_transposed_product(
     if (voxel < parameters.nvoxels) {
         int nreadouts = trajectory.nreadouts;
         auto p = parameters.get(voxel);
-        auto c = coil_sensitivities[voxel];
 
         cfloat mHv = 0;
         vec2<cfloat> dmHv = {0, 0};
 
         for (int readout = 0; readout < nreadouts; readout++) {
-            auto me = echos[readout][voxel];
-            auto dme =
-                vec2<cfloat> {delta_echos[0][readout][voxel], delta_echos[1][readout][voxel]};
+            cfloat me = echos[readout][voxel];
+            vec2<cfloat> dme = {delta_echos[0][readout][voxel], delta_echos[1][readout][voxel]};
 
             expand_readout_and_accumulate_mhv(mHv, dmHv, me, dme, p, trajectory, readout, vector);
         }
 
+        auto c = coil_sensitivities[voxel];
         auto rho = p.rho;
-        auto tmp = vec4<cfloat>(
-            dmHv[0],
-            dmHv[1],
-            mHv,
-            mHv * cfloat(0, -1));  // size = (nr_nonlinpars + 2) x nr_coils
+
+        // size = (nr_nonlinpars + 2) x nr_coils
+        auto tmp = vec4<cfloat>(dmHv[0], dmHv[1], mHv, mHv * cfloat(0, -1));
         auto lin_scale = vec4<cfloat>(p.T1 * c * rho, p.T2 * c * rho, c, c);
 
         for (int i = 0; i < 4; i++) {

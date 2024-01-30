@@ -94,7 +94,6 @@ function compute_Jv(echos, ∂echos, parameters, coil_sensitivities::AbstractArr
 end
 
 
-
 context = CompasToolkit.make_context()
 
 # Finally we assemble the phantom as an array of `T₁T₂B₀ρˣρʸxy` values
@@ -127,7 +126,7 @@ v = rand(ComplexF32, nvoxels, 4)
 v_ref = map(SVector{4}, eachcol(v)...)
 
 Jv_ref = compute_Jv(gpu(echos), gpu(∂echos), gpu(parameters_ref), gpu(coil_sensitivities_ref), gpu(trajectory_ref), gpu(v_ref))
-Jv_ref = collect(Jv_ref)
+Jv_ref = reduce(hcat, collect(Jv_ref)) # Vector{Svector} -> Matrix
 
 Jv = CompasToolkit.compute_jacobian(
     context,
@@ -139,16 +138,4 @@ Jv = CompasToolkit.compute_jacobian(
     v
 )
 
-for c in 1:ncoils
-    expected = map(x -> x[c], Jv_ref)
-    answer = Jv[:,c]
-
-    println("fraction equal: ", sum(isapprox.(answer, expected, rtol=0.05)) / length(answer))
-
-    err = abs.(answer - expected)
-    println("maximum abs error: ", maximum(err))
-    println("maximum rel error: ", maximum(err ./ abs.(expected)))
-
-    idx = argmax(err ./ abs.(expected))
-    println("maximum rel error index: ", idx, " ", expected[idx], " != ", answer[idx])
-end
+print_equals_check(Jv_ref, transpose(Jv))

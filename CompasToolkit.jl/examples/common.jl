@@ -101,3 +101,20 @@ function generate_delta_echos(N, sequence)
 
     return cat(collect(transpose(dechos_dT1)), collect(transpose(dechos_dT2)); dims=3) ./ Δ
 end
+
+function print_equals_check(expected, answer)
+    atol = 1e-9
+
+    for rtol in [0.001, 0.005, 0.01, 0.05, 0.1]
+        is_equal = isapprox.(answer, expected, atol=atol, rtol=rtol)
+        println("fraction equal (atol=$(atol), rtol=$(rtol)): ", sum(is_equal) / length(answer))
+    end
+
+    err = abs.(answer - expected)
+    index = argmax(err)
+    println("maximum abs error ($(index)): ", err[index], "($(answer[index]) vs $(expected[index]))")
+
+    rel_err = err ./ max.(abs.(expected), atol)
+    index = argmax(rel_err)
+    println("maximum rel error ($(index)): ", rel_err[index], "($(answer[index]) vs $(expected[index]))")
+end

@@ -1,9 +1,109 @@
 using CompasToolkit
 using ImagePhantoms
 using LinearAlgebra
+using BlochSimulators
+using CUDA
+using Random
+using Cthulhu
 
 include("common.jl")
 
+@inline function ∂expand_readout_and_accumulate_mᴴv(mᴴv, ∂mᴴv, mₑ, ∂mₑ, p, trajectory::CartesianTrajectory, readout_idx, t, v)
+    ns = nsamplesperreadout(trajectory, readout_idx)
+    Δt = trajectory.Δt
+    Δk = trajectory.Δk_adc[readout_idx]
+    R₂ = inv(p.T₂)
+    x  = p.x
+
+    # Gradient rotation per sample point
+    θ = Δk * x
+    # B₀ rotation per sample point
+#     θ += (hasB₀(p) ? Δt*π*p.B₀*2 : 0)
+    θ += (true ? Δt*π*p.B₀*2 : 0)
+    # "Rewind" to start of readout
+    R = exp((ns÷2)*Δt*R₂ - im*(ns÷2)*θ)
+    ∂R = ∂mˣʸ∂T₁T₂(0, -(ns÷2)*Δt*R₂*R₂*R)
+
+    ∂mₛ = ∂mₑ * R + mₑ * ∂R
+    mₛ = mₑ * R
+    # T₂ decay and gradient- and B₀ induced rotation per sample
+    E₂eⁱᶿ = exp(-Δt*R₂ + im*θ)
+    ∂E₂eⁱᶿ = ∂mˣʸ∂T₁T₂(0, Δt*R₂*R₂*E₂eⁱᶿ)
+
+    for sample in 1:ns
+        # accumulate dot product in mᴴv
+        mᴴv  += conj(mₛ)   * transpose(v[t])
+        ∂mᴴv += conj(∂mₛ) .* transpose(v[t])
+
+        # compute magnetization at next sample point
+        ∂mₛ = ∂mₛ * E₂eⁱᶿ + mₛ * ∂E₂eⁱᶿ
+        mₛ  = mₛ * E₂eⁱᶿ
+        # increase time index
+        t += 1
+
+    end
+
+    return mᴴv, ∂mᴴv, t
+end
+
+function Jᴴv_kernel!(Jᴴv, echos, ∂echos, parameters, coil_sensitivities::AbstractArray{SVector{Nc, T}}, trajectory,v) where {T,Nc}
+    # v is a vector of length "nr of measured samples",
+    # and each element is a StaticVector of length "nr of coils"
+    # output is a vector of length "nr of voxels" with each element
+    voxel = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+
+    if voxel <= length(parameters)
+
+        # sequence constants
+        nr = nreadouts(trajectory) # nr of readouts
+
+        # load parameters and spatial coordinates
+        p = parameters[voxel]
+        c = coil_sensitivities[voxel]
+
+        # accumulators
+        mᴴv = zero(SMatrix{1,Nc}{Complex{T}}{Nc})
+        ∂mᴴv = zero(SMatrix{2,Nc}{Complex{T}}{2*Nc})
+
+        t = 1
+
+        for readout = 1:nr
+            # load magnetization and partial derivatives at echo time of the r-th readout
+            mₑ = echos[voxel,readout]
+            ∂mₑ = ∂mˣʸ∂T₁T₂(∂echos[voxel,readout,1], ∂echos[voxel,readout,2])
+
+            mᴴv, ∂mᴴv, t = ∂expand_readout_and_accumulate_mᴴv(mᴴv, ∂mᴴv, mₑ, ∂mₑ, p, trajectory, readout, t, v)
+        end # loop over readouts
+
+        tmp = vcat(∂mᴴv, mᴴv, -im*mᴴv) # size = (nr_nonlinpars + 2) x nr_coils
+        Jᴴv[voxel] = zero(eltype(Jᴴv))
+
+        ρ = complex(p.ρˣ, p.ρʸ)
+
+        for j in eachindex(c)
+            lin_scale = SVector{4}(p.T₁*c[j]*ρ, p.T₂*c[j]*ρ, c[j], c[j])
+            Jᴴv[voxel] += conj(lin_scale) .* tmp[:,j]
+        end
+    end
+
+    nothing
+end
+
+function compute_Jᴴv(echos::AbstractArray{T}, ∂echos, parameters, coil_sensitivities, trajectory, v) where T
+    # allocate output on GPU
+    nv = length(parameters)
+    Jᴴv = CUDA.zeros(∂mˣʸ∂T₁T₂ρˣρʸ{T}, nv)
+
+    # launch cuda kernel
+    THREADS_PER_BLOCK = 256
+    nr_blocks = cld(nv, THREADS_PER_BLOCK)
+
+    CUDA.@sync begin
+        @cuda blocks=nr_blocks threads=THREADS_PER_BLOCK Jᴴv_kernel!(Jᴴv, echos, ∂echos, parameters, coil_sensitivities, trajectory, v)
+    end
+
+    return Jᴴv
+end
 
 
 context = CompasToolkit.make_context()
@@ -34,7 +134,12 @@ pssfp_ref = generate_pssfp_sequence(N)
 echos = generate_echos(N, pssfp_ref)
 ∂echos = generate_delta_echos(N, pssfp_ref)
 
-v = rand(ComplexF32, nsamples(trajectory), ncoils)
+Random.seed!(1337)
+v = rand(ComplexF32, nsamples(trajectory_ref), ncoils)
+v_ref = map(SVector{ncoils}, eachcol(v)...)
+
+Jᴴv_ref = compute_Jᴴv(gpu(echos), gpu(∂echos), gpu(parameters_ref), gpu(coil_sensitivities_ref), gpu(trajectory_ref), gpu(v_ref))
+Jᴴv_ref = reduce(hcat, collect(Jᴴv_ref)) # Vector{Svector} -> Matrix
 
 Jᴴv = CompasToolkit.compute_jacobian_transposed(
     context,
@@ -45,3 +150,5 @@ Jᴴv = CompasToolkit.compute_jacobian_transposed(
     coil_sensitivities,
     v
 )
+
+print_equals_check(Jᴴv_ref, transpose(Jᴴv))
