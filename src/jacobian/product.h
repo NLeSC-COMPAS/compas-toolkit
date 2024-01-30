@@ -15,7 +15,7 @@ void compute_jacobian(
     cuda_view<float, 2> coil_sensitivities,
     cuda_view<cfloat, 2> vector);
 
-void compute_jacobian_transposed(
+void compute_jacobian_hermitian(
     const CudaContext& ctx,
     cuda_view_mut<cfloat, 2> JHv,
     cuda_view<cfloat, 2> echos,

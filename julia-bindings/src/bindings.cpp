@@ -285,7 +285,7 @@ extern "C" void compas_compute_jacobian(
     });
 }
 
-extern "C" void compas_compute_jacobian_transposed(
+extern "C" void compas_compute_jacobian_hermitian(
     const compas::CudaContext* context,
     int ncoils,
     compas::cfloat* JHv_ptr,
@@ -309,7 +309,7 @@ extern "C" void compas_compute_jacobian_transposed(
         auto d_coils = context->allocate(make_view(coils_ptr, ncoils, nvoxels));
         auto d_vector = context->allocate(make_view(vector_ptr, ncoils, nreadouts * ns));
 
-        compas::compute_jacobian_transposed(
+        compas::compute_jacobian_hermitian(
             *context,
             d_JHv.view_mut(),
             d_echos.view(),

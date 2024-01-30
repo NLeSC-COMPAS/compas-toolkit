@@ -52,7 +52,7 @@ static __device__ void expand_readout_and_accumulate_mhv(
     }
 }
 
-__global__ void jacobian_transposed_product(
+__global__ void jacobian_hermitian_product(
     cuda_view_mut<cfloat, 2> JHv,
     cuda_view<cfloat, 2> echos,
     cuda_view<cfloat, 3> delta_echos,
@@ -90,7 +90,7 @@ __global__ void jacobian_transposed_product(
 }
 }  // namespace kernels
 
-void compute_jacobian_transposed(
+void compute_jacobian_hermitian(
     const CudaContext& ctx,
     cuda_view_mut<cfloat, 2> JHv,
     cuda_view<cfloat, 2> echos,
@@ -122,7 +122,7 @@ void compute_jacobian_transposed(
         dim3 block_dim = 256;
         dim3 grid_dim = div_ceil(uint(nreadouts * ns), block_dim.x);
 
-        kernels::jacobian_transposed_product<<<grid_dim, block_dim>>>(
+        kernels::jacobian_hermitian_product<<<grid_dim, block_dim>>>(
             JHv,
             echos,
             delta_echos,

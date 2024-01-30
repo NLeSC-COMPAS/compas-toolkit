@@ -141,7 +141,7 @@ v_ref = map(SVector{ncoils}, eachcol(v)...)
 Jᴴv_ref = compute_Jᴴv(gpu(echos), gpu(∂echos), gpu(parameters_ref), gpu(coil_sensitivities_ref), gpu(trajectory_ref), gpu(v_ref))
 Jᴴv_ref = reduce(hcat, collect(Jᴴv_ref)) # Vector{Svector} -> Matrix
 
-Jᴴv = CompasToolkit.compute_jacobian_transposed(
+Jᴴv = CompasToolkit.compute_jacobian_hermitian(
     context,
     echos,
     ∂echos,

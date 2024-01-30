@@ -364,7 +364,7 @@ function compute_jacobian(
     return Jv
 end
 
-function compute_jacobian_transposed(
+function compute_jacobian_hermitian(
     context::Context,
     echos::AbstractMatrix,
     𝜕echos::AbstractArray{<:Any,3},
@@ -384,7 +384,7 @@ function compute_jacobian_transposed(
     coils = convert_array(Float32, (nvoxels, ncoils), coils)
     v = convert_array(ComplexF32, (nreadouts * samples_per_readout, ncoils), v)
 
-    @ccall LIBRARY.compas_compute_jacobian_transposed(
+    @ccall LIBRARY.compas_compute_jacobian_hermitian(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(Jᴴv)::Ptr{ComplexF32},
