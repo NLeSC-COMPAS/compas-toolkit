@@ -5,18 +5,16 @@ namespace compas {
 
 namespace kernels {
 
-struct DeltaMagnetization {
-    cfloat m;
-    vec2<cfloat> dm;  // In T1 and T2
-};
-
-__device__ DeltaMagnetization delta_to_sample_point(
-    cfloat m,
-    vec2<cfloat> dm,
+__global__ void delta_to_sample_exponent(
+    cuda_view_mut<cfloat, 2> E,
+    cuda_view_mut<cfloat, 2> dEdT2,
     CartesianTrajectoryView trajectory,
-    int readout_idx,
-    int sample_idx,
-    TissueVoxel p) {
+    TissueParametersView parameters) {
+    index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
+    index_t sample = index_t(blockIdx.y * blockDim.y + threadIdx.y);
+
+    TissueVoxel p = parameters.get(voxel);
+
     // Read in constants
     auto R2 = 1.0f / p.T2;
     auto ns = trajectory.samples_per_readout;
@@ -27,22 +25,20 @@ __device__ DeltaMagnetization delta_to_sample_point(
 
     // There are ns samples per readout, echo time is assumed to occur
     // at index (ns÷2)+1. Now compute sample index relative to the echo time
-    float s = float(sample_idx) - 0.5f * float(ns);
+    float s = float(sample) - 0.5f * float(ns);
 
     // Apply readout gradient, T₂ decay and B₀ rotation
     auto Theta = delta_k0.re * x + delta_k0.im * y;
     Theta += delta_t * float(2 * M_PI) * p.B0;
-    auto E = exp(s * cfloat(-delta_t * R2, Theta));
 
-    auto dE = vec2<cfloat>(0, (s * delta_t) * R2 * R2 * E);
+    cfloat Es = exp(s * cfloat(-delta_t * R2, Theta));
+    cfloat dEsdT2 = (s * delta_t) * R2 * R2 * Es;
 
-    auto dms = dm * E + m * dE;
-    auto ms = E * m;
-
-    return {ms, dms};
+    E[sample][voxel] = Es;
+    dEdT2[sample][voxel] = dEsdT2;
 }
 
-template<int ncoils, int threads_per_sample = 1>
+template<int ncoils, int threads_per_item = 1>
 __global__ void jacobian_product(
     cuda_view_mut<cfloat, 2> Jv,
     cuda_view<cfloat, 2> echos,
@@ -50,12 +46,15 @@ __global__ void jacobian_product(
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
     cuda_view<float, 2> coil_sensitivities,
+    cuda_view<cfloat, 2> E,
+    cuda_view<cfloat, 2> dEdT2,
     cuda_view<cfloat, 2> v) {
-    index_t i = index_t(blockIdx.x * blockDim.x + threadIdx.x) / threads_per_sample;
-    index_t lane_id = threadIdx.x % threads_per_sample;
-
     int ns = trajectory.samples_per_readout;
-    int nr = trajectory.nreadouts;
+    int nreadouts = trajectory.nreadouts;
+    int nvoxels = parameters.nvoxels;
+
+    index_t i = index_t(blockIdx.x * blockDim.x + threadIdx.x) / threads_per_item;
+    index_t lane_id = threadIdx.x % threads_per_item;
     cfloat result[ncoils];
 
 #pragma unroll
@@ -63,12 +62,11 @@ __global__ void jacobian_product(
         result[icoil] = cfloat(0);
     }
 
-    if (i < nr * ns) {
+    if (i < nreadouts * ns) {
         int r = i / ns;
         int s = i % ns;
-        int nvoxels = parameters.nvoxels;
 
-        for (index_t voxel = lane_id; voxel < nvoxels; voxel += threads_per_sample) {
+        for (index_t voxel = lane_id; voxel < nvoxels; voxel += threads_per_item) {
             // load coordinates, parameters, coil sensitivities and proton density for voxel
             auto p = parameters.get(voxel);
             auto rho = p.rho;
@@ -78,17 +76,21 @@ __global__ void jacobian_product(
             auto dme = vec2<cfloat> {delta_echos[0][r][voxel], delta_echos[1][r][voxel]};
 
             // compute decay (T₂) and rotation (gradients and B₀) to go to sample point
-            auto [m, dm] = delta_to_sample_point(me, dme, trajectory, r, s, p);
+            auto Es = E[s][voxel];
+            auto dEs = vec2<cfloat> {0, dEdT2[s][voxel]};
+
+            auto dm = dme * Es + me * dEs;
+            auto m = Es * me;
 
             // store magnetization from this voxel, scaled with v (~ proton density) and C in accumulator
-            auto dmv = vec4<cfloat>(v[0][voxel], v[1][voxel], v[2][voxel], v[3][voxel])
-                * vec4<cfloat>(dm[0], dm[1], m, m * cfloat(0, 1));
+            auto dmv = vec4<cfloat>(v[0][voxel], v[1][voxel], v[2][voxel], v[3][voxel]);
+            auto lin_scale =
+                vec4<cfloat>(p.T1 * rho * dm[0], p.T2 * rho * dm[1], m, m * cfloat(0, 1));
 
+#pragma unroll
             for (int icoil = 0; icoil < ncoils; icoil++) {
                 auto C = coil_sensitivities[icoil][voxel];
-                auto lin_scale = vec4<cfloat>(p.T1 * C * rho, p.T2 * C * rho, C, C);
-
-                result[icoil] += dot(lin_scale, dmv);
+                result[icoil] += dot(lin_scale, dmv) * C;
             }
         }
 
@@ -97,11 +99,11 @@ __global__ void jacobian_product(
             cfloat value = result[icoil];
 
 #pragma unroll 6
-            for (uint delta = threads_per_sample / 2; delta > 0; delta /= 2) {
-                static constexpr uint mask = uint((1L << threads_per_sample) - 1);
+            for (uint delta = threads_per_item / 2; delta > 0; delta /= 2) {
+                static constexpr uint mask = uint((1L << threads_per_item) - 1);
 
-                value.re += __shfl_down_sync(mask, value.re, delta, threads_per_sample);
-                value.im += __shfl_down_sync(mask, value.im, delta, threads_per_sample);
+                value.re += __shfl_down_sync(mask, value.re, delta, threads_per_item);
+                value.im += __shfl_down_sync(mask, value.im, delta, threads_per_item);
             }
 
             if (lane_id == 0) {
@@ -123,7 +125,7 @@ void compute_jacobian(
     cuda_view<cfloat, 2> vector) {
     CudaContextGuard guard {ctx};
 
-    static constexpr int threads_per_sample = 8;
+    static constexpr int threads_per_sample = 16;
     int ns = trajectory.samples_per_readout;
     int nreadouts = trajectory.nreadouts;
     int nvoxels = parameters.nvoxels;
@@ -141,8 +143,19 @@ void compute_jacobian(
     COMPAS_ASSERT(vector.size(0) == 4);  // four reconstruction parameters: T1, T2, rho_x, rho_y
     COMPAS_ASSERT(vector.size(1) == nvoxels);
 
+    auto E = ctx.allocate<cfloat, 2>({ns, nvoxels});
+    auto dEdT2 = ctx.allocate<cfloat, 2>({ns, nvoxels});
+
     dim3 block_dim = 256;
-    dim3 grid_dim = div_ceil(uint(nreadouts * ns * threads_per_sample), block_dim.x);
+    dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(ns), block_dim.y)};
+    kernels::delta_to_sample_exponent<<<grid_dim, block_dim>>>(
+        E.view_mut(),
+        dEdT2.view_mut(),
+        trajectory,
+        parameters);
+
+    block_dim = 256;
+    grid_dim = div_ceil(uint(nreadouts * ns * threads_per_sample), block_dim.x);
 
     // Repeat for each coil
 #define COMPAS_COMPUTE_JACOBIAN_IMPL(N)                                              \
@@ -154,6 +167,8 @@ void compute_jacobian(
             parameters,                                                              \
             trajectory,                                                              \
             coil_sensitivities,                                                      \
+            E.view(),                                                                \
+            dEdT2.view(),                                                            \
             vector);                                                                 \
         return;                                                                      \
     }
