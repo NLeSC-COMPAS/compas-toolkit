@@ -39,7 +39,7 @@ __global__ void delta_to_sample_exponent(
 }
 
 template<int ncoils, int threads_per_item = 1>
-__global__ void jacobian_product(
+__launch_bounds__(256, 16) __global__ void jacobian_product(
     cuda_view_mut<cfloat, 2> Jv,
     cuda_view<cfloat, 2> echos,
     cuda_view<cfloat, 3> delta_echos,
@@ -53,7 +53,9 @@ __global__ void jacobian_product(
     int nreadouts = trajectory.nreadouts;
     int nvoxels = parameters.nvoxels;
 
-    index_t i = index_t(blockIdx.x * blockDim.x + threadIdx.x) / threads_per_item;
+    index_t s = index_t(blockIdx.x * blockDim.x + threadIdx.x) / threads_per_item;
+    index_t r = index_t(blockIdx.y * blockDim.y + threadIdx.y);
+    index_t t = r * ns + s;
     index_t lane_id = threadIdx.x % threads_per_item;
     cfloat result[ncoils];
 
@@ -62,10 +64,7 @@ __global__ void jacobian_product(
         result[icoil] = cfloat(0);
     }
 
-    if (i < nreadouts * ns) {
-        int r = i / ns;
-        int s = i % ns;
-
+    if (r < nreadouts && s < ns) {
         for (index_t voxel = lane_id; voxel < nvoxels; voxel += threads_per_item) {
             // load coordinates, parameters, coil sensitivities and proton density for voxel
             auto p = parameters.get(voxel);
@@ -107,7 +106,7 @@ __global__ void jacobian_product(
             }
 
             if (lane_id == 0) {
-                Jv[icoil][i] = value;
+                Jv[icoil][t] = value;
             }
         }
     }
@@ -154,8 +153,10 @@ void compute_jacobian(
         trajectory,
         parameters);
 
-    block_dim = 256;
-    grid_dim = div_ceil(uint(nreadouts * ns * threads_per_sample), block_dim.x);
+    block_dim = {64, 4};
+    grid_dim = {
+        div_ceil(uint(ns * threads_per_sample), block_dim.x),
+        div_ceil(uint(nreadouts), block_dim.y)};
 
     // Repeat for each coil
 #define COMPAS_COMPUTE_JACOBIAN_IMPL(N)                                              \
