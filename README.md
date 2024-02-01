@@ -1,6 +1,6 @@
 # Compas Toolkit
 
-The Compas Toolkit is a C++ library designed for use in quantitative MRI research, with GPU acceleration. 
+The Compas Toolkit is a C++ library designed for use in quantitative MRI research, with GPU acceleration.
 This toolkit is primarily implemented in CUDA, but it also offers bindings to access its functionality from the Julia programming language.
 
 
@@ -14,20 +14,12 @@ Compilation requires the following software:
 
 ### Compiling the C++ code
 
-First, launch Julia and install the `CxxWrap` package:
-
-```bash
-$ julia
-
-julia> using Pkg; Pkg.add("CxxWrap")
-```
-
-Next, configure the CMake project inside a new `build` directory:
+First, configure the CMake project inside a new `build` directory:
 
 ```bash
 $ mkdir -p build
 $ cd build
-$ cmake -B. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=native ..
+$ cmake -B. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=80 ..
 ```
 
 After the configuration, build the toolkit by running:
