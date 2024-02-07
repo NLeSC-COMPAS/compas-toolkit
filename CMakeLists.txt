@@ -3,6 +3,12 @@ cmake_minimum_required(VERSION 3.10)
 set(PROJECT_NAME "compas-toolkit")
 project(${PROJECT_NAME} LANGUAGES CXX CUDA)
 
+# Enable C++17 support
+set(CXX_STANDARD 17)
+set(CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 file(GLOB_RECURSE sources "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.cu")
 add_library(${PROJECT_NAME} STATIC ${sources} src/operators/epg.cuh)
 
@@ -26,9 +32,6 @@ set(CXXFLAGS
         $<$<COMPILE_LANGUAGE:CUDA>:-Xptxas="-v">
 )
 target_compile_options(${PROJECT_NAME} PRIVATE ${CXXFLAGS})
-
-# Enable C++17 support
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 
 # Enable PIC
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
