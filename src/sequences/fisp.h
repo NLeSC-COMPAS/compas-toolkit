@@ -63,7 +63,7 @@ template<>
 struct TaskArgument<ExecutionSpace::Cuda, compas::FISPSequence> {
     using type = compas::FISPSequenceView;
 
-    static TaskArgument pack(RuntimeImpl& rt, TaskRequirements& reqs, compas::FISPSequence p) {
+    static TaskArgument pack(TaskBuilder& builder, compas::FISPSequence p) {
         return {
             {.RF_train = {},
              .sliceprofiles = {},
@@ -71,21 +71,19 @@ struct TaskArgument<ExecutionSpace::Cuda, compas::FISPSequence> {
              .TE = p.TE,
              .max_state = p.max_state,
              .TI = p.TI},
-            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.RF_train),
-            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.sliceprofiles)};
+            pack_argument<ExecutionSpace::Cuda>(builder, p.RF_train),
+            pack_argument<ExecutionSpace::Cuda>(builder, p.sliceprofiles)};
     }
 
     type unpack(TaskContext& context) {
-        view.RF_train =
-            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat>>(context, RF_train);
-        view.sliceprofiles =
-            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat, 2>>(context, sliceprofiles);
+        view.RF_train = unpack_argument<ExecutionSpace::Cuda>(context, RF_train);
+        view.sliceprofiles = unpack_argument<ExecutionSpace::Cuda>(context, sliceprofiles);
         return view;
     }
 
     type view;
-    pack_argument_type<ExecutionSpace::Cuda, Array<compas::cfloat>> RF_train;
-    pack_argument_type<ExecutionSpace::Cuda, Array<compas::cfloat, 2>> sliceprofiles;
+    PackedArray<const compas::cfloat> RF_train;
+    PackedArray<const compas::cfloat, 2> sliceprofiles;
 };
 
 };  // namespace kmm

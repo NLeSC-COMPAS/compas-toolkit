@@ -35,7 +35,7 @@ void magnetization_to_signal_cartesian_direct(
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_signal_factors<<<grid_dim, block_dim>>>(
+    kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context.stream()>>>(
         factors,
         echos,
         parameters,
@@ -45,7 +45,10 @@ void magnetization_to_signal_cartesian_direct(
     block_dim = {256};
     grid_dim = {div_ceil(uint(nvoxels), block_dim.x)};
 
-    kernels::prepare_signal_cartesian<<<grid_dim, block_dim>>>(exponents, parameters, trajectory);
+    kernels::prepare_signal_cartesian<<<grid_dim, block_dim, 0, context.stream()>>>(
+        exponents,
+        parameters,
+        trajectory);
     COMPAS_CUDA_CHECK(cudaGetLastError());
 
     const uint block_size_x = 64;
@@ -69,7 +72,11 @@ void magnetization_to_signal_cartesian_direct(
         threads_cooperative,
         samples_per_thread,
         readouts_per_thread,
-        coils_per_thread><<<grid_dim, block_dim>>>(signal, exponents, factors, coil_sensitivities);
+        coils_per_thread><<<grid_dim, block_dim, 0, context.stream()>>>(
+        signal,
+        exponents,
+        factors,
+        coil_sensitivities);
 
     COMPAS_CUDA_CHECK(cudaGetLastError());
 }
@@ -101,7 +108,7 @@ void magnetization_to_signal_cartesian_gemm(
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_signal_factors<<<grid_dim, block_dim>>>(
+    kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context.stream()>>>(
         factors,
         echos,
         parameters,
@@ -112,7 +119,7 @@ void magnetization_to_signal_cartesian_gemm(
         block_dim = {256};
         grid_dim = {div_ceil(uint(nvoxels), block_dim.x)};
 
-        kernels::prepare_signal_cartesian_with_coil<<<grid_dim, block_dim>>>(
+        kernels::prepare_signal_cartesian_with_coil<<<grid_dim, block_dim, 0, context.stream()>>>(
             exponents,
             coil_sensitivities.drop_axis<0>(icoil),
             parameters,
@@ -178,7 +185,7 @@ void magnetization_to_signal_spiral(
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_signal_factors<<<grid_dim, block_dim>>>(
+    kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context.stream()>>>(
         factors,
         echos,
         parameters,
@@ -188,7 +195,10 @@ void magnetization_to_signal_spiral(
     block_dim = {32, 4};
     grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_signal_spiral<<<grid_dim, block_dim>>>(exponents, parameters, trajectory);
+    kernels::prepare_signal_spiral<<<grid_dim, block_dim, 0, context.stream()>>>(
+        exponents,
+        parameters,
+        trajectory);
     COMPAS_CUDA_CHECK(cudaGetLastError());
 
     const uint threads_per_block = 64;
@@ -209,7 +219,11 @@ void magnetization_to_signal_spiral(
         threads_per_block,
         threads_cooperative,
         samples_per_thread,
-        coils_per_thread><<<grid_dim, block_dim>>>(signal, exponents, factors, coil_sensitivities);
+        coils_per_thread><<<grid_dim, block_dim, 0, context.stream()>>>(
+        signal,
+        exponents,
+        factors,
+        coil_sensitivities);
 
     COMPAS_CUDA_CHECK(cudaGetLastError());
 }
@@ -243,7 +257,7 @@ CudaArray<cfloat, 3> magnetization_to_signal(
 
     auto signal = compas::CudaArray<cfloat, 3>(ncoils, nreadouts, samples_per_readout);
 
-    if (const auto c = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
+    if (const auto* c = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
         auto temp_exponents = CudaArray<cfloat, 2>(samples_per_readout, nvoxels);
         auto temp_factors = CudaArray<cfloat, 2>(nreadouts, nvoxels);
 
@@ -269,7 +283,7 @@ CudaArray<cfloat, 3> magnetization_to_signal(
                 write(temp_factors),
                 cublas_compute_type_from_simulate_method(method));
         }
-    } else if (const auto s = dynamic_cast<const SpiralTrajectory*>(&trajectory)) {
+    } else if (const auto* s = dynamic_cast<const SpiralTrajectory*>(&trajectory)) {
         auto temp_exponents = CudaArray<cfloat, 2>(echos.sizes());
         auto temp_factors = CudaArray<cfloat, 2>(echos.sizes());
 

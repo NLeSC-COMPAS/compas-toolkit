@@ -61,26 +61,6 @@ function make_array(context::Context, input::Array{Float32, N})::CompasArray{Flo
     return CompasArray{Float32, N}(context, ptr, Dims{N}(sizes))
 end
 
-function collect(input::CompasArray{ComplexF32, N}) where {N}
-    result = Array{ComplexF32, N}(undef, input.sizes...)
-    @ccall LIBRARY.compas_read_array_complex(
-        input.context::Ptr{Cvoid},
-        input.ptr::Ptr{Cvoid},
-        pointer(result)::Ptr{ComplexF32}
-    )::Cvoid
-    return result
-end
-
-function collect(input::CompasArray{Float32, N}) where {N}
-    result = Array{Float32, N}(undef, input.sizes...)
-    @ccall LIBRARY.compas_read_array_float(
-        input.context::Ptr{Cvoid},
-        input.ptr::Ptr{Cvoid},
-        pointer(result)::Ptr{Float32}
-    )::Cvoid
-    return result
-end
-
 function make_array(context::Context, input::Array{ComplexF32, N})::CompasArray{ComplexF32, N} where {N}
     sizes::Vector{Int64} = [reverse(size(input))...]
 
@@ -94,6 +74,28 @@ function make_array(context::Context, input::Array{ComplexF32, N})::CompasArray{
     return CompasArray{ComplexF32, N}(context, ptr, Dims{N}(sizes))
 end
 
+function Base.collect(input::CompasArray{Float32, N}) where {N}
+    result = Array{Float32, N}(undef, reverse(input.sizes)...)
+    @ccall LIBRARY.compas_read_array_float(
+        pointer(input.context)::Ptr{Cvoid},
+        input.ptr::Ptr{Cvoid},
+        pointer(result)::Ptr{Float32},
+        length(result)::Int64
+    )::Cvoid
+    return result
+end
+
+function Base.collect(input::CompasArray{ComplexF32, N}) where {N}
+    result = Array{ComplexF32, N}(undef, reverse(input.sizes)...)
+    @ccall LIBRARY.compas_read_array_complex(
+        pointer(input.context)::Ptr{Cvoid},
+        input.ptr::Ptr{Cvoid},
+        pointer(result)::Ptr{ComplexF32},
+        length(result)::Int64
+    )::Cvoid
+    return result
+end
+
 function assert_size(input::AbstractArray, expected::Dims{N}) where {N}
     gotten = size(input)
     if gotten != expected
@@ -101,7 +103,7 @@ function assert_size(input::AbstractArray, expected::Dims{N}) where {N}
     end
 end
 
-function convert_array_old(
+function convert_array_host(
     ty::Type{T},
     dims::Dims{N},
     input::Array{T,N},
@@ -110,7 +112,7 @@ function convert_array_old(
     return input
 end
 
-function convert_array_old(
+function convert_array_host(
     ty::Type{T},
     dims::Dims{N},
     input::AbstractArray,
@@ -119,7 +121,7 @@ function convert_array_old(
     return convert(Array{T,N}, input)
 end
 
-function convert_array_old(ty::Type{T}, dims::Dims{N}, input::Number)::Array{T,N} where {T,N}
+function convert_array_host(ty::Type{T}, dims::Dims{N}, input::Number)::Array{T,N} where {T,N}
     return fill(convert(ty, input), dims)
 end
 
@@ -152,7 +154,7 @@ mutable struct CartesianTrajectory <: Trajectory
         k_start::AbstractVector,
         delta_k::Number,
     )
-        k_start = convert_array_old(ComplexF32, (nreadouts,), k_start)
+        k_start = convert_array_host(ComplexF32, (nreadouts,), k_start)
 
         ptr = @ccall LIBRARY.compas_make_cartesian_trajectory(
             pointer(context)::Ptr{Cvoid},
@@ -181,8 +183,8 @@ mutable struct SpiralTrajectory <: Trajectory
         k_start::AbstractVector,
         delta_k::AbstractVector,
     )
-        k_start = convert_array_old(ComplexF32, (nreadouts,), k_start)
-        delta_k = convert_array_old(ComplexF32, (nreadouts,), delta_k)
+        k_start = convert_array_host(ComplexF32, (nreadouts,), k_start)
+        delta_k = convert_array_host(ComplexF32, (nreadouts,), delta_k)
 
         ptr = @ccall LIBRARY.compas_make_spiral_trajectory(
             pointer(context)::Ptr{Cvoid},
@@ -216,15 +218,15 @@ mutable struct TissueParameters
         y::AbstractVector,
         z::AbstractVector,
     )
-        T1 = convert_array_old(Float32, (nvoxels,), T1)
-        T2 = convert_array_old(Float32, (nvoxels,), T2)
-        B1 = convert_array_old(Float32, (nvoxels,), B1)
-        B0 = convert_array_old(Float32, (nvoxels,), B0)
-        rho_x = convert_array_old(Float32, (nvoxels,), rho_x)
-        rho_y = convert_array_old(Float32, (nvoxels,), rho_y)
-        x = convert_array_old(Float32, (nvoxels,), x)
-        y = convert_array_old(Float32, (nvoxels,), y)
-        z = convert_array_old(Float32, (nvoxels,), z)
+        T1 = convert_array_host(Float32, (nvoxels,), T1)
+        T2 = convert_array_host(Float32, (nvoxels,), T2)
+        B1 = convert_array_host(Float32, (nvoxels,), B1)
+        B0 = convert_array_host(Float32, (nvoxels,), B0)
+        rho_x = convert_array_host(Float32, (nvoxels,), rho_x)
+        rho_y = convert_array_host(Float32, (nvoxels,), rho_y)
+        x = convert_array_host(Float32, (nvoxels,), x)
+        y = convert_array_host(Float32, (nvoxels,), y)
+        z = convert_array_host(Float32, (nvoxels,), z)
 
 
         ptr = @ccall LIBRARY.compas_make_tissue_parameters(
@@ -271,8 +273,8 @@ mutable struct FispSequence
         nreadouts = size(RF_train, 1)
         nslices = size(slice_profiles, 2)
 
-        RF_train = convert_array_old(ComplexF32, (nreadouts,), RF_train)
-        slice_profiles = convert_array_old(ComplexF32, (nreadouts, nslices), slice_profiles)
+        RF_train = convert_array(context, ComplexF32, (nreadouts,), RF_train)
+        slice_profiles = convert_array(context, ComplexF32, (nreadouts, nslices), slice_profiles)
 
         return new(RF_train, slice_profiles, TR, TE, max_state, TI)
     end
@@ -283,7 +285,7 @@ mutable struct pSSFPSequence
     TR::Float32
     nRF::Int32
     nTR::Int32
-    gamma_dt_GRz::CompasArray{ComplexF32, 1}
+    gamma_dt_RF::CompasArray{ComplexF32, 1}
     dt::NTuple{3, Float32}
     gamma_dt_GRz::NTuple{3, Float32}
     z::CompasArray{Float32, 1}
@@ -301,9 +303,9 @@ mutable struct pSSFPSequence
         nRF = size(gamma_dt_RF, 1)
         nslices = size(z, 1)
 
-        RF_train = convert_array_old(ComplexF32, (nreadouts,), RF_train)
-        gamma_dt_RF = convert_array_old(ComplexF32, (nRF,), gamma_dt_RF)
-        z = convert_array_old(Float32, (nslices,), z)
+        RF_train = convert_array(context, ComplexF32, (nreadouts,), RF_train)
+        gamma_dt_RF = convert_array(context, ComplexF32, (nRF,), gamma_dt_RF)
+        z = convert_array(context, Float32, (nslices,), z)
 
         return new(RF_train, TR, nRF, nTR, gamma_dt_RF, dt, gamma_dt_GRz, z)
     end
@@ -314,24 +316,22 @@ function simulate_magnetization(
     echos::AbstractMatrix,
     parameters::TissueParameters,
     sequence::FispSequence,
-)
+)::CompasArray{ComplexF32, 2}
     nvoxels::Int64 = parameters.nvoxels
     nreadouts::Int64 = sequence.nreadouts
-    echos = convert_array_old(ComplexF32, (nvoxels, nreadouts), echos)
 
     @ccall LIBRARY.compas_simulate_magnetization_fisp(
         pointer(context)::Ptr{Cvoid},
-        pointer(echos)::Ptr{ComplexF32},
         parameters.ptr::Ptr{Cvoid},
         sequence.RF_train.ptr::Ptr{Cvoid},
         sequence.slice_profiles.ptr::Ptr{Cvoid},
-        sequence.TR,
-        sequence.TE,
-        sequence.max_state,
-        sequence.TI
-    )::Cvoid
+        sequence.TR::Float32,
+        sequence.TE::Float32,
+        sequence.max_state::Int32,
+        sequence.TI::Float32
+    )::Ptr{Cvoid}
 
-    return echos
+    return CompasArray{ComplexF32, 2}(context, echos_ptr, (nreadouts, nvoxels))
 end
 
 function simulate_magnetization(
@@ -339,14 +339,12 @@ function simulate_magnetization(
     echos::AbstractMatrix,
     parameters::TissueParameters,
     sequence::pSSFPSequence,
-)
+)::CompasArray{ComplexF32, 2}
     nvoxels::Int64 = parameters.nvoxels
     nreadouts::Int64 = sequence.nreadouts
-    echos = convert_array_old(ComplexF32, (nvoxels, nreadouts), echos)
 
-    @ccall LIBRARY.compas_simulate_magnetization_pssfp(
+    echos_ptr = @ccall LIBRARY.compas_simulate_magnetization_pssfp(
         pointer(context)::Ptr{Cvoid},
-        pointer(echos)::Ptr{ComplexF32},
         parameters.ptr::Ptr{Cvoid},
         sequence.RF_train.ptr::Ptr{Cvoid},
         sequence.TR::Float32,
@@ -357,9 +355,9 @@ function simulate_magnetization(
         sequence.gamma_dt_GRz[0]::Float32,
         sequence.gamma_dt_GRz[1]::Float32,
         sequence.gamma_dt_GRz[2]::Float32
-    )::Cvoid
+    )::Ptr{Cvoid}
 
-    return echos
+    return CompasArray{ComplexF32, 2}(context, echos_ptr, (nreadouts, nvoxels))
 end
 
 function magnetization_to_signal(
@@ -368,7 +366,7 @@ function magnetization_to_signal(
     parameters::TissueParameters,
     trajectory::Trajectory,
     coils::AbstractMatrix,
-)
+)::CompasArray{ComplexF32, 3}
     ncoils = size(coils, 2)
     nreadouts::Int64 = trajectory.nreadouts
     samples_per_readout::Int64 = trajectory.samples_per_readout

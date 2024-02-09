@@ -47,8 +47,7 @@ template<>
 struct TaskArgument<ExecutionSpace::Cuda, compas::CartesianTrajectory> {
     using type = compas::CartesianTrajectoryView;
 
-    static TaskArgument
-    pack(RuntimeImpl& rt, TaskRequirements& reqs, const compas::CartesianTrajectory& t) {
+    static TaskArgument pack(TaskBuilder& builder, const compas::CartesianTrajectory& t) {
         return {
             {//
              .nreadouts = t.nreadouts,
@@ -56,12 +55,11 @@ struct TaskArgument<ExecutionSpace::Cuda, compas::CartesianTrajectory> {
              .delta_t = t.delta_t,
              .k_start = {},
              .delta_k = t.delta_k},
-            pack_argument<ExecutionSpace::Cuda>(rt, reqs, t.k_start)};
+            pack_argument<ExecutionSpace::Cuda>(builder, t.k_start)};
     }
 
     type unpack(TaskContext& context) {
-        view.k_start =
-            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat>>(context, k_start);
+        view.k_start = unpack_argument<ExecutionSpace::Cuda>(context, k_start);
         return view;
     }
 

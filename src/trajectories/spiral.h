@@ -47,8 +47,7 @@ template<>
 struct TaskArgument<ExecutionSpace::Cuda, compas::SpiralTrajectory> {
     using type = compas::SpiralTrajectoryView;
 
-    static TaskArgument
-    pack(RuntimeImpl& rt, TaskRequirements& reqs, const compas::SpiralTrajectory& t) {
+    static TaskArgument pack(TaskBuilder& builder, const compas::SpiralTrajectory& t) {
         return {
             {//
              .nreadouts = t.nreadouts,
@@ -56,15 +55,13 @@ struct TaskArgument<ExecutionSpace::Cuda, compas::SpiralTrajectory> {
              .delta_t = t.delta_t,
              .k_start = {},
              .delta_k = {}},
-            pack_argument<ExecutionSpace::Cuda>(rt, reqs, t.k_start),
-            pack_argument<ExecutionSpace::Cuda>(rt, reqs, t.delta_k)};
+            pack_argument<ExecutionSpace::Cuda>(builder, t.k_start),
+            pack_argument<ExecutionSpace::Cuda>(builder, t.delta_k)};
     }
 
     type unpack(TaskContext& context) {
-        view.k_start =
-            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat>>(context, k_start);
-        view.delta_k =
-            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat>>(context, delta_k);
+        view.k_start = unpack_argument<ExecutionSpace::Cuda>(context, k_start);
+        view.delta_k = unpack_argument<ExecutionSpace::Cuda>(context, delta_k);
         return view;
     }
 

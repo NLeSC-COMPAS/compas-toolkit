@@ -12,7 +12,7 @@
 #include "kmm/array.hpp"
 #include "kmm/cuda/cuda.hpp"
 #include "kmm/host/host.hpp"
-#include "kmm/runtime.hpp"
+#include "kmm/runtime_handle.hpp"
 
 #define COMPAS_CUDA_CHECK(...) KMM_CUDA_CHECK(__VA_ARGS__)
 
@@ -22,7 +22,9 @@ template<typename T, size_t N = 1>
 using CudaArray = kmm::Array<T, N>;
 
 struct CudaContext {
-    CudaContext(kmm::Runtime runtime, kmm::Cuda device) : m_runtime(runtime), m_device(device) {}
+    CudaContext(kmm::RuntimeHandle runtime, kmm::Cuda device) :
+        m_runtime(runtime),
+        m_device(device) {}
 
     template<typename T, size_t N>
     CudaArray<std::decay_t<T>, N> allocate(view_mut<T, N> content) const {
@@ -62,7 +64,7 @@ struct CudaContext {
     }
 
   private:
-    kmm::Runtime m_runtime;
+    kmm::RuntimeHandle m_runtime;
     kmm::Cuda m_device;
 };
 

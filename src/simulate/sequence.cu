@@ -81,7 +81,7 @@ void simulate_fisp_sequence_for_size(
         dim3 block_size = 256;
         dim3 grid_size = div_ceil(uint(nvoxels * warp_size), block_size.x);
 
-        kernels::simulate_fisp<max_N, warp_size><<<grid_size, block_size>>>(
+        kernels::simulate_fisp<max_N, warp_size><<<grid_size, block_size, 0, context.stream()>>>(
             echos,
             sequence.sliceprofiles.drop_axis<0>(i),
             parameters,

@@ -77,7 +77,7 @@ template<>
 struct TaskArgument<ExecutionSpace::Cuda, compas::pSSFPSequence> {
     using type = compas::pSSFPSequenceView;
 
-    static TaskArgument pack(RuntimeImpl& rt, TaskRequirements& reqs, compas::pSSFPSequence p) {
+    static TaskArgument pack(TaskBuilder& builder, compas::pSSFPSequence p) {
         return {
             {.nTR = p.nTR,
              .RF_train = {},
@@ -86,25 +86,23 @@ struct TaskArgument<ExecutionSpace::Cuda, compas::pSSFPSequence> {
              .dt = p.dt,
              .gamma_dt_GRz = p.gamma_dt_GRz,
              .z = {}},
-            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.RF_train),
-            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.gamma_dt_RF),
-            pack_argument<ExecutionSpace::Cuda>(rt, reqs, p.z),
+            pack_argument<ExecutionSpace::Cuda>(builder, p.RF_train),
+            pack_argument<ExecutionSpace::Cuda>(builder, p.gamma_dt_RF),
+            pack_argument<ExecutionSpace::Cuda>(builder, p.z),
         };
     }
 
     type unpack(TaskContext& context) {
-        view.RF_train =
-            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat>>(context, RF_train);
-        view.gamma_dt_RF =
-            unpack_argument<ExecutionSpace::Cuda, Array<compas::cfloat>>(context, gamma_dt_RF);
-        view.z = unpack_argument<ExecutionSpace::Cuda, Array<float>>(context, z);
+        view.RF_train = unpack_argument<ExecutionSpace::Cuda>(context, RF_train);
+        view.gamma_dt_RF = unpack_argument<ExecutionSpace::Cuda>(context, gamma_dt_RF);
+        view.z = unpack_argument<ExecutionSpace::Cuda>(context, z);
         return view;
     }
 
     compas::pSSFPSequenceView view;
-    pack_argument_type<ExecutionSpace::Cuda, Array<compas::cfloat>> RF_train;
-    pack_argument_type<ExecutionSpace::Cuda, Array<compas::cfloat>> gamma_dt_RF;
-    pack_argument_type<ExecutionSpace::Cuda, Array<float>> z;
+    PackedArray<const compas::cfloat> RF_train;
+    PackedArray<const compas::cfloat> gamma_dt_RF;
+    PackedArray<const float> z;
 };
 
 };  // namespace kmm
