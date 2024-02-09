@@ -9,14 +9,14 @@
 namespace compas {
 
 struct CartesianTrajectory: public Trajectory {
-    CudaArray<cfloat> k_start;
+    Array<cfloat> k_start;
     cfloat delta_k;
 
     CartesianTrajectory(
         int nreadouts,
         int samples_per_readout,
         float delta_t,
-        CudaArray<cfloat> k_start,
+        Array<cfloat> k_start,
         cfloat delta_k) :
         Trajectory(nreadouts, samples_per_readout, delta_t),
         k_start(k_start),

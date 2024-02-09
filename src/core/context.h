@@ -19,7 +19,7 @@
 namespace compas {
 
 template<typename T, size_t N = 1>
-using CudaArray = kmm::Array<T, N>;
+using Array = kmm::Array<T, N>;
 
 struct CudaContext {
     CudaContext(kmm::RuntimeHandle runtime, kmm::Cuda device) :
@@ -27,7 +27,7 @@ struct CudaContext {
         m_device(device) {}
 
     template<typename T, size_t N>
-    CudaArray<std::decay_t<T>, N> allocate(view_mut<T, N> content) const {
+    Array<std::decay_t<T>, N> allocate(view_mut<T, N> content) const {
         std::array<index_t, N> sizes;
         for (size_t i = 0; i < N; i++) {
             sizes[i] = content.size(i);
@@ -37,14 +37,13 @@ struct CudaContext {
     }
 
     template<typename T, typename... Sizes>
-    CudaArray<std::decay_t<T>, sizeof...(Sizes)>
-    allocate(const T* content_ptr, Sizes... sizes) const {
+    Array<std::decay_t<T>, sizeof...(Sizes)> allocate(const T* content_ptr, Sizes... sizes) const {
         std::array<index_t, sizeof...(Sizes)> sizes_array = {kmm::checked_cast<index_t>(sizes)...};
         return m_runtime.allocate_array(content_ptr, sizes_array);
     }
 
     template<typename T>
-    CudaArray<std::decay_t<T>> allocate(const std::vector<T>& content) const {
+    Array<std::decay_t<T>> allocate(const std::vector<T>& content) const {
         std::array<index_t, 1> sizes_array = {kmm::checked_cast<index_t>(content.size())};
         return m_runtime.allocate_array(content.data(), sizes_array);
     }

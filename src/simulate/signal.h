@@ -15,12 +15,12 @@ enum struct SimulateSignalMethod {
     MatmulBF16,
 };
 
-CudaArray<cfloat, 3> magnetization_to_signal(
+Array<cfloat, 3> magnetization_to_signal(
     const CudaContext& context,
-    const CudaArray<cfloat, 2>& echos,
+    const Array<cfloat, 2>& echos,
     const TissueParameters& parameters,
     const Trajectory& trajectory,
-    const CudaArray<float, 2>& coil_sensitivities,
+    const Array<float, 2>& coil_sensitivities,
     SimulateSignalMethod method = SimulateSignalMethod::Direct);
 
 }  // namespace compas

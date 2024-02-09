@@ -8,15 +8,15 @@
 namespace compas {
 
 struct SpiralTrajectory: public Trajectory {
-    CudaArray<cfloat> k_start;
-    CudaArray<cfloat> delta_k;
+    Array<cfloat> k_start;
+    Array<cfloat> delta_k;
 
     SpiralTrajectory(
         int nreadouts,
         int samples_per_readout,
         float delta_t,
-        CudaArray<cfloat> k_start,
-        CudaArray<cfloat> delta_k) :
+        Array<cfloat> k_start,
+        Array<cfloat> delta_k) :
         Trajectory(nreadouts, samples_per_readout, delta_t),
         k_start(k_start),
         delta_k(delta_k) {}

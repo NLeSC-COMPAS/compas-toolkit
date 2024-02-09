@@ -243,23 +243,23 @@ cublasComputeType_t cublas_compute_type_from_simulate_method(SimulateSignalMetho
     }
 }
 
-CudaArray<cfloat, 3> magnetization_to_signal(
+Array<cfloat, 3> magnetization_to_signal(
     const CudaContext& context,
-    const CudaArray<cfloat, 2>& echos,
+    const Array<cfloat, 2>& echos,
     const TissueParameters& parameters,
     const Trajectory& trajectory,
-    const CudaArray<float, 2>& coil_sensitivities,
+    const Array<float, 2>& coil_sensitivities,
     SimulateSignalMethod method) {
     int ncoils = coil_sensitivities.size(0);
     int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
 
-    auto signal = compas::CudaArray<cfloat, 3>(ncoils, nreadouts, samples_per_readout);
+    auto signal = Array<cfloat, 3>(ncoils, nreadouts, samples_per_readout);
 
     if (const auto* c = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
-        auto temp_exponents = CudaArray<cfloat, 2>(samples_per_readout, nvoxels);
-        auto temp_factors = CudaArray<cfloat, 2>(nreadouts, nvoxels);
+        auto temp_exponents = Array<cfloat, 2>(samples_per_readout, nvoxels);
+        auto temp_factors = Array<cfloat, 2>(nreadouts, nvoxels);
 
         if (method == SimulateSignalMethod::Direct) {
             context.submit_device(
@@ -284,8 +284,8 @@ CudaArray<cfloat, 3> magnetization_to_signal(
                 cublas_compute_type_from_simulate_method(method));
         }
     } else if (const auto* s = dynamic_cast<const SpiralTrajectory*>(&trajectory)) {
-        auto temp_exponents = CudaArray<cfloat, 2>(echos.sizes());
-        auto temp_factors = CudaArray<cfloat, 2>(echos.sizes());
+        auto temp_exponents = Array<cfloat, 2>(echos.sizes());
+        auto temp_factors = Array<cfloat, 2>(echos.sizes());
 
         context.submit_device(
             magnetization_to_signal_spiral,

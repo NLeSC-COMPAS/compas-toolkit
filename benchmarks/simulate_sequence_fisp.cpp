@@ -18,7 +18,7 @@ int main() {
     int max_state = 25;
     int num_slices = 35;
 
-    auto echos = CudaArray<cfloat, 2>(nreadouts, nvoxels);
+    auto echos = Array<cfloat, 2>(nreadouts, nvoxels);
 
     auto RF_train = std::vector<cfloat>(size_t(nreadouts));
     for (size_t i = 0; i < RF_train.size(); i++) {

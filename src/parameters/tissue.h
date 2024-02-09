@@ -8,14 +8,14 @@
 namespace compas {
 
 struct TissueParameters: public Object {
-    CudaArray<float, 2> parameters;
+    Array<float, 2> parameters;
     int nvoxels;
     bool has_z = true;
     bool has_b0 = true;
     bool has_b1 = true;
 
     TissueParameters(
-        CudaArray<float, 2> parameters,
+        Array<float, 2> parameters,
         int nvoxels,
         bool has_z,
         bool has_b0,

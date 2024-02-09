@@ -8,7 +8,7 @@ namespace compas {
 struct pSSFPSequence: public Object {
     // Vector with flip angle for each TR with abs.(RF_train) the RF flip angles in degrees and
     // angle.(RF_train) should be the RF phases in degrees.
-    CudaArray<cfloat> RF_train;
+    Array<cfloat> RF_train;
 
     // Repetition time in seconds, assumed constant during the sequence
     float TR;
@@ -20,7 +20,7 @@ struct pSSFPSequence: public Object {
     int nTR;
 
     // Time-discretized RF waveform, normalized to flip angle of 1 degree
-    CudaArray<cfloat> gamma_dt_RF;
+    Array<cfloat> gamma_dt_RF;
 
     // Time intervals
     RepetitionData dt;  // Δt
@@ -30,15 +30,15 @@ struct pSSFPSequence: public Object {
     int nz;
 
     // Vector with different positions along the slice direction.
-    CudaArray<float> z;
+    Array<float> z;
 
     pSSFPSequence(
-        CudaArray<cfloat> RF_train,
+        Array<cfloat> RF_train,
         float TR,
-        CudaArray<cfloat> gamma_dt_RF,
+        Array<cfloat> gamma_dt_RF,
         RepetitionData dt,
         RepetitionData gamma_dt_GRz,
-        CudaArray<float> z) :
+        Array<float> z) :
         RF_train(RF_train),
         TR(TR),
         nRF(gamma_dt_RF.size()),

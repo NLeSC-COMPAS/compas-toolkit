@@ -15,12 +15,12 @@ static void benchmark_method(
     std::string name,
     SimulateSignalMethod method,
     const CudaContext& context,
-    CudaArray<cfloat, 2> echos,
-    CudaArray<float, 2> coil_sensitivities,
+    Array<cfloat, 2> echos,
+    Array<float, 2> coil_sensitivities,
     TissueParameters parameters,
     CartesianTrajectory trajectory,
     std::vector<cfloat>& signal_ref) {
-    CudaArray<cfloat, 3> signal;
+    Array<cfloat, 3> signal;
     context.synchronize();
 
     auto [duration, runs] = benchmark([&] {

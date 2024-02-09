@@ -10,11 +10,11 @@ namespace compas {
 struct FISPSequence: public Object {
     // Vector with flip angle for each TR with abs.(RF_train) the RF flip angles in degrees and
     // angle.(RF_train) should be the RF phases in degrees.
-    CudaArray<cfloat> RF_train;
+    Array<cfloat> RF_train;
 
     // Matrix with RF scaling factors (a.u.) to simulate slice profile effects.
     // Each column represents the (flip angle dependent) scaling factors for one position along the slice direction.
-    CudaArray<cfloat, 2> sliceprofiles;
+    Array<cfloat, 2> sliceprofiles;
 
     // Repetition time in seconds, assumed constant during the sequence
     float TR;
@@ -29,8 +29,8 @@ struct FISPSequence: public Object {
     float TI;
 
     FISPSequence(
-        CudaArray<cfloat> RF_train,
-        CudaArray<cfloat, 2> sliceprofiles,
+        Array<cfloat> RF_train,
+        Array<cfloat, 2> sliceprofiles,
         float TR,
         float TE,
         int max_state,
