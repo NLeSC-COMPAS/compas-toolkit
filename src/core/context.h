@@ -58,6 +58,11 @@ struct CudaContext {
         m_runtime.submit(m_device, args...);
     }
 
+    template<typename F, typename... Args>
+    void submit_kernel(dim3 grid_dim, dim3 block_dim, F kernel, Args... args) const {
+        m_runtime.submit(kmm::CudaKernel(grid_dim, block_dim, m_device), kernel, args...);
+    }
+
     void synchronize() const {
         m_runtime.synchronize();
     }
