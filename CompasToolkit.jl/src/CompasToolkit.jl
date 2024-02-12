@@ -142,61 +142,61 @@ end
 abstract type Trajectory end
 
 mutable struct CartesianTrajectory <: Trajectory
-    ptr::Ptr{Cvoid}
-    nreadouts::Int32
-    samples_per_readout::Int32
+    context::Context
+    nreadouts::Int32,
+    samples_per_readout::Int32,
+    delta_t::Float32,
+    k_start::CompasArray{ComplexF32},
+    delta_k::ComplexF32
 
     function CartesianTrajectory(
-        context::Context,
+        context::Context
         nreadouts::Integer,
         samples_per_readout::Integer,
-        delta_t::Number,
+        delta_t::AbstractFloat,
         k_start::AbstractVector,
-        delta_k::Number,
+        delta_k::Number
     )
-        k_start = convert_array_host(ComplexF32, (nreadouts,), k_start)
+        k_start = convert_array(context, ComplexF32, (nreadouts,), k_start)
 
-        ptr = @ccall LIBRARY.compas_make_cartesian_trajectory(
-            pointer(context)::Ptr{Cvoid},
-            nreadouts::Int32,
-            samples_per_readout::Int32,
-            delta_t::Float32,
-            pointer(k_start)::Ptr{ComplexF32},
-            delta_k::ComplexF32,
-        )::Ptr{Cvoid}
-
-        obj = new(ptr, nreadouts, samples_per_readout)
-        finalizer(unsafe_destroy_object!, obj)
+        return new(
+            context,
+            nreadouts,
+            samples_per_readout,
+            delta_t,
+            k_start,
+            delta_k
+        )
     end
 end
 
 mutable struct SpiralTrajectory <: Trajectory
-    ptr::Ptr{Cvoid}
-    nreadouts::Int32
-    samples_per_readout::Int32
+    context::Context
+    nreadouts::Int32,
+    samples_per_readout::Int32,
+    delta_t::Float32,
+    k_start::CompasArray{ComplexF32},
+    delta_k::CompasArray{ComplexF32}
 
-    function SpiralTrajectory(
-        context::Context,
+    function CartesianTrajectory(
+        context::Context
         nreadouts::Integer,
         samples_per_readout::Integer,
-        delta_t::Number,
+        delta_t::AbstractFloat,
         k_start::AbstractVector,
-        delta_k::AbstractVector,
+        delta_k::AbstractVector
     )
-        k_start = convert_array_host(ComplexF32, (nreadouts,), k_start)
-        delta_k = convert_array_host(ComplexF32, (nreadouts,), delta_k)
+        k_start = convert_array(context, ComplexF32, (nreadouts,), k_start)
+        delta_k = convert_array(context, ComplexF32, (nreadouts,), delta_k)
 
-        ptr = @ccall LIBRARY.compas_make_spiral_trajectory(
-            pointer(context)::Ptr{Cvoid},
-            nreadouts::Int32,
-            samples_per_readout::Int32,
-            delta_t::Float32,
-            pointer(k_start)::Ptr{ComplexF32},
-            pointer(delta_k)::Ptr{ComplexF32},
-        )::Ptr{Cvoid}
-
-        obj = new(ptr, nreadouts, samples_per_readout)
-        finalizer(unsafe_destroy_object!, obj)
+        return new(
+            context,
+            nreadouts,
+            samples_per_readout,
+            delta_t,
+            k_start,
+            delta_k
+        )
     end
 end
 
@@ -364,7 +364,7 @@ function magnetization_to_signal(
     context::Context,
     echos::AbstractMatrix,
     parameters::TissueParameters,
-    trajectory::Trajectory,
+    trajectory::CartesianTrajectory,
     coils::AbstractMatrix,
 )::CompasArray{ComplexF32, 3}
     ncoils = size(coils, 2)
@@ -375,13 +375,50 @@ function magnetization_to_signal(
     echos = convert_array(context, ComplexF32, (nvoxels, nreadouts), echos)
     coils = convert_array(context, Float32, (nvoxels, ncoils), coils)
 
-    signal_ptr = @ccall LIBRARY.compas_magnetization_to_signal(
+    signal_ptr = @ccall LIBRARY.compas_magnetization_to_signal_cartesian(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(echos)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
         trajectory.ptr::Ptr{Cvoid},
-        pointer(coils)::Ptr{Float32}
+        pointer(coils)::Ptr{Float32},
+        nreadouts::Int32,
+        samples_per_Readout::Int32,
+        trajectory.delta_t::Float32,
+        trajectory.k_start.ptr::Ptr{Cvoid},
+        trajectory.delta_k::ComplexF32,
+    )::Ptr{Cvoid}
+
+    return CompasArray{ComplexF32, 3}(context, signal_ptr, (ncoils,  nreadouts, samples_per_readout))
+end
+
+function magnetization_to_signal(
+    context::Context,
+    echos::AbstractMatrix,
+    parameters::TissueParameters,
+    trajectory::SpiralTrajectory,
+    coils::AbstractMatrix,
+)::CompasArray{ComplexF32, 3}
+    ncoils = size(coils, 2)
+    nreadouts::Int64 = trajectory.nreadouts
+    samples_per_readout::Int64 = trajectory.samples_per_readout
+    nvoxels::Int64 = parameters.nvoxels
+
+    echos = convert_array(context, ComplexF32, (nvoxels, nreadouts), echos)
+    coils = convert_array(context, Float32, (nvoxels, ncoils), coils)
+
+    signal_ptr = @ccall LIBRARY.compas_magnetization_to_signal_spiral(
+        pointer(context)::Ptr{Cvoid},
+        ncoils::Int32,
+        pointer(echos)::Ptr{Cvoid},
+        parameters.ptr::Ptr{Cvoid},
+        trajectory.ptr::Ptr{Cvoid},
+        pointer(coils)::Ptr{Float32},
+        nreadouts::Int32,
+        samples_per_Readout::Int32,
+        trajectory.delta_t::Float32,
+        trajectory.k_start.ptr::Ptr{Cvoid},
+        trajectory.delta_k.ptr::Ptr{Cvoid},
     )::Ptr{Cvoid}
 
     return CompasArray{ComplexF32, 3}(context, signal_ptr, (ncoils,  nreadouts, samples_per_readout))
