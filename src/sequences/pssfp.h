@@ -5,7 +5,7 @@
 #include "pssfp_view.h"
 
 namespace compas {
-struct pSSFPSequence: public Object {
+struct pSSFPSequence {
     // Vector with flip angle for each TR with abs.(RF_train) the RF flip angles in degrees and
     // angle.(RF_train) should be the RF phases in degrees.
     Array<cfloat> RF_train;

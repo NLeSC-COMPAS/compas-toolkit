@@ -28,10 +28,29 @@ mutable struct Context
         destroy = (obj) -> @ccall LIBRARY.compas_destroy_context(ptr::Ptr{Cvoid})::Cvoid
         finalizer(destroy, obj)
     end
+
+    Context() = Context(0)
 end
 
-make_context(device::Integer)::Context = Context(device)
-make_context() = make_context(0)
+function init_context(device::Integer)::Context
+    c = Context(device)
+    set_context(c)
+    return c
+end
+
+const TASK_LOCAL_STORAGE_KEY::Symbol = :compas_toolkit_global_context
+
+function set_context(context::Context)
+    task_local_storage(TASK_LOCAL_STORAGE_KEY, context)
+end
+
+function get_context()::Context
+    try
+        return task_local_storage(TASK_LOCAL_STORAGE_KEY)
+    catch e
+        throw(ArgumentError("compas toolkit has not been initialized, use `init_context` before usage"))
+    end
+end
 
 mutable struct CompasArray{T, N} <: AbstractArray{T, N}
     context::Context
@@ -103,6 +122,37 @@ function assert_size(input::AbstractArray, expected::Dims{N}) where {N}
     end
 end
 
+function convert_array(
+    ty::Type{T},
+    dims::Dims{N},
+    input::CompasArray{T,N},
+)::CompasArray{T,N} where {T,N}
+    assert_size(input, dims)
+    return input
+end
+
+function convert_array(
+    ty::Type{T},
+    dims::Dims{N},
+    input::Array{T,N},
+)::CompasArray{T,N} where {T,N}
+    assert_size(input, dims)
+    context = get_context()
+    return make_array(context, input)
+end
+
+function convert_array(
+    ty::Type{T},
+    dims::Dims{N},
+    input::U,
+)::CompasArray{T,N} where {U,T,N}
+    return convert_array(ty, dims, convert(Array{T,N}, input))
+end
+
+function unsafe_destroy_object!(obj)
+    @ccall LIBRARY.compas_destroy(obj.ptr::Ptr{Cvoid})::Cvoid
+end
+
 function convert_array_host(
     ty::Type{T},
     dims::Dims{N},
@@ -125,46 +175,29 @@ function convert_array_host(ty::Type{T}, dims::Dims{N}, input::Number)::Array{T,
     return fill(convert(ty, input), dims)
 end
 
-function convert_array(
-    context::Context,
-    ty::Type{T},
-    dims::Dims{N},
-    input::Array{T,N},
-)::CompasArray{T,N} where {T,N}
-    assert_size(input, dims)
-    return make_array(context, input)
-end
-
-function unsafe_destroy_object!(obj)
-    @ccall LIBRARY.compas_destroy(obj.ptr::Ptr{Cvoid})::Cvoid
-end
-
 abstract type Trajectory end
 
 mutable struct CartesianTrajectory <: Trajectory
     context::Context
-    nreadouts::Int32,
-    samples_per_readout::Int32,
-    delta_t::Float32,
-    k_start::CompasArray{ComplexF32},
+    nreadouts::Int32
+    samples_per_readout::Int32
+    delta_t::Float32
+    k_start::CompasArray{ComplexF32}
     delta_k::ComplexF32
 
     function CartesianTrajectory(
-        context::Context
         nreadouts::Integer,
         samples_per_readout::Integer,
         delta_t::AbstractFloat,
         k_start::AbstractVector,
         delta_k::Number
     )
-        k_start = convert_array(context, ComplexF32, (nreadouts,), k_start)
-
         return new(
-            context,
+            get_context(),
             nreadouts,
             samples_per_readout,
             delta_t,
-            k_start,
+            convert_array(ComplexF32, (nreadouts,), k_start),
             delta_k
         )
     end
@@ -172,30 +205,26 @@ end
 
 mutable struct SpiralTrajectory <: Trajectory
     context::Context
-    nreadouts::Int32,
-    samples_per_readout::Int32,
-    delta_t::Float32,
-    k_start::CompasArray{ComplexF32},
+    nreadouts::Int32
+    samples_per_readout::Int32
+    delta_t::Float32
+    k_start::CompasArray{ComplexF32}
     delta_k::CompasArray{ComplexF32}
 
-    function CartesianTrajectory(
-        context::Context
+    function SpiralTrajectory(
         nreadouts::Integer,
         samples_per_readout::Integer,
         delta_t::AbstractFloat,
         k_start::AbstractVector,
         delta_k::AbstractVector
     )
-        k_start = convert_array(context, ComplexF32, (nreadouts,), k_start)
-        delta_k = convert_array(context, ComplexF32, (nreadouts,), delta_k)
-
         return new(
-            context,
+            get_context(),
             nreadouts,
             samples_per_readout,
             delta_t,
-            k_start,
-            delta_k
+            convert_array(ComplexF32, (nreadouts,), k_start),
+            convert_array(ComplexF32, (nreadouts,), delta_k)
         )
     end
 end
@@ -206,7 +235,6 @@ mutable struct TissueParameters
     nvoxels::Int32
 
     function TissueParameters(
-        context::Context,
         nvoxels::Integer,
         T1::AbstractVector,
         T2::AbstractVector,
@@ -218,6 +246,7 @@ mutable struct TissueParameters
         y::AbstractVector,
         z::AbstractVector,
     )
+        context = get_context()
         T1 = convert_array_host(Float32, (nvoxels,), T1)
         T2 = convert_array_host(Float32, (nvoxels,), T2)
         B1 = convert_array_host(Float32, (nvoxels,), B1)
@@ -227,7 +256,6 @@ mutable struct TissueParameters
         x = convert_array_host(Float32, (nvoxels,), x)
         y = convert_array_host(Float32, (nvoxels,), y)
         z = convert_array_host(Float32, (nvoxels,), z)
-
 
         ptr = @ccall LIBRARY.compas_make_tissue_parameters(
             pointer(context)::Ptr{Cvoid},
@@ -247,13 +275,15 @@ mutable struct TissueParameters
         finalizer(unsafe_destroy_object!, obj)
     end
 
-    function TissueParameters(context, nvoxels, T1, T2, B1, B0, rho_x, rho_y, x, y)
+    function TissueParameters(nvoxels, T1, T2, B1, B0, rho_x, rho_y, x, y)
         z = fill(0.0f0, nvoxels)
-        return TissueParameters(context, nvoxels, T1, T2, B1, B0, rho_x, rho_y, x, y, z)
+        return TissueParameters(nvoxels, T1, T2, B1, B0, rho_x, rho_y, x, y, z)
     end
 end
 
 mutable struct FispSequence
+    context::Context
+    nreadouts::Int32
     RF_train::CompasArray{ComplexF32, 1}
     slice_profiles::CompasArray{ComplexF32, 2}
     TR::Float32
@@ -262,7 +292,6 @@ mutable struct FispSequence
     TI::Float32
 
     function FispSequence(
-        context::Context,
         RF_train::AbstractVector,
         slice_profiles::AbstractMatrix,
         TR::Number,
@@ -273,27 +302,32 @@ mutable struct FispSequence
         nreadouts = size(RF_train, 1)
         nslices = size(slice_profiles, 2)
 
-        RF_train = convert_array(context, ComplexF32, (nreadouts,), RF_train)
-        slice_profiles = convert_array(context, ComplexF32, (nreadouts, nslices), slice_profiles)
-
-        return new(RF_train, slice_profiles, TR, TE, max_state, TI)
+        return new(
+            get_context(),
+            nreadouts,
+            convert_array(ComplexF32, (nreadouts,), RF_train),
+            convert_array(ComplexF32, (nreadouts, nslices), slice_profiles),
+            TR,
+            TE,
+            max_state,
+            TI)
     end
 end
 
 mutable struct pSSFPSequence
+    context::Context
     RF_train::CompasArray{ComplexF32, 1}
+    nreadouts::Int32
     TR::Float32
     nRF::Int32
-    nTR::Int32
     gamma_dt_RF::CompasArray{ComplexF32, 1}
     dt::NTuple{3, Float32}
     gamma_dt_GRz::NTuple{3, Float32}
     z::CompasArray{Float32, 1}
 
     function pSSFPSequence(
-        context::Context,
         RF_train::AbstractVector,
-        TR::Float32,
+        TR::AbstractFloat,
         gamma_dt_RF::AbstractVector,
         dt::NTuple{3,<:AbstractFloat},
         gamma_dt_GRz::NTuple{3,<:AbstractFloat},
@@ -303,24 +337,29 @@ mutable struct pSSFPSequence
         nRF = size(gamma_dt_RF, 1)
         nslices = size(z, 1)
 
-        RF_train = convert_array(context, ComplexF32, (nreadouts,), RF_train)
-        gamma_dt_RF = convert_array(context, ComplexF32, (nRF,), gamma_dt_RF)
-        z = convert_array(context, Float32, (nslices,), z)
-
-        return new(RF_train, TR, nRF, nTR, gamma_dt_RF, dt, gamma_dt_GRz, z)
+        return new(
+            get_context(),
+            convert_array(ComplexF32, (nreadouts,), RF_train),
+            nreadouts,
+            TR,
+            nRF,
+            convert_array(ComplexF32, (nRF,), gamma_dt_RF),
+            dt,
+            gamma_dt_GRz,
+            convert_array(Float32, (nslices,), z)
+        )
     end
 end
 
 function simulate_magnetization(
-    context::Context,
-    echos::AbstractMatrix,
     parameters::TissueParameters,
     sequence::FispSequence,
 )::CompasArray{ComplexF32, 2}
+    context = get_context()
     nvoxels::Int64 = parameters.nvoxels
     nreadouts::Int64 = sequence.nreadouts
 
-    @ccall LIBRARY.compas_simulate_magnetization_fisp(
+    echos_ptr = @ccall LIBRARY.compas_simulate_magnetization_fisp(
         pointer(context)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
         sequence.RF_train.ptr::Ptr{Cvoid},
@@ -335,11 +374,10 @@ function simulate_magnetization(
 end
 
 function simulate_magnetization(
-    context::Context,
-    echos::AbstractMatrix,
     parameters::TissueParameters,
     sequence::pSSFPSequence,
 )::CompasArray{ComplexF32, 2}
+    context = get_context()
     nvoxels::Int64 = parameters.nvoxels
     nreadouts::Int64 = sequence.nreadouts
 
@@ -349,41 +387,41 @@ function simulate_magnetization(
         sequence.RF_train.ptr::Ptr{Cvoid},
         sequence.TR::Float32,
         sequence.gamma_dt_RF.ptr::Ptr{Cvoid},
-        sequence.dt[0]::Float32,
         sequence.dt[1]::Float32,
         sequence.dt[2]::Float32,
-        sequence.gamma_dt_GRz[0]::Float32,
+        sequence.dt[3]::Float32,
         sequence.gamma_dt_GRz[1]::Float32,
-        sequence.gamma_dt_GRz[2]::Float32
+        sequence.gamma_dt_GRz[2]::Float32,
+        sequence.gamma_dt_GRz[3]::Float32,
+        sequence.z.ptr::Ptr{Cvoid}
     )::Ptr{Cvoid}
 
     return CompasArray{ComplexF32, 2}(context, echos_ptr, (nreadouts, nvoxels))
 end
 
 function magnetization_to_signal(
-    context::Context,
     echos::AbstractMatrix,
     parameters::TissueParameters,
     trajectory::CartesianTrajectory,
     coils::AbstractMatrix,
 )::CompasArray{ComplexF32, 3}
+    context = get_context()
     ncoils = size(coils, 2)
     nreadouts::Int64 = trajectory.nreadouts
     samples_per_readout::Int64 = trajectory.samples_per_readout
     nvoxels::Int64 = parameters.nvoxels
 
-    echos = convert_array(context, ComplexF32, (nvoxels, nreadouts), echos)
-    coils = convert_array(context, Float32, (nvoxels, ncoils), coils)
+    echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
+    coils = convert_array(Float32, (nvoxels, ncoils), coils)
 
     signal_ptr = @ccall LIBRARY.compas_magnetization_to_signal_cartesian(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(echos)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
-        trajectory.ptr::Ptr{Cvoid},
         pointer(coils)::Ptr{Float32},
         nreadouts::Int32,
-        samples_per_Readout::Int32,
+        trajectory.samples_per_readout::Int32,
         trajectory.delta_t::Float32,
         trajectory.k_start.ptr::Ptr{Cvoid},
         trajectory.delta_k::ComplexF32,
@@ -393,29 +431,28 @@ function magnetization_to_signal(
 end
 
 function magnetization_to_signal(
-    context::Context,
     echos::AbstractMatrix,
     parameters::TissueParameters,
     trajectory::SpiralTrajectory,
     coils::AbstractMatrix,
 )::CompasArray{ComplexF32, 3}
+    context = get_context()
     ncoils = size(coils, 2)
     nreadouts::Int64 = trajectory.nreadouts
     samples_per_readout::Int64 = trajectory.samples_per_readout
     nvoxels::Int64 = parameters.nvoxels
 
-    echos = convert_array(context, ComplexF32, (nvoxels, nreadouts), echos)
-    coils = convert_array(context, Float32, (nvoxels, ncoils), coils)
+    echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
+    coils = convert_array(Float32, (nvoxels, ncoils), coils)
 
     signal_ptr = @ccall LIBRARY.compas_magnetization_to_signal_spiral(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(echos)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
-        trajectory.ptr::Ptr{Cvoid},
         pointer(coils)::Ptr{Float32},
         nreadouts::Int32,
-        samples_per_Readout::Int32,
+        trajectory.samples_per_readout::Int32,
         trajectory.delta_t::Float32,
         trajectory.k_start.ptr::Ptr{Cvoid},
         trajectory.delta_k.ptr::Ptr{Cvoid},
@@ -425,10 +462,7 @@ function magnetization_to_signal(
 end
 
 Base.pointer(c::Context) = c.ptr
-Base.pointer(c::Trajectory) = c.ptr
 Base.pointer(c::TissueParameters) = c.ptr
-Base.pointer(c::FispSequence) = c.ptr
-Base.pointer(c::pSSFPSequence) = c.ptr
 Base.pointer(c::CompasArray) = c.ptr
 
 end

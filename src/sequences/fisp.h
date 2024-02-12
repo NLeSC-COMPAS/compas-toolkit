@@ -7,7 +7,7 @@
 
 namespace compas {
 
-struct FISPSequence: public Object {
+struct FISPSequence {
     // Vector with flip angle for each TR with abs.(RF_train) the RF flip angles in degrees and
     // angle.(RF_train) should be the RF phases in degrees.
     Array<cfloat> RF_train;
@@ -27,20 +27,6 @@ struct FISPSequence: public Object {
 
     // Inversion delay after the inversion prepulse in seconds
     float TI;
-
-    FISPSequence(
-        Array<cfloat> RF_train,
-        Array<cfloat, 2> sliceprofiles,
-        float TR,
-        float TE,
-        int max_state,
-        float TI) :
-        RF_train(RF_train),
-        sliceprofiles(sliceprofiles),
-        TR(TR),
-        TE(TE),
-        max_state(max_state),
-        TI(TI) {}
 };
 
 inline FISPSequence make_fisp_sequence(
