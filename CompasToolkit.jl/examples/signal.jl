@@ -60,7 +60,7 @@ k0 = [(-ns/2 * Δkˣ) + im * (py[mod1(r,N)] * Δkʸ) for r in 1:nr]; # starting 
 Δk = [Δkˣ + 0.0im for r in 1:nr]; # k-space steps per sample point for each readout
 
 trajectory_ref = CartesianTrajectory(nr,ns,Δt_adc,k0,Δk,py);
-trajectory = CompasToolkit.CartesianTrajectory(nr, ns, Float32(Δt_adc), ComplexF32.(k0), ComplexF32.(Δk[1]));
+trajectory = CompasToolkit.CartesianTrajectory(nr, ns, Δt_adc, k0, Δk[1]);
 
 # We use two different receive coils
 ncoils = 4
@@ -75,16 +75,13 @@ coil_sensitivities_ref = map(SVector, coil₁, coil₂, coil₃, coil₄)
 trajectory_ref  = gpu(f32(trajectory_ref))
 coil_sensitivities_ref  = gpu(f32(coil_sensitivities_ref))
 signal_ref = simulate(CUDALibs(), pssfp_ref, parameters_ref, trajectory_ref, coil_sensitivities_ref)
-
-signal_ref = collect(signal_ref)
-signal_ref = reshape(signal_ref, ns, nr)
+signal_ref = reshape(collect(signal_ref), ns, nr)
 
 signal = CompasToolkit.magnetization_to_signal(
     echos,
     parameters,
     trajectory,
     coil_sensitivities)
-
 signal = collect(signal)
 
 for c in 1:ncoils

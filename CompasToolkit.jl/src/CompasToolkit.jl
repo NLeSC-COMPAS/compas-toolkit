@@ -426,7 +426,7 @@ function magnetization_to_signal(
     coils::AbstractMatrix,
 )::CompasArray{ComplexF32, 3}
     context = get_context()
-    ncoils = size(coils, 2)
+    ncoils::Int64 = size(coils, 2)
     nreadouts::Int64 = trajectory.nreadouts
     samples_per_readout::Int64 = trajectory.samples_per_readout
     nvoxels::Int64 = parameters.nvoxels

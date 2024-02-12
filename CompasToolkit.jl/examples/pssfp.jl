@@ -47,7 +47,7 @@ pssfp_ref = pSSFP(RF_train, TR, γΔtRF, Δt, γΔtGRz, z)
 Δt = (Δt.ex, Δt.inv, Δt.pr) # time intervals during TR
 γΔtGRz = (γΔtGRz.ex, γΔtGRz.inv, γΔtGRz.pr) # slice select gradient strengths during TR
 
-pssfp = CompasToolkit.pSSFPSequence(RF_train, Float32(TR), γΔtRF, Δt, γΔtGRz, z)
+pssfp = CompasToolkit.pSSFPSequence(RF_train, TR, γΔtRF, Δt, γΔtGRz, z)
 
 # isochromat model
 pssfp_ref = gpu(f32(pssfp_ref))
