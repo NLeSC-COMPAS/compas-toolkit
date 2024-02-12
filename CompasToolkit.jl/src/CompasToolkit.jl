@@ -19,6 +19,10 @@ function version()::String
     return unsafe_string(ptr)
 end
 
+function unsafe_destroy_object!(obj)
+    @ccall LIBRARY.compas_destroy(obj.ptr::Ptr{Cvoid})::Cvoid
+end
+
 mutable struct Context
     ptr::Ptr{Cvoid}
 
@@ -115,42 +119,27 @@ function Base.collect(input::CompasArray{ComplexF32, N}) where {N}
     return result
 end
 
-function assert_size(input::AbstractArray, expected::Dims{N}) where {N}
+function assert_size(input::AbstractArray, expected::Dims)
     gotten = size(input)
     if gotten != expected
         throw(ArgumentError("Invalid argument dimensions $gotten, should be $expected"))
     end
 end
 
-function convert_array(
-    ty::Type{T},
-    dims::Dims{N},
-    input::CompasArray{T,N},
-)::CompasArray{T,N} where {T,N}
+function convert_array(input::CompasArray{T,N}, ty::Type{T}, dims::Integer...)::CompasArray{T,N} where {T,N}
     assert_size(input, dims)
     return input
 end
 
-function convert_array(
-    ty::Type{T},
-    dims::Dims{N},
-    input::Array{T,N},
-)::CompasArray{T,N} where {T,N}
+function convert_array(input::Array{T,N}, ty::Type{T}, dims::Integer...)::CompasArray{T,N} where {T,N}
     assert_size(input, dims)
     context = get_context()
     return make_array(context, input)
 end
 
-function convert_array(
-    ty::Type{T},
-    dims::Dims{N},
-    input::U,
-)::CompasArray{T,N} where {U,T,N}
-    return convert_array(ty, dims, convert(Array{T,N}, input))
-end
-
-function unsafe_destroy_object!(obj)
-    @ccall LIBRARY.compas_destroy(obj.ptr::Ptr{Cvoid})::Cvoid
+function convert_array(input::AbstractArray, ty::Type{T}, dims::Integer...,)::CompasArray where {T}
+    N = length(dims)
+    return convert_array(convert(Array{T,N}, input), ty, dims...)
 end
 
 function convert_array_host(
@@ -197,7 +186,7 @@ mutable struct CartesianTrajectory <: Trajectory
             nreadouts,
             samples_per_readout,
             delta_t,
-            convert_array(ComplexF32, (nreadouts,), k_start),
+            convert_array(k_start, ComplexF32, nreadouts),
             delta_k
         )
     end
@@ -223,8 +212,8 @@ mutable struct SpiralTrajectory <: Trajectory
             nreadouts,
             samples_per_readout,
             delta_t,
-            convert_array(ComplexF32, (nreadouts,), k_start),
-            convert_array(ComplexF32, (nreadouts,), delta_k)
+            convert_array(k_start, ComplexF32, nreadouts),
+            convert_array(delta_k, ComplexF32, nreadouts)
         )
     end
 end
@@ -305,8 +294,8 @@ mutable struct FispSequence
         return new(
             get_context(),
             nreadouts,
-            convert_array(ComplexF32, (nreadouts,), RF_train),
-            convert_array(ComplexF32, (nreadouts, nslices), slice_profiles),
+            convert_array(RF_train, ComplexF32, nreadouts),
+            convert_array(slice_profiles, ComplexF32, nreadouts, nslices),
             TR,
             TE,
             max_state,
@@ -339,14 +328,14 @@ mutable struct pSSFPSequence
 
         return new(
             get_context(),
-            convert_array(ComplexF32, (nreadouts,), RF_train),
+            convert_array(RF_train, ComplexF32, nreadouts),
             nreadouts,
             TR,
             nRF,
-            convert_array(ComplexF32, (nRF,), gamma_dt_RF),
+            convert_array(gamma_dt_RF, ComplexF32, nRF),
             dt,
             gamma_dt_GRz,
-            convert_array(Float32, (nslices,), z)
+            convert_array(z, Float32, nslices)
         )
     end
 end
@@ -411,8 +400,8 @@ function magnetization_to_signal(
     samples_per_readout::Int64 = trajectory.samples_per_readout
     nvoxels::Int64 = parameters.nvoxels
 
-    echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
-    coils = convert_array(Float32, (nvoxels, ncoils), coils)
+    echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
+    coils = convert_array(coils, Float32, nvoxels, ncoils)
 
     signal_ptr = @ccall LIBRARY.compas_magnetization_to_signal_cartesian(
         pointer(context)::Ptr{Cvoid},
@@ -442,8 +431,8 @@ function magnetization_to_signal(
     samples_per_readout::Int64 = trajectory.samples_per_readout
     nvoxels::Int64 = parameters.nvoxels
 
-    echos = convert_array(ComplexF32, (nvoxels, nreadouts), echos)
-    coils = convert_array(Float32, (nvoxels, ncoils), coils)
+    echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
+    coils = convert_array(coils, Float32, nvoxels, ncoils)
 
     signal_ptr = @ccall LIBRARY.compas_magnetization_to_signal_spiral(
         pointer(context)::Ptr{Cvoid},
