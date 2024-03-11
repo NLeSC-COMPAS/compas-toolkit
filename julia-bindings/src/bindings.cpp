@@ -9,6 +9,9 @@
 #include "trajectories/spiral.h"
 #include "trajectories/trajectory.h"
 
+// Alias for complex float.
+using cfloat = compas::complex_type<float>;
+
 template<typename F>
 auto catch_exceptions(F fun) -> decltype(fun()) {
     try {
@@ -79,17 +82,16 @@ extern "C" void compas_read_array_float(
 
 extern "C" const kmm::ArrayBase* compas_make_array_complex(
     const compas::CudaContext* context,
-    const compas::cfloat* data_ptr,
+    const cfloat* data_ptr,
     int rank,
     int64_t* sizes) {
     return catch_exceptions([&]() -> kmm::ArrayBase* {
         if (rank == 1) {
-            return new kmm::Array<compas::cfloat>(context->allocate(data_ptr, sizes[0]));
+            return new kmm::Array<cfloat>(context->allocate(data_ptr, sizes[0]));
         } else if (rank == 2) {
-            return new kmm::Array<compas::cfloat, 2>(
-                context->allocate(data_ptr, sizes[0], sizes[1]));
+            return new kmm::Array<cfloat, 2>(context->allocate(data_ptr, sizes[0], sizes[1]));
         } else if (rank == 3) {
-            return new kmm::Array<compas::cfloat, 3>(
+            return new kmm::Array<cfloat, 3>(
                 context->allocate(data_ptr, sizes[0], sizes[1], sizes[2]));
         } else {
             COMPAS_PANIC("cannot support rank > 3");
@@ -100,7 +102,7 @@ extern "C" const kmm::ArrayBase* compas_make_array_complex(
 extern "C" void compas_read_array_complex(
     const compas::CudaContext* context,
     const kmm::ArrayBase* input_array,
-    compas::cfloat* dest_ptr,
+    cfloat* dest_ptr,
     int64_t length) {
     catch_exceptions([&]() {
         size_t num_bytes = kmm::checked_mul(kmm::checked_cast<size_t>(length), 2 * sizeof(float));
@@ -145,8 +147,8 @@ extern "C" const compas::TissueParameters* compas_make_tissue_parameters(
 extern "C" kmm::ArrayBase* compas_simulate_magnetization_fisp(
     const compas::CudaContext* context,
     const compas::TissueParameters* parameters,
-    compas::Array<compas::cfloat>* RF_train,
-    compas::Array<compas::cfloat, 2>* sliceprofiles,
+    compas::Array<cfloat>* RF_train,
+    compas::Array<cfloat, 2>* sliceprofiles,
     float TR,
     float TE,
     int max_state,
@@ -155,7 +157,7 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_fisp(
         int nreadouts = RF_train->size();
         int nvoxels = parameters->nvoxels;
 
-        auto* echos = new compas::Array<compas::cfloat, 2>(nreadouts, nvoxels);
+        auto* echos = new compas::Array<cfloat, 2>(nreadouts, nvoxels);
         auto sequence = compas::FISPSequence {*RF_train, *sliceprofiles, TR, TE, max_state, TI};
 
         context->submit_device(
@@ -171,9 +173,9 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_fisp(
 extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
     const compas::CudaContext* context,
     const compas::TissueParameters* parameters,
-    const compas::Array<compas::cfloat>* RF_train,
+    const compas::Array<cfloat>* RF_train,
     float TR,
-    const compas::Array<compas::cfloat>* gamma_dt_RF,
+    const compas::Array<cfloat>* gamma_dt_RF,
     float dt_ex,
     float dt_inv,
     float dt_pr,
@@ -184,7 +186,7 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
     return catch_exceptions([&] {
         int nreadouts = RF_train->size();
         int nvoxels = parameters->nvoxels;
-        auto* echos = new compas::Array<compas::cfloat, 2>(nreadouts, nvoxels);
+        auto* echos = new compas::Array<cfloat, 2>(nreadouts, nvoxels);
 
         auto sequence = compas::pSSFPSequence {
             *RF_train,
@@ -207,14 +209,14 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
 extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
     const compas::CudaContext* context,
     int ncoils,
-    const compas::Array<compas::cfloat, 2>* echos,
+    const compas::Array<cfloat, 2>* echos,
     const compas::TissueParameters* parameters,
     const compas::Array<float, 2>* coils,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
-    const compas::Array<compas::cfloat>* k_start,
-    compas::cfloat delta_k) {
+    const compas::Array<cfloat>* k_start,
+    cfloat delta_k) {
     return catch_exceptions([&] {
         auto trajectory = compas::CartesianTrajectory {
             nreadouts,
@@ -225,44 +227,44 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
 
         auto signal =
             compas::magnetization_to_signal(*context, *echos, *parameters, trajectory, *coils);
-        return new compas::Array<compas::cfloat, 3>(signal);
+        return new compas::Array<cfloat, 3>(signal);
     });
 }
 
 extern "C" kmm::ArrayBase* compas_magnetization_to_signal_spiral(
     const compas::CudaContext* context,
     int ncoils,
-    const compas::Array<compas::cfloat, 2>* echos,
+    const compas::Array<cfloat, 2>* echos,
     const compas::TissueParameters* parameters,
     const compas::Array<float, 2>* coils,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
-    const compas::Array<compas::cfloat>* k_start,
-    const compas::Array<compas::cfloat>* delta_k) {
+    const compas::Array<cfloat>* k_start,
+    const compas::Array<cfloat>* delta_k) {
     return catch_exceptions([&] {
         auto trajectory =
             compas::SpiralTrajectory {nreadouts, samples_per_readout, delta_t, *k_start, *delta_k};
 
         auto signal =
             compas::magnetization_to_signal(*context, *echos, *parameters, trajectory, *coils);
-        return new compas::Array<compas::cfloat, 3>(signal);
+        return new compas::Array<cfloat, 3>(signal);
     });
 }
 
-extern "C" compas::Array<compas::cfloat, 2>* compas_compute_jacobian(
+extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian(
     const compas::CudaContext* context,
     int ncoils,
-    const compas::Array<compas::cfloat, 2>* echos,
-    const compas::Array<compas::cfloat, 3>* delta_echos,
+    const compas::Array<cfloat, 2>* echos,
+    const compas::Array<cfloat, 3>* delta_echos,
     const compas::TissueParameters* parameters,
     const compas::Array<float, 2>* coils,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
-    const compas::Array<compas::cfloat>* k_start,
-    compas::cfloat delta_k,
-    const compas::Array<compas::cfloat, 2>* vector) {
+    const compas::Array<cfloat>* k_start,
+    cfloat delta_k,
+    const compas::Array<cfloat, 2>* vector) {
     return catch_exceptions([&] {
         auto trajectory = compas::CartesianTrajectory {
             nreadouts,
@@ -280,23 +282,23 @@ extern "C" compas::Array<compas::cfloat, 2>* compas_compute_jacobian(
             *coils,
             *vector);
 
-        return new compas::Array<compas::cfloat, 2>(Jv);
+        return new compas::Array<cfloat, 2>(Jv);
     });
 }
 
-extern "C" compas::Array<compas::cfloat, 2>* compas_compute_jacobian_hermitian(
+extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
     const compas::CudaContext* context,
     int ncoils,
-    const compas::Array<compas::cfloat, 2>* echos,
-    const compas::Array<compas::cfloat, 3>* delta_echos,
+    const compas::Array<cfloat, 2>* echos,
+    const compas::Array<cfloat, 3>* delta_echos,
     const compas::TissueParameters* parameters,
     const compas::Array<float, 2>* coils,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
-    const compas::Array<compas::cfloat>* k_start,
-    compas::cfloat delta_k,
-    const compas::Array<compas::cfloat, 2>* vector) {
+    const compas::Array<cfloat>* k_start,
+    cfloat delta_k,
+    const compas::Array<cfloat, 2>* vector) {
     return catch_exceptions([&] {
         auto trajectory = compas::CartesianTrajectory {
             nreadouts,
@@ -314,6 +316,6 @@ extern "C" compas::Array<compas::cfloat, 2>* compas_compute_jacobian_hermitian(
             *coils,
             *vector);
 
-        return new compas::Array<compas::cfloat, 2>(d_JHv);
+        return new compas::Array<cfloat, 2>(d_JHv);
     });
 }
