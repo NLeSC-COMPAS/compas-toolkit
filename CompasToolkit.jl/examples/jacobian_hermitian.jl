@@ -106,18 +106,18 @@ function compute_Jᴴv(echos::AbstractArray{T}, ∂echos, parameters, coil_sensi
 end
 
 
-context = CompasToolkit.make_context()
+context = CompasToolkit.init_context(0)
 
 # Finally we assemble the phantom as an array of `T₁T₂B₀ρˣρʸxy` values
 N = 256
 nvoxels = N * N
 T₁, T₂, B₁, B₀, ρ, X, Y = generate_parameters(N)
 parameters_ref = map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)
-parameters = CompasToolkit.TissueParameters(context, nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
+parameters = CompasToolkit.TissueParameters(nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
 
 # Next, we assemble a Cartesian trajectory with linear phase encoding
 trajectory_ref = generate_cartesian_trajectory(N);
-trajectory = CompasToolkit.CartesianTrajectory(context,
+trajectory = CompasToolkit.CartesianTrajectory(
     trajectory_ref.nreadouts, 
     trajectory_ref.nsamplesperreadout, 
     Float32(trajectory_ref.Δt), 
@@ -142,7 +142,6 @@ Jᴴv_ref = compute_Jᴴv(gpu(echos), gpu(∂echos), gpu(parameters_ref), gpu(co
 Jᴴv_ref = reduce(hcat, collect(Jᴴv_ref)) # Vector{Svector} -> Matrix
 
 Jᴴv = CompasToolkit.compute_jacobian_hermitian(
-    context,
     echos,
     ∂echos,
     parameters,

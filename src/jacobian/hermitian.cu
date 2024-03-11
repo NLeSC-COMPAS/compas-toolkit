@@ -95,6 +95,11 @@ __global__ void jacobian_hermitian_product(
         }
 
 #pragma unroll
+        for (int i = 0; i < 4; i++) {
+            JHv[i][voxel] = 0;
+        }
+
+#pragma unroll
         for (int icoil = 0; icoil < ncoils; icoil++) {
             auto c = coil_sensitivities[icoil][voxel];
             auto rho = p.rho;
@@ -109,7 +114,7 @@ __global__ void jacobian_hermitian_product(
 
 #pragma unroll
             for (int i = 0; i < 4; i++) {
-                JHv[i][voxel] = conj(lin_scale[i]) * tmp[i];
+                JHv[i][voxel] += conj(lin_scale[i]) * tmp[i];
             }
         }
     }
@@ -120,8 +125,8 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     const CudaContext& ctx,
     Array<cfloat, 2> echos,
     Array<cfloat, 3> delta_echos,
-    TissueParametersView parameters,
-    CartesianTrajectoryView trajectory,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
     Array<float, 2> coil_sensitivities,
     Array<cfloat, 2> vector) {
     int ns = trajectory.samples_per_readout;
