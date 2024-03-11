@@ -1,4 +1,6 @@
+#include "core/assertion.h"
 #include "core/utils.h"
+#include "core/vector.h"
 #include "jacobian/product.h"
 
 namespace compas {
@@ -113,25 +115,20 @@ __launch_bounds__(256, 16) __global__ void jacobian_product(
 }
 }  // namespace kernels
 
-void compute_jacobian(
+Array<cfloat, 2> compute_jacobian(
     const CudaContext& ctx,
-    cuda_view_mut<cfloat, 2> Jv,
-    cuda_view<cfloat, 2> echos,
-    cuda_view<cfloat, 3> delta_echos,
+    Array<cfloat, 2> echos,
+    Array<cfloat, 3> delta_echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
-    cuda_view<float, 2> coil_sensitivities,
-    cuda_view<cfloat, 2> vector) {
-    CudaContextGuard guard {ctx};
-
+    Array<float, 2> coil_sensitivities,
+    Array<cfloat, 2> vector) {
     static constexpr int threads_per_sample = 16;
     int ns = trajectory.samples_per_readout;
     int nreadouts = trajectory.nreadouts;
     int nvoxels = parameters.nvoxels;
     int ncoils = coil_sensitivities.size(0);
 
-    COMPAS_ASSERT(Jv.size(0) == ncoils);
-    COMPAS_ASSERT(Jv.size(1) == nreadouts * ns);
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
     COMPAS_ASSERT(delta_echos.size(0) == 2);  // T1 and T2
@@ -142,14 +139,18 @@ void compute_jacobian(
     COMPAS_ASSERT(vector.size(0) == 4);  // four reconstruction parameters: T1, T2, rho_x, rho_y
     COMPAS_ASSERT(vector.size(1) == nvoxels);
 
-    auto E = ctx.allocate<cfloat, 2>({ns, nvoxels});
-    auto dEdT2 = ctx.allocate<cfloat, 2>({ns, nvoxels});
+    auto Jv = Array<cfloat, 2>(ncoils, nreadouts * ns);
+    auto E = Array<cfloat, 2>(ns, nvoxels);
+    auto dEdT2 = Array<cfloat, 2>(ns, nvoxels);
 
     dim3 block_dim = 256;
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(ns), block_dim.y)};
-    kernels::delta_to_sample_exponent<<<grid_dim, block_dim>>>(
-        E.view_mut(),
-        dEdT2.view_mut(),
+    ctx.submit_kernel(
+        grid_dim,
+        block_dim,
+        kernels::delta_to_sample_exponent,
+        write(E),
+        write(dEdT2),
         trajectory,
         parameters);
 
@@ -159,19 +160,22 @@ void compute_jacobian(
         div_ceil(uint(nreadouts), block_dim.y)};
 
     // Repeat for each coil
-#define COMPAS_COMPUTE_JACOBIAN_IMPL(N)                                              \
-    if (ncoils == (N)) {                                                             \
-        kernels::jacobian_product<(N), threads_per_sample><<<grid_dim, block_dim>>>( \
-            Jv,                                                                      \
-            echos,                                                                   \
-            delta_echos,                                                             \
-            parameters,                                                              \
-            trajectory,                                                              \
-            coil_sensitivities,                                                      \
-            E.view(),                                                                \
-            dEdT2.view(),                                                            \
-            vector);                                                                 \
-        return;                                                                      \
+#define COMPAS_COMPUTE_JACOBIAN_IMPL(N)                         \
+    if (ncoils == (N)) {                                        \
+        ctx.submit_kernel(                                      \
+            grid_dim,                                           \
+            block_dim,                                          \
+            kernels::jacobian_product<(N), threads_per_sample>, \
+            write(Jv),                                          \
+            echos,                                              \
+            delta_echos,                                        \
+            parameters,                                         \
+            trajectory,                                         \
+            coil_sensitivities,                                 \
+            E,                                                  \
+            dEdT2,                                              \
+            vector);                                            \
+        return Jv;                                              \
     }
 
     COMPAS_COMPUTE_JACOBIAN_IMPL(1)

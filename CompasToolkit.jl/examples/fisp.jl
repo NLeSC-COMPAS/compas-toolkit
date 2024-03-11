@@ -5,7 +5,7 @@ using ComputationalResources
 using LinearAlgebra
 using StaticArrays
 
-context = CompasToolkit.make_context(0)
+context = CompasToolkit.init_context(0)
 
 # First we assemble a Shepp Logan phantom with homogeneous T₁ and T₂
 # but non-constant proton density and B₀
@@ -24,7 +24,7 @@ nvoxels = N*N
 
 # Finally we assemble the phantom as an array of `T₁T₂B₀ρˣρʸxy` values
 parameters_ref = map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)
-parameters = CompasToolkit.TissueParameters(context, nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
+parameters = CompasToolkit.TissueParameters(nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
 
 nTR = N; # nr of TRs used in the simulation
 RF_train = LinRange(1,90,nTR) |> collect .|> complex; # flip angle train
@@ -40,7 +40,7 @@ fisp_ref = FISP(RF_train, sliceprofiles, TR, TE, max_state, TI);
 RF_train = RF_train .|> ComplexF32 # constant flip angle train
 sliceprofiles = collect(sliceprofiles)  .|> ComplexF32 # z locations
 
-fisp = CompasToolkit.FispSequence(context, RF_train, sliceprofiles, Float32(TR), Float32(TE), max_state, Float32(TI))
+fisp = CompasToolkit.FispSequence(RF_train, sliceprofiles, Float32(TR), Float32(TE), max_state, Float32(TI))
 
 
 # isochromat model
@@ -50,7 +50,7 @@ echos_ref = simulate(CUDALibs(), fisp_ref, parameters_ref);
 echos_ref = collect(echos_ref)
 
 echos = zeros(ComplexF32, nvoxels, nTR)
-CompasToolkit.simulate_magnetization(context, echos, parameters, fisp)
+CompasToolkit.simulate_magnetization(parameters, fisp)
 echos = transpose(echos)
 
 println("fraction equal: ", sum(echos .≈ echos_ref) / length(echos))

@@ -7,14 +7,6 @@
 
 namespace compas {
 
-void magnetization_to_signal(
-    const CudaContext& context,
-    cuda_view_mut<cfloat, 3> signal,
-    cuda_view<cfloat, 2> echos,
-    TissueParametersView parameters,
-    const Trajectory& trajectory,
-    cuda_view<float, 2> coil_sensitivities);
-
 enum struct SimulateSignalMethod {
     Direct,
     MatmulPedantic,
@@ -23,21 +15,12 @@ enum struct SimulateSignalMethod {
     MatmulBF16,
 };
 
-void magnetization_to_signal_cartesian(
+Array<cfloat, 3> magnetization_to_signal(
     const CudaContext& context,
-    cuda_view_mut<cfloat, 3> signal,
-    cuda_view<cfloat, 2> echos,
-    TissueParametersView parameters,
-    CartesianTrajectoryView trajectory,
-    cuda_view<float, 2> coil_sensitivities,
+    const Array<cfloat, 2>& echos,
+    const TissueParameters& parameters,
+    const Trajectory& trajectory,
+    const Array<float, 2>& coil_sensitivities,
     SimulateSignalMethod method = SimulateSignalMethod::Direct);
-
-void magnetization_to_signal_spiral(
-    const CudaContext& context,
-    cuda_view_mut<cfloat, 3> signal,
-    cuda_view<cfloat, 2> echos,
-    TissueParametersView parameters,
-    SpiralTrajectoryView trajectory,
-    cuda_view<float, 2> coil_sensitivities);
 
 }  // namespace compas

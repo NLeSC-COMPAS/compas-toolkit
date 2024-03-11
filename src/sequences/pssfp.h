@@ -1,13 +1,14 @@
 #pragma once
 
+#include "core/assertion.h"
 #include "core/context.h"
 #include "pssfp_view.h"
 
 namespace compas {
-struct pSSFPSequence: public Object {
+struct pSSFPSequence {
     // Vector with flip angle for each TR with abs.(RF_train) the RF flip angles in degrees and
     // angle.(RF_train) should be the RF phases in degrees.
-    CudaArray<cfloat> RF_train;
+    Array<cfloat> RF_train;
 
     // Repetition time in seconds, assumed constant during the sequence
     float TR;
@@ -19,7 +20,7 @@ struct pSSFPSequence: public Object {
     int nTR;
 
     // Time-discretized RF waveform, normalized to flip angle of 1 degree
-    CudaArray<cfloat> gamma_dt_RF;
+    Array<cfloat> gamma_dt_RF;
 
     // Time intervals
     RepetitionData dt;  // Δt
@@ -29,15 +30,15 @@ struct pSSFPSequence: public Object {
     int nz;
 
     // Vector with different positions along the slice direction.
-    CudaArray<float> z;
+    Array<float> z;
 
     pSSFPSequence(
-        CudaArray<cfloat> RF_train,
+        Array<cfloat> RF_train,
         float TR,
-        CudaArray<cfloat> gamma_dt_RF,
+        Array<cfloat> gamma_dt_RF,
         RepetitionData dt,
         RepetitionData gamma_dt_GRz,
-        CudaArray<float> z) :
+        Array<float> z) :
         RF_train(RF_train),
         TR(TR),
         nRF(gamma_dt_RF.size()),
@@ -47,17 +48,6 @@ struct pSSFPSequence: public Object {
         gamma_dt_GRz(gamma_dt_GRz),
         nz(z.size()),
         z(z) {}
-
-    pSSFPSequenceView view() const {
-        return {
-            .nTR = nTR,
-            .RF_train = RF_train.view(),
-            .TR = TR,
-            .gamma_dt_RF = gamma_dt_RF.view(),
-            .dt = dt,
-            .gamma_dt_GRz = gamma_dt_GRz,
-            .z = z.view()};
-    }
 };
 
 inline pSSFPSequence make_pssfp_sequence(
@@ -81,3 +71,38 @@ inline pSSFPSequence make_pssfp_sequence(
 }
 
 }  // namespace compas
+
+namespace kmm {
+template<>
+struct TaskArgument<ExecutionSpace::Cuda, compas::pSSFPSequence> {
+    using type = compas::pSSFPSequenceView;
+
+    static TaskArgument pack(TaskBuilder& builder, compas::pSSFPSequence p) {
+        return {
+            {.nTR = p.nTR,
+             .RF_train = {},
+             .TR = p.TR,
+             .gamma_dt_RF = {},
+             .dt = p.dt,
+             .gamma_dt_GRz = p.gamma_dt_GRz,
+             .z = {}},
+            pack_argument<ExecutionSpace::Cuda>(builder, p.RF_train),
+            pack_argument<ExecutionSpace::Cuda>(builder, p.gamma_dt_RF),
+            pack_argument<ExecutionSpace::Cuda>(builder, p.z),
+        };
+    }
+
+    type unpack(TaskContext& context) {
+        view.RF_train = unpack_argument<ExecutionSpace::Cuda>(context, RF_train);
+        view.gamma_dt_RF = unpack_argument<ExecutionSpace::Cuda>(context, gamma_dt_RF);
+        view.z = unpack_argument<ExecutionSpace::Cuda>(context, z);
+        return view;
+    }
+
+    compas::pSSFPSequenceView view;
+    PackedArray<const compas::cfloat> RF_train;
+    PackedArray<const compas::cfloat> gamma_dt_RF;
+    PackedArray<const float> z;
+};
+
+};  // namespace kmm

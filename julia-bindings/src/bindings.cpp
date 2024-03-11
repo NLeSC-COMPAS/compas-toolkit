@@ -25,7 +25,7 @@ auto catch_exceptions(F fun) -> decltype(fun()) {
 
 template<typename T, typename... Ns>
 compas::host_view_mut<T, sizeof...(Ns)> make_view(T* ptr, Ns... sizes) {
-    return {ptr, {{sizes...}}};
+    return {ptr, kmm::fixed_array<kmm::index_t, sizeof...(Ns)> {sizes...}};
 }
 
 extern "C" const char* compas_version() {
@@ -47,44 +47,69 @@ extern "C" void compas_destroy_context(const compas::CudaContext* ctx) {
     return catch_exceptions([&] { delete ctx; });
 }
 
-extern "C" compas::Trajectory* compas_make_cartesian_trajectory(
+extern "C" const kmm::ArrayBase* compas_make_array_float(
     const compas::CudaContext* context,
-    int nreadouts,
-    int samples_per_readout,
-    float delta_t,
-    const compas::cfloat* k_start,
-    compas::cfloat delta_k) {
-    return catch_exceptions([&] {
-        auto trajectory = compas::make_cartesian_trajectory(
-            *context,
-            nreadouts,
-            samples_per_readout,
-            delta_t,
-            make_view(k_start, nreadouts),
-            delta_k);
-
-        return new compas::CartesianTrajectory(trajectory);
+    const float* data_ptr,
+    int rank,
+    int64_t* sizes) {
+    return catch_exceptions([&]() -> kmm::ArrayBase* {
+        if (rank == 1) {
+            return new kmm::Array<float>(context->allocate(data_ptr, sizes[0]));
+        } else if (rank == 2) {
+            return new kmm::Array<float, 2>(context->allocate(data_ptr, sizes[0], sizes[1]));
+        } else if (rank == 3) {
+            return new kmm::Array<float, 3>(
+                context->allocate(data_ptr, sizes[0], sizes[1], sizes[2]));
+        } else {
+            COMPAS_PANIC("cannot support rank > 3");
+        }
     });
 }
 
-extern "C" compas::Trajectory* compas_make_spiral_trajectory(
+extern "C" void compas_read_array_float(
     const compas::CudaContext* context,
-    int nreadouts,
-    int samples_per_readout,
-    float delta_t,
-    const compas::cfloat* k_start,
-    const compas::cfloat* delta_k) {
-    return catch_exceptions([&] {
-        auto trajectory = compas::make_spiral_trajectory(
-            *context,
-            nreadouts,
-            samples_per_readout,
-            delta_t,
-            make_view(k_start, nreadouts),
-            make_view(delta_k, nreadouts));
-
-        return new compas::SpiralTrajectory(trajectory);
+    const kmm::ArrayBase* input_array,
+    float* dest_ptr,
+    int64_t length) {
+    catch_exceptions([&]() {
+        size_t num_bytes = kmm::checked_mul(kmm::checked_cast<size_t>(length), sizeof(float));
+        input_array->read_bytes(dest_ptr, num_bytes);
     });
+}
+
+extern "C" const kmm::ArrayBase* compas_make_array_complex(
+    const compas::CudaContext* context,
+    const compas::cfloat* data_ptr,
+    int rank,
+    int64_t* sizes) {
+    return catch_exceptions([&]() -> kmm::ArrayBase* {
+        if (rank == 1) {
+            return new kmm::Array<compas::cfloat>(context->allocate(data_ptr, sizes[0]));
+        } else if (rank == 2) {
+            return new kmm::Array<compas::cfloat, 2>(
+                context->allocate(data_ptr, sizes[0], sizes[1]));
+        } else if (rank == 3) {
+            return new kmm::Array<compas::cfloat, 3>(
+                context->allocate(data_ptr, sizes[0], sizes[1], sizes[2]));
+        } else {
+            COMPAS_PANIC("cannot support rank > 3");
+        }
+    });
+}
+
+extern "C" void compas_read_array_complex(
+    const compas::CudaContext* context,
+    const kmm::ArrayBase* input_array,
+    compas::cfloat* dest_ptr,
+    int64_t length) {
+    catch_exceptions([&]() {
+        size_t num_bytes = kmm::checked_mul(kmm::checked_cast<size_t>(length), 2 * sizeof(float));
+        input_array->read_bytes(dest_ptr, num_bytes);
+    });
+}
+
+extern "C" void compas_destroy_array(const kmm::ArrayBase* array) {
+    return catch_exceptions([&] { delete array; });
 }
 
 extern "C" const compas::TissueParameters* compas_make_tissue_parameters(
@@ -117,133 +142,111 @@ extern "C" const compas::TissueParameters* compas_make_tissue_parameters(
     });
 }
 
-extern "C" const compas::pSSFPSequence* compas_make_pssfp_sequence(
+extern "C" kmm::ArrayBase* compas_simulate_magnetization_fisp(
     const compas::CudaContext* context,
-    int nRF,
-    int nreadouts,
-    int nslices,
-    const compas::cfloat* RF_train,
+    const compas::TissueParameters* parameters,
+    compas::Array<compas::cfloat>* RF_train,
+    compas::Array<compas::cfloat, 2>* sliceprofiles,
     float TR,
-    const compas::cfloat* gamma_dt_RF,
+    float TE,
+    int max_state,
+    float TI) {
+    return catch_exceptions([&] {
+        int nreadouts = RF_train->size();
+        int nvoxels = parameters->nvoxels;
+
+        auto* echos = new compas::Array<compas::cfloat, 2>(nreadouts, nvoxels);
+        auto sequence = compas::FISPSequence {*RF_train, *sliceprofiles, TR, TE, max_state, TI};
+
+        context->submit_device(
+            compas::simulate_magnetization_fisp,
+            write(*echos),
+            *parameters,
+            sequence);
+
+        return echos;
+    });
+}
+
+extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
+    const compas::CudaContext* context,
+    const compas::TissueParameters* parameters,
+    const compas::Array<compas::cfloat>* RF_train,
+    float TR,
+    const compas::Array<compas::cfloat>* gamma_dt_RF,
     float dt_ex,
     float dt_inv,
     float dt_pr,
     float gamma_dt_GRz_ex,
     float gamma_dt_GRz_inv,
     float gamma_dt_GRz_pr,
-    const float* z) {
+    const compas::Array<float>* z) {
     return catch_exceptions([&] {
-        auto seq = compas::make_pssfp_sequence(
-            *context,
-            make_view(RF_train, nreadouts),
+        int nreadouts = RF_train->size();
+        int nvoxels = parameters->nvoxels;
+        auto* echos = new compas::Array<compas::cfloat, 2>(nreadouts, nvoxels);
+
+        auto sequence = compas::pSSFPSequence {
+            *RF_train,
             TR,
-            make_view(gamma_dt_RF, nRF),
+            *gamma_dt_RF,
             {dt_ex, dt_inv, dt_pr},
             {gamma_dt_GRz_ex, gamma_dt_GRz_inv, gamma_dt_GRz_pr},
-            make_view(z, nslices));
+            *z};
 
-        return new compas::pSSFPSequence(seq);
+        context->submit_device(
+            compas::simulate_magnetization_pssfp,
+            write(*echos),
+            *parameters,
+            sequence);
+
+        return echos;
     });
 }
 
-extern "C" const compas::FISPSequence* compas_make_fisp_sequence(
-    const compas::CudaContext* context,
-    int nreadouts,
-    int nslices,
-    const compas::cfloat* RF_train,
-    const compas::cfloat* slice_profiles,
-    float TR,
-    float TE,
-    int max_state,
-    float TI) {
-    return catch_exceptions([&] {
-        auto seq = compas::make_fisp_sequence(
-            *context,
-            make_view(RF_train, nreadouts),
-            make_view(slice_profiles, nslices, nreadouts),
-            TR,
-            TE,
-            max_state,
-            TI);
-
-        return new compas::FISPSequence(seq);
-    });
-}
-
-extern "C" void compas_simulate_magnetization_fisp(
-    const compas::CudaContext* context,
-    compas::cfloat* echos_ptr,
-    const compas::TissueParameters* parameters,
-    const compas::FISPSequence* sequence) {
-    return catch_exceptions([&] {
-        int nreadouts = sequence->RF_train.size();
-        int nvoxels = parameters->nvoxels;
-
-        auto echos = make_view(echos_ptr, nreadouts, nvoxels);
-        auto d_echos = context->allocate<compas::cfloat>(echos.shape());
-
-        compas::simulate_magnetization(
-            *context,
-            d_echos.view_mut(),
-            parameters->view(),
-            sequence->view());
-
-        d_echos.copy_to(echos);
-    });
-}
-
-extern "C" void compas_simulate_magnetization_pssfp(
-    const compas::CudaContext* context,
-    compas::cfloat* echos_ptr,
-    const compas::TissueParameters* parameters,
-    const compas::pSSFPSequence* sequence) {
-    return catch_exceptions([&] {
-        int nreadouts = sequence->RF_train.size();
-        int nvoxels = parameters->nvoxels;
-
-        auto echos = make_view(echos_ptr, nreadouts, nvoxels);
-        auto d_echos = context->allocate<compas::cfloat>(echos.shape());
-
-        compas::simulate_magnetization(
-            *context,
-            d_echos.view_mut(),
-            parameters->view(),
-            sequence->view());
-
-        d_echos.copy_to(echos);
-    });
-}
-
-extern "C" void compas_magnetization_to_signal(
+extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
     const compas::CudaContext* context,
     int ncoils,
-    compas::cfloat* signal_ptr,
-    const compas::cfloat* echos_ptr,
+    const compas::Array<compas::cfloat, 2>* echos,
     const compas::TissueParameters* parameters,
-    const compas::Trajectory* trajectory,
-    const float* coils_ptr) {
+    const compas::Array<float, 2>* coils,
+    int nreadouts,
+    int samples_per_readout,
+    float delta_t,
+    const compas::Array<compas::cfloat>* k_start,
+    compas::cfloat delta_k) {
     return catch_exceptions([&] {
-        int nreadouts = trajectory->nreadouts;
-        int samples_per_readout = trajectory->samples_per_readout;
-        int nvoxels = parameters->nvoxels;
+        auto trajectory = compas::CartesianTrajectory {
+            nreadouts,
+            samples_per_readout,
+            delta_t,
+            *k_start,
+            delta_k};
 
-        auto signal = make_view(signal_ptr, ncoils, nreadouts, samples_per_readout);
-        auto echos = make_view(echos_ptr, nreadouts, nvoxels);
-        auto coils = make_view(coils_ptr, ncoils, nvoxels);
+        auto signal =
+            compas::magnetization_to_signal(*context, *echos, *parameters, trajectory, *coils);
+        return new compas::Array<compas::cfloat, 3>(signal);
+    });
+}
 
-        auto d_signal = context->allocate(signal);
-        auto d_echos = context->allocate(echos);
-        auto d_coils = context->allocate(coils);
+extern "C" kmm::ArrayBase* compas_magnetization_to_signal_spiral(
+    const compas::CudaContext* context,
+    int ncoils,
+    const compas::Array<compas::cfloat, 2>* echos,
+    const compas::TissueParameters* parameters,
+    const compas::Array<float, 2>* coils,
+    int nreadouts,
+    int samples_per_readout,
+    float delta_t,
+    const compas::Array<compas::cfloat>* k_start,
+    const compas::Array<compas::cfloat>* delta_k) {
+    return catch_exceptions([&] {
+        auto trajectory =
+            compas::SpiralTrajectory {nreadouts, samples_per_readout, delta_t, *k_start, *delta_k};
 
-        compas::magnetization_to_signal(
-            *context,
-            d_signal.view_mut(),
-            d_echos.view(),
-            parameters->view(),
-            *trajectory,
-            d_coils.view());
-
-        d_signal.copy_to(signal);
+        auto signal =
+            compas::magnetization_to_signal(*context, *echos, *parameters, trajectory, *coils);
+        return new compas::Array<compas::cfloat, 3>(signal);
     });
 }
 
@@ -263,7 +266,6 @@ extern "C" void compas_compute_jacobian(
         int nvoxels = parameters->nvoxels;
 
         auto Jv = make_view(Jv_ptr, ncoils, nreadouts * ns);
-        auto d_Jv = context->allocate(Jv);
 
         auto d_echos = context->allocate(make_view(echos_ptr, nreadouts, nvoxels));
         auto d_delta_echos = context->allocate(make_view(delta_echos_ptr, 2, nreadouts, nvoxels));
@@ -271,17 +273,16 @@ extern "C" void compas_compute_jacobian(
         auto d_coils = context->allocate(make_view(coils_ptr, ncoils, nvoxels));
         auto d_vector = context->allocate(make_view(vector_ptr, 4, nvoxels));
 
-        compas::compute_jacobian(
+        auto d_Jv = compas::compute_jacobian(
             *context,
-            d_Jv.view_mut(),
-            d_echos.view(),
-            d_delta_echos.view(),
-            parameters->view(),
-            trajectory->view(),
-            d_coils.view(),
-            d_vector.view());
+            d_echos,
+            d_delta_echos,
+            *parameters,
+            *trajectory,
+            d_coils,
+            d_vector);
 
-        d_Jv.copy_to(Jv);
+        d_Jv.read(Jv);
     });
 }
 
@@ -301,7 +302,6 @@ extern "C" void compas_compute_jacobian_hermitian(
         int nvoxels = parameters->nvoxels;
 
         auto JHv = make_view(JHv_ptr, 4, nvoxels);
-        auto d_JHv = context->allocate(JHv);
 
         auto d_echos = context->allocate(make_view(echos_ptr, nreadouts, nvoxels));
         auto d_delta_echos = context->allocate(make_view(delta_echos_ptr, 2, nreadouts, nvoxels));
@@ -309,16 +309,15 @@ extern "C" void compas_compute_jacobian_hermitian(
         auto d_coils = context->allocate(make_view(coils_ptr, ncoils, nvoxels));
         auto d_vector = context->allocate(make_view(vector_ptr, ncoils, nreadouts * ns));
 
-        compas::compute_jacobian_hermitian(
+        auto d_JHv = compas::compute_jacobian_hermitian(
             *context,
-            d_JHv.view_mut(),
-            d_echos.view(),
-            d_delta_echos.view(),
-            parameters->view(),
-            trajectory->view(),
-            d_coils.view(),
-            d_vector.view());
+            d_echos,
+            d_delta_echos,
+            *parameters,
+            *trajectory,
+            d_coils,
+            d_vector);
 
-        d_JHv.copy_to(JHv);
+        d_JHv.read(JHv);
     });
 }

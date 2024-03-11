@@ -5,7 +5,7 @@ using ComputationalResources
 using LinearAlgebra
 using StaticArrays
 
-context = CompasToolkit.make_context(0)
+context = CompasToolkit.init_context(0)
 
 # First we assemble a Shepp Logan phantom with homogeneous T₁ and T₂
 # but non-constant proton density and B₀
@@ -24,7 +24,7 @@ nvoxels = N*N
 
 # Finally we assemble the phantom as an array of `T₁T₂B₀ρˣρʸxy` values
 parameters_ref = map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)
-parameters = CompasToolkit.TissueParameters(context, nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
+parameters = CompasToolkit.TissueParameters(nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
 
 # Next, we assemble a balanced sequence with constant flip angle of 60 degrees,
 nTR = N
@@ -47,7 +47,7 @@ pssfp_ref = pSSFP(RF_train, TR, γΔtRF, Δt, γΔtGRz, z)
 Δt = (Δt.ex, Δt.inv, Δt.pr) # time intervals during TR
 γΔtGRz = (γΔtGRz.ex, γΔtGRz.inv, γΔtGRz.pr) # slice select gradient strengths during TR
 
-pssfp = CompasToolkit.pSSFPSequence(context, RF_train, Float32(TR), γΔtRF, Δt, γΔtGRz, z)
+pssfp = CompasToolkit.pSSFPSequence(RF_train, TR, γΔtRF, Δt, γΔtGRz, z)
 
 # isochromat model
 pssfp_ref = gpu(f32(pssfp_ref))
@@ -55,9 +55,8 @@ parameters_ref = gpu(f32(parameters_ref))
 echos_ref = simulate(CUDALibs(), pssfp_ref, parameters_ref);
 echos_ref = collect(echos_ref)
 
-echos = zeros(ComplexF32, nvoxels, nTR)
-CompasToolkit.simulate_magnetization(context, echos, parameters, pssfp)
-echos = transpose(echos)
+echos = CompasToolkit.simulate_magnetization(parameters, pssfp)
+echos = transpose(collect(echos))
 
 println("fraction equal: ", sum(echos .≈ echos_ref) / length(echos))
 

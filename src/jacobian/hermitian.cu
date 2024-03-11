@@ -1,4 +1,5 @@
 #include "core/utils.h"
+#include "core/vector.h"
 #include "product.h"
 
 namespace compas {
@@ -108,29 +109,26 @@ __global__ void jacobian_hermitian_product(
 
 #pragma unroll
             for (int i = 0; i < 4; i++) {
-                JHv[i][voxel] += conj(lin_scale[i]) * tmp[i];
+                JHv[i][voxel] = conj(lin_scale[i]) * tmp[i];
             }
         }
     }
 }
 }  // namespace kernels
 
-void compute_jacobian_hermitian(
+Array<cfloat, 2> compute_jacobian_hermitian(
     const CudaContext& ctx,
-    cuda_view_mut<cfloat, 2> JHv,
-    cuda_view<cfloat, 2> echos,
-    cuda_view<cfloat, 3> delta_echos,
+    Array<cfloat, 2> echos,
+    Array<cfloat, 3> delta_echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
-    cuda_view<float, 2> coil_sensitivities,
-    cuda_view<cfloat, 2> vector) {
+    Array<float, 2> coil_sensitivities,
+    Array<cfloat, 2> vector) {
     int ns = trajectory.samples_per_readout;
     int nreadouts = trajectory.nreadouts;
     int ncoils = coil_sensitivities.size(0);
     int nvoxels = parameters.nvoxels;
 
-    COMPAS_ASSERT(JHv.size(0) == 4);  // four reconstruction parameters: T1, T2, rho_x, rho_y
-    COMPAS_ASSERT(JHv.size(1) == nvoxels);
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
     COMPAS_ASSERT(delta_echos.size(0) == 2);  // T1 and T2
@@ -141,22 +139,26 @@ void compute_jacobian_hermitian(
     COMPAS_ASSERT(vector.size(0) == ncoils);
     COMPAS_ASSERT(vector.size(1) == nreadouts * ns);
 
-    ctx.fill(JHv, cfloat());
+    // four reconstruction parameters: T1, T2, rho_x, rho_y
+    auto JHv = Array<cfloat, 2>(4, nvoxels);
 
     dim3 block_dim = 256;
     dim3 grid_dim = div_ceil(uint(nreadouts * ns), block_dim.x);
 
-#define COMPAS_COMPUTE_JACOBIAN_IMPL(N)                                  \
-    if (ncoils == (N)) {                                                 \
-        kernels::jacobian_hermitian_product<N><<<grid_dim, block_dim>>>( \
-            JHv,                                                         \
-            echos,                                                       \
-            delta_echos,                                                 \
-            parameters,                                                  \
-            trajectory,                                                  \
-            coil_sensitivities,                                          \
-            vector);                                                     \
-        return;                                                          \
+#define COMPAS_COMPUTE_JACOBIAN_IMPL(N)             \
+    if (ncoils == (N)) {                            \
+        ctx.submit_kernel(                          \
+            grid_dim,                               \
+            block_dim,                              \
+            kernels::jacobian_hermitian_product<N>, \
+            write(JHv),                             \
+            echos,                                  \
+            delta_echos,                            \
+            parameters,                             \
+            trajectory,                             \
+            coil_sensitivities,                     \
+            vector);                                \
+        return JHv;                                 \
     }
 
     COMPAS_COMPUTE_JACOBIAN_IMPL(1)

@@ -15,25 +15,27 @@ static void benchmark_method(
     std::string name,
     SimulateSignalMethod method,
     const CudaContext& context,
-    CudaArray<cfloat, 3> signal,
-    CudaArray<cfloat, 2> echos,
-    CudaArray<float, 2> coil_sensitivities,
+    Array<cfloat, 2> echos,
+    Array<float, 2> coil_sensitivities,
     TissueParameters parameters,
     CartesianTrajectory trajectory,
     std::vector<cfloat>& signal_ref) {
+    Array<cfloat, 3> signal;
+    context.synchronize();
+
     auto [duration, runs] = benchmark([&] {
-        magnetization_to_signal_cartesian(
+        signal = compas::magnetization_to_signal(
             context,
-            signal.view_mut(),
-            echos.view(),
-            parameters.view(),
-            trajectory.view(),
-            coil_sensitivities.view(),
+            echos,
+            parameters,
+            trajectory,
+            coil_sensitivities,
             method);
+
+        context.synchronize();
     });
 
-    auto signal_result = std::vector<cfloat>(signal.size());
-    signal.copy_to(signal_result);
+    auto signal_result = signal.read();
 
     double max_abs_error = 0;
     double max_rel_error = 0;
@@ -79,12 +81,8 @@ int main() {
         std::fill_n(h_coils.data() + nvoxels * i, nvoxels, float(i + 1) / ncoils);
     }
 
-    auto signal = context.allocate<cfloat, 3>({ncoils, nreadouts, samples_per_readout});
-    auto echos = context.allocate<cfloat, 2>({nreadouts, nvoxels});
-    auto coil_sensitivities = context.allocate<float, 2>({ncoils, nvoxels});
-
-    echos.copy_from(h_echos);
-    coil_sensitivities.copy_from(h_coils);
+    auto echos = context.allocate(h_echos).reshape(nreadouts, nvoxels);
+    auto coil_sensitivities = context.allocate(h_coils).reshape(ncoils, nvoxels);
 
     TissueParameters parameters = generate_tissue_parameters(context, nvoxels);
 
@@ -100,22 +98,20 @@ int main() {
         {k_start.data(), {nreadouts}},
         delta_k);
 
-    magnetization_to_signal_cartesian(
+    auto signal = compas::magnetization_to_signal(
         context,
-        signal.view_mut(),
-        echos.view(),
-        parameters.view(),
-        trajectory.view(),
-        coil_sensitivities.view());
+        echos,
+        parameters,
+        trajectory,
+        coil_sensitivities,
+        SimulateSignalMethod::Direct);
 
-    auto signal_ref = std::vector<cfloat>(signal.size());
-    signal.copy_to(signal_ref);
+    auto signal_ref = signal.read();
 
     benchmark_method(
         "direct",
         SimulateSignalMethod::Direct,
         context,
-        signal,
         echos,
         coil_sensitivities,
         parameters,
@@ -126,7 +122,6 @@ int main() {
         "matmul (pedantic)",
         SimulateSignalMethod::MatmulPedantic,
         context,
-        signal,
         echos,
         coil_sensitivities,
         parameters,
@@ -137,7 +132,6 @@ int main() {
         "matmul (regular)",
         SimulateSignalMethod::Matmul,
         context,
-        signal,
         echos,
         coil_sensitivities,
         parameters,
@@ -148,7 +142,6 @@ int main() {
         "matmul (TF32)",
         SimulateSignalMethod::MatmulTF32,
         context,
-        signal,
         echos,
         coil_sensitivities,
         parameters,
@@ -159,7 +152,6 @@ int main() {
         "matmul (BF16)",
         SimulateSignalMethod::MatmulBF16,
         context,
-        signal,
         echos,
         coil_sensitivities,
         parameters,

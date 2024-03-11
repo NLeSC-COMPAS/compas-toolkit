@@ -48,7 +48,7 @@ function generate_pssfp_sequence(N)
     nz = 35 # nr of spins in z direction
     z = SVector{nz}(LinRange(-1,1,nz)) # z locations
 
-    return pSSFP(RF_train, TR, γΔtRF, Δt, γΔtGRz, z)
+    return f32(pSSFP(RF_train, TR, γΔtRF, Δt, γΔtGRz, z))
 end
 
 function generate_cartesian_trajectory(N)

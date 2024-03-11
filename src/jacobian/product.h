@@ -1,28 +1,26 @@
 #include "core/complex_type.h"
 #include "core/context.h"
-#include "parameters/tissue_view.cuh"
-#include "trajectories/cartesian_view.cuh"
+#include "parameters/tissue.h"
+#include "trajectories/cartesian.h"
 
 namespace compas {
 
-void compute_jacobian(
+Array<cfloat, 2> compute_jacobian(
     const CudaContext& ctx,
-    cuda_view_mut<cfloat, 2> Jv,
-    cuda_view<cfloat, 2> echos,
-    cuda_view<cfloat, 3> delta_echos,
-    TissueParametersView parameters,
-    CartesianTrajectoryView trajectory,
-    cuda_view<float, 2> coil_sensitivities,
-    cuda_view<cfloat, 2> vector);
+    Array<cfloat, 2> echos,
+    Array<cfloat, 3> delta_echos,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
+    Array<float, 2> coil_sensitivities,
+    Array<cfloat, 2> vector);
 
-void compute_jacobian_hermitian(
+Array<cfloat, 2> compute_jacobian_hermitian(
     const CudaContext& ctx,
-    cuda_view_mut<cfloat, 2> JHv,
-    cuda_view<cfloat, 2> echos,
-    cuda_view<cfloat, 3> delta_echos,
-    TissueParametersView parameters,
-    CartesianTrajectoryView trajectory,
-    cuda_view<float, 2> coil_sensitivities,
-    cuda_view<cfloat, 2> vector);
+    Array<cfloat, 2> echos,
+    Array<cfloat, 3> delta_echos,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
+    Array<float, 2> coil_sensitivities,
+    Array<cfloat, 2> vector);
 
 }  // namespace compas

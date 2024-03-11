@@ -16,35 +16,64 @@ TissueParameters make_tissue_parameters(
     host_view<float> y,
     host_view<float> z) {
     auto stride = round_up_to_multiple_of(num_voxels, 32);
-    vec2<index_t> shape = {static_cast<int>(TissueParameterField::NUM_FIELDS), stride};
-    CudaArray<float, 2> params = ctx.zeros<float, 2>(shape);
-
-    params.slice(TissueParameterField::T1).slice(0, num_voxels).copy_from(T1);
-    params.slice(TissueParameterField::T2).slice(0, num_voxels).copy_from(T2);
-
-    params.slice(TissueParameterField::RHO_X).slice(0, num_voxels).copy_from(rho_x);
-    params.slice(TissueParameterField::RHO_Y).slice(0, num_voxels).copy_from(rho_y);
-
-    params.slice(TissueParameterField::X).slice(0, num_voxels).copy_from(x);
-    params.slice(TissueParameterField::Y).slice(0, num_voxels).copy_from(y);
+    auto params = kmm::Array<float, 2> {static_cast<int>(TissueParameterField::NUM_FIELDS), stride};
 
     bool has_z = !z.is_empty();
-    if (has_z) {
-        params.slice(TissueParameterField::Z).slice(0, num_voxels).copy_from(z);
-    }
-
     bool has_b0 = !B0.is_empty();
-    if (has_b0) {
-        params.slice(TissueParameterField::B0).slice(0, num_voxels).copy_from(B0);
-    }
-
     bool has_b1 = !B1.is_empty();
-    if (has_b1) {
-        params.slice(TissueParameterField::B1).slice(0, num_voxels).copy_from(B1);
-    } else {
-        // The default value for B1 is "1"
-        params.slice(TissueParameterField::B1).fill(1);
-    }
+
+    ctx.submit_device(
+        [&](kmm::CudaDevice& device, cuda_view_mut<float, 2> params) {
+            device.fill(params, 0.0f);
+
+            device.copy(
+                T1.data(),
+                params.drop_axis<0>(TissueParameterField::T1).data(),
+                num_voxels);
+            device.copy(
+                T2.data(),
+                params.drop_axis<0>(TissueParameterField::T2).data(),
+                num_voxels);
+
+            device.copy(
+                rho_x.data(),
+                params.drop_axis<0>(TissueParameterField::RHO_X).data(),
+                num_voxels);
+            device.copy(
+                rho_y.data(),
+                params.drop_axis<0>(TissueParameterField::RHO_Y).data(),
+                num_voxels);
+
+            device.copy(x.data(), params.drop_axis<0>(TissueParameterField::X).data(), num_voxels);
+            device.copy(y.data(), params.drop_axis<0>(TissueParameterField::Y).data(), num_voxels);
+
+            if (has_z) {
+                device.copy(
+                    z.data(),
+                    params.drop_axis<0>(TissueParameterField::Z).data(),
+                    num_voxels);
+            }
+
+            if (has_b0) {
+                device.copy(
+                    B0.data(),
+                    params.drop_axis<0>(TissueParameterField::B0).data(),
+                    num_voxels);
+            }
+
+            if (has_b1) {
+                device.copy(
+                    B1.data(),
+                    params.drop_axis<0>(TissueParameterField::B1).data(),
+                    num_voxels);
+            } else {
+                // The default value for B1 is 1
+                device.fill(params.drop_axis<0>(TissueParameterField::B1), 1.0f);
+            }
+        },
+        write(params));
+
+    params.synchronize();
 
     return {
         params,

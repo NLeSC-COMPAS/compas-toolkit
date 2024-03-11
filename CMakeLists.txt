@@ -3,6 +3,12 @@ cmake_minimum_required(VERSION 3.10)
 set(PROJECT_NAME "compas-toolkit")
 project(${PROJECT_NAME} LANGUAGES CXX CUDA)
 
+# Enable C++17 support
+set(CXX_STANDARD 17)
+set(CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 file(GLOB_RECURSE sources "${PROJECT_SOURCE_DIR}/src/*.cpp" "${PROJECT_SOURCE_DIR}/src/*.cu")
 add_library(${PROJECT_NAME} STATIC ${sources})
 
@@ -27,13 +33,10 @@ set(CXXFLAGS
 )
 target_compile_options(${PROJECT_NAME} PRIVATE ${CXXFLAGS})
 
-# Enable C++17 support
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
-
 # Enable PIC
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-set(PROJECT_CLANG_TIDY clang-tidy -checks=-*,readability-*,bugprone-*,-readability-magic-numbers,-readability-use-anyofallof,-readability-else-after-return)
+set(PROJECT_CLANG_TIDY clang-tidy)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${PROJECT_CLANG_TIDY}")
 
 find_package(CUDAToolkit REQUIRED)
@@ -56,8 +59,14 @@ configure_file(
     ${PROJECT_SOURCE_DIR}/julia-bindings/src/constants.h.input
     ${PROJECT_SOURCE_DIR}/julia-bindings/src/constants.h)
 
-
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 add_subdirectory(thirdparty/Catch2)
+set(KMM_USE_CUDA ON)
+set(KMM_STATIC ON)
+add_subdirectory(thirdparty/kmm)
+target_link_libraries(${PROJECT_NAME} PUBLIC kmm)
+
+
 add_subdirectory(julia-bindings)
 add_subdirectory(tests)
 add_subdirectory(benchmarks)
