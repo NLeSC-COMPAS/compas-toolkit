@@ -49,9 +49,8 @@ parameters_ref = gpu(f32(parameters_ref))
 echos_ref = simulate(CUDALibs(), fisp_ref, parameters_ref);
 echos_ref = collect(echos_ref)
 
-echos = zeros(ComplexF32, nvoxels, nTR)
-CompasToolkit.simulate_magnetization(parameters, fisp)
-echos = transpose(echos)
+echos = CompasToolkit.simulate_magnetization(parameters, fisp)
+echos = transpose(collect(echos))
 
 println("fraction equal: ", sum(echos .≈ echos_ref) / length(echos))
 
