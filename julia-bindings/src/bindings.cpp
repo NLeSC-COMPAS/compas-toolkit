@@ -250,23 +250,20 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_spiral(
     });
 }
 
-extern "C" void compas_compute_jacobian(
+extern "C" compas::Array<compas::cfloat, 2>* compas_compute_jacobian(
     const compas::CudaContext* context,
     int ncoils,
-    compas::cfloat* Jv_ptr,
-    const compas::cfloat* echos_ptr,
-    const compas::cfloat* delta_echos_ptr,
+    const compas::Array<compas::cfloat, 2>* echos,
+    const compas::Array<compas::cfloat, 3>* delta_echos,
     const compas::TissueParameters* parameters,
-    const float* coils_ptr,
+    const compas::Array<float, 2>* coils,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
     const compas::Array<compas::cfloat>* k_start,
     compas::cfloat delta_k,
-    const compas::cfloat* vector_ptr) {
+    const compas::Array<compas::cfloat, 2>* vector) {
     return catch_exceptions([&] {
-        int nvoxels = parameters->nvoxels;
-
         auto trajectory = compas::CartesianTrajectory {
             nreadouts,
             samples_per_readout,
@@ -274,41 +271,33 @@ extern "C" void compas_compute_jacobian(
             *k_start,
             delta_k};
 
-        auto d_echos = context->allocate(make_view(echos_ptr, nreadouts, nvoxels));
-        auto d_delta_echos = context->allocate(make_view(delta_echos_ptr, 2, nreadouts, nvoxels));
-
-        auto d_coils = context->allocate(make_view(coils_ptr, ncoils, nvoxels));
-        auto d_vector = context->allocate(make_view(vector_ptr, 4, nvoxels));
-
-        auto d_Jv = compas::compute_jacobian(
+        auto Jv = compas::compute_jacobian(
             *context,
-            d_echos,
-            d_delta_echos,
+            *echos,
+            *delta_echos,
             *parameters,
             trajectory,
-            d_coils,
-            d_vector);
+            *coils,
+            *vector);
 
-        d_Jv.read(make_view(Jv_ptr, ncoils, nreadouts * samples_per_readout));
+        return new compas::Array<compas::cfloat, 2>(Jv);
     });
 }
 
-extern "C" void compas_compute_jacobian_hermitian(
+extern "C" compas::Array<compas::cfloat, 2>* compas_compute_jacobian_hermitian(
     const compas::CudaContext* context,
     int ncoils,
-    compas::cfloat* JHv_ptr,
-    const compas::cfloat* echos_ptr,
-    const compas::cfloat* delta_echos_ptr,
+    const compas::Array<compas::cfloat, 2>* echos,
+    const compas::Array<compas::cfloat, 3>* delta_echos,
     const compas::TissueParameters* parameters,
-    const float* coils_ptr,
+    const compas::Array<float, 2>* coils,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
     const compas::Array<compas::cfloat>* k_start,
     compas::cfloat delta_k,
-    const compas::cfloat* vector_ptr) {
+    const compas::Array<compas::cfloat, 2>* vector) {
     return catch_exceptions([&] {
-        int nvoxels = parameters->nvoxels;
         auto trajectory = compas::CartesianTrajectory {
             nreadouts,
             samples_per_readout,
@@ -316,22 +305,15 @@ extern "C" void compas_compute_jacobian_hermitian(
             *k_start,
             delta_k};
 
-        auto d_echos = context->allocate(make_view(echos_ptr, nreadouts, nvoxels));
-        auto d_delta_echos = context->allocate(make_view(delta_echos_ptr, 2, nreadouts, nvoxels));
-
-        auto d_coils = context->allocate(make_view(coils_ptr, ncoils, nvoxels));
-        auto d_vector =
-            context->allocate(make_view(vector_ptr, ncoils, nreadouts * samples_per_readout));
-
         auto d_JHv = compas::compute_jacobian_hermitian(
             *context,
-            d_echos,
-            d_delta_echos,
+            *echos,
+            *delta_echos,
             *parameters,
             trajectory,
-            d_coils,
-            d_vector);
+            *coils,
+            *vector);
 
-        d_JHv.read(make_view(JHv_ptr, 4, nvoxels));
+        return new compas::Array<compas::cfloat, 2>(d_JHv);
     });
 }

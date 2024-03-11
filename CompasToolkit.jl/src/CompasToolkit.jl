@@ -464,29 +464,27 @@ function compute_jacobian(
     samples_per_readout::Int64 = trajectory.samples_per_readout
     nvoxels::Int64 = parameters.nvoxels
 
-    Jv = Array{ComplexF32}(undef, nreadouts * samples_per_readout, ncoils)
-    echos = convert_array_host(ComplexF32, (nvoxels, nreadouts), echos)
-    𝜕echos = convert_array_host(ComplexF32, (nvoxels, nreadouts, 2), 𝜕echos)
-    coils = convert_array_host(Float32, (nvoxels, ncoils), coils)
-    v = convert_array_host(ComplexF32, (nvoxels, 4), v)
+    echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
+    𝜕echos = convert_array(𝜕echos, ComplexF32, nvoxels, nreadouts, 2)
+    coils = convert_array(coils, Float32, nvoxels, ncoils)
+    v = convert_array(v, ComplexF32, nvoxels, 4)
 
-    @ccall LIBRARY.compas_compute_jacobian(
+    Jv_ptr = @ccall LIBRARY.compas_compute_jacobian(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
-        pointer(Jv)::Ptr{ComplexF32},
-        pointer(echos)::Ptr{ComplexF32},
-        pointer(𝜕echos)::Ptr{ComplexF32},
+        pointer(echos)::Ptr{Cvoid},
+        pointer(𝜕echos)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
-        pointer(coils)::Ptr{Float32},
+        pointer(coils)::Ptr{Cvoid},
         trajectory.nreadouts::Int32,
         trajectory.samples_per_readout::Int32,
         trajectory.delta_t::Float32,
         trajectory.k_start.ptr::Ptr{Cvoid},
         trajectory.delta_k::ComplexF32,
-        pointer(v)::Ptr{ComplexF32}
-    )::Cvoid
+        pointer(v)::Ptr{Cvoid}
+    )::Ptr{Cvoid}
 
-    return Jv
+    return CompasArray{ComplexF32, 2}(context, Jv_ptr, (ncoils, nreadouts * samples_per_readout))
 end
 
 function compute_jacobian_hermitian(
@@ -503,29 +501,27 @@ function compute_jacobian_hermitian(
     samples_per_readout::Int64 = trajectory.samples_per_readout
     nvoxels::Int64 = parameters.nvoxels
 
-    Jᴴv = Array{ComplexF32}(undef, nvoxels, 4)
-    echos = convert_array_host(ComplexF32, (nvoxels, nreadouts), echos)
-    𝜕echos = convert_array_host(ComplexF32, (nvoxels, nreadouts, 2), 𝜕echos)
-    coils = convert_array_host(Float32, (nvoxels, ncoils), coils)
-    v = convert_array_host(ComplexF32, (nreadouts * samples_per_readout, ncoils), v)
+    echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
+    𝜕echos = convert_array(𝜕echos, ComplexF32, nvoxels, nreadouts, 2)
+    coils = convert_array(coils, Float32, nvoxels, ncoils)
+    v = convert_array(v, ComplexF32, nreadouts * samples_per_readout, ncoils)
 
-    @ccall LIBRARY.compas_compute_jacobian_hermitian(
+    Jᴴv_ptr = @ccall LIBRARY.compas_compute_jacobian_hermitian(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
-        pointer(Jᴴv)::Ptr{ComplexF32},
-        pointer(echos)::Ptr{ComplexF32},
-        pointer(𝜕echos)::Ptr{ComplexF32},
+        pointer(echos)::Ptr{Cvoid},
+        pointer(𝜕echos)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
-        pointer(coils)::Ptr{Float32},
+        pointer(coils)::Ptr{Cvoid},
         trajectory.nreadouts::Int32,
         trajectory.samples_per_readout::Int32,
         trajectory.delta_t::Float32,
-        trajectory.k_start.ptr::Ptr{Cvoid},
+        pointer(trajectory.k_start)::Ptr{Cvoid},
         trajectory.delta_k::ComplexF32,
-        pointer(v)::Ptr{ComplexF32}
-    )::Cvoid
+        pointer(v)::Ptr{Cvoid}
+    )::Ptr{Cvoid}
 
-    return Jᴴv
+    return CompasArray{ComplexF32, 2}(context, Jᴴv_ptr, (4, nvoxels))
 end
 
 Base.pointer(c::Context) = c.ptr

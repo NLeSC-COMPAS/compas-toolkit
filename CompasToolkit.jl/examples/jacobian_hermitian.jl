@@ -150,4 +150,4 @@ Jᴴv = CompasToolkit.compute_jacobian_hermitian(
     v
 )
 
-print_equals_check(Jᴴv_ref, transpose(Jᴴv))
+print_equals_check(Jᴴv_ref, transpose(collect(Jᴴv)))
