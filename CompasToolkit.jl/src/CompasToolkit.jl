@@ -408,7 +408,7 @@ function magnetization_to_signal(
         ncoils::Int32,
         pointer(echos)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
-        pointer(coils)::Ptr{Float32},
+        pointer(coils)::Ptr{Cvoid},
         nreadouts::Int32,
         trajectory.samples_per_readout::Int32,
         trajectory.delta_t::Float32,
@@ -451,7 +451,6 @@ function magnetization_to_signal(
 end
 
 function compute_jacobian(
-    context::Context,
     echos::AbstractMatrix,
     𝜕echos::AbstractArray{<:Any,3},
     parameters::TissueParameters,
@@ -459,6 +458,7 @@ function compute_jacobian(
     coils::AbstractMatrix,
     v::AbstractMatrix
 )
+    context = get_context()
     ncoils = size(coils, 2)
     nreadouts::Int64 = trajectory.nreadouts
     samples_per_readout::Int64 = trajectory.samples_per_readout
@@ -466,7 +466,7 @@ function compute_jacobian(
 
     Jv = Array{ComplexF32}(undef, nreadouts * samples_per_readout, ncoils)
     echos = convert_array_host(ComplexF32, (nvoxels, nreadouts), echos)
-    𝜕echos = cconvert_array_host(ComplexF32, (nvoxels, nreadouts, 2), 𝜕echos)
+    𝜕echos = convert_array_host(ComplexF32, (nvoxels, nreadouts, 2), 𝜕echos)
     coils = convert_array_host(Float32, (nvoxels, ncoils), coils)
     v = convert_array_host(ComplexF32, (nvoxels, 4), v)
 
@@ -477,8 +477,12 @@ function compute_jacobian(
         pointer(echos)::Ptr{ComplexF32},
         pointer(𝜕echos)::Ptr{ComplexF32},
         parameters.ptr::Ptr{Cvoid},
-        trajectory.ptr::Ptr{Cvoid},
         pointer(coils)::Ptr{Float32},
+        trajectory.nreadouts::Int32,
+        trajectory.samples_per_readout::Int32,
+        trajectory.delta_t::Float32,
+        trajectory.k_start.ptr::Ptr{Cvoid},
+        trajectory.delta_k::ComplexF32,
         pointer(v)::Ptr{ComplexF32}
     )::Cvoid
 
@@ -486,7 +490,6 @@ function compute_jacobian(
 end
 
 function compute_jacobian_hermitian(
-    context::Context,
     echos::AbstractMatrix,
     𝜕echos::AbstractArray{<:Any,3},
     parameters::TissueParameters,
@@ -494,6 +497,7 @@ function compute_jacobian_hermitian(
     coils::AbstractMatrix,
     v::AbstractMatrix
 )
+    context = get_context()
     ncoils = size(coils, 2)
     nreadouts::Int64 = trajectory.nreadouts
     samples_per_readout::Int64 = trajectory.samples_per_readout
@@ -501,7 +505,7 @@ function compute_jacobian_hermitian(
 
     Jᴴv = Array{ComplexF32}(undef, nvoxels, 4)
     echos = convert_array_host(ComplexF32, (nvoxels, nreadouts), echos)
-    𝜕echos = cconvert_array_host(ComplexF32, (nvoxels, nreadouts, 2), 𝜕echos)
+    𝜕echos = convert_array_host(ComplexF32, (nvoxels, nreadouts, 2), 𝜕echos)
     coils = convert_array_host(Float32, (nvoxels, ncoils), coils)
     v = convert_array_host(ComplexF32, (nreadouts * samples_per_readout, ncoils), v)
 
@@ -512,8 +516,12 @@ function compute_jacobian_hermitian(
         pointer(echos)::Ptr{ComplexF32},
         pointer(𝜕echos)::Ptr{ComplexF32},
         parameters.ptr::Ptr{Cvoid},
-        trajectory.ptr::Ptr{Cvoid},
         pointer(coils)::Ptr{Float32},
+        trajectory.nreadouts::Int32,
+        trajectory.samples_per_readout::Int32,
+        trajectory.delta_t::Float32,
+        trajectory.k_start.ptr::Ptr{Cvoid},
+        trajectory.delta_k::ComplexF32,
         pointer(v)::Ptr{ComplexF32}
     )::Cvoid
 

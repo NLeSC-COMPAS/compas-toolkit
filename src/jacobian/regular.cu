@@ -119,8 +119,8 @@ Array<cfloat, 2> compute_jacobian(
     const CudaContext& ctx,
     Array<cfloat, 2> echos,
     Array<cfloat, 3> delta_echos,
-    TissueParametersView parameters,
-    CartesianTrajectoryView trajectory,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
     Array<float, 2> coil_sensitivities,
     Array<cfloat, 2> vector) {
     static constexpr int threads_per_sample = 16;
