@@ -5,6 +5,8 @@ using ComputationalResources
 using LinearAlgebra
 using StaticArrays
 
+include("common.jl")
+
 context = CompasToolkit.init_context(0)
 
 # First we assemble a Shepp Logan phantom with homogeneous T₁ and T₂
@@ -33,27 +35,17 @@ max_state = 25; # maximum number of configuration states to keep track of
 nz = 35
 sliceprofiles = complex.(ones(nTR, nz))
 
-fisp_ref = FISP(RF_train, sliceprofiles, TR, TE, max_state, TI);
-
-
-
+fisp_ref = FISP2D(RF_train, sliceprofiles, TR, TE, max_state, TI);
 RF_train = RF_train .|> ComplexF32 # constant flip angle train
 sliceprofiles = collect(sliceprofiles)  .|> ComplexF32 # z locations
 
+# Simulate data
 fisp = CompasToolkit.FispSequence(RF_train, sliceprofiles, Float32(TR), Float32(TE), max_state, Float32(TI))
-
+echos = CompasToolkit.simulate_magnetization(parameters, fisp)
 
 # isochromat model
 fisp_ref = gpu(f32(fisp_ref))
 parameters_ref = gpu(f32(parameters_ref))
-echos_ref = simulate(CUDALibs(), fisp_ref, parameters_ref);
-echos_ref = collect(echos_ref)
+echos_ref = simulate_magnetization(CUDALibs(), fisp_ref, parameters_ref);
 
-echos = CompasToolkit.simulate_magnetization(parameters, fisp)
-echos = transpose(collect(echos))
-
-println("fraction equal: ", sum(echos .≈ echos_ref) / length(echos))
-
-err = abs.(echos - echos_ref)
-println("maximum abs error: ", maximum(err))
-println("maximum rel error: ", maximum(a / b for (a, b) in zip(err, abs.(echos_ref)) if b != 0))
+print_equals_check(collect(echos_ref), transpose(collect(echos)))

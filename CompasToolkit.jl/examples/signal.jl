@@ -38,7 +38,7 @@ coil_sensitivities_ref = map(SVector{ncoils}, eachrow(coil_sensitivities))
 
 trajectory_ref  = gpu(f32(trajectory_ref))
 coil_sensitivities_ref  = gpu(f32(coil_sensitivities_ref))
-signal_ref = simulate(CUDALibs(), gpu(pssfp_ref), gpu(parameters_ref), trajectory_ref, coil_sensitivities_ref)
+signal_ref = simulate_signal(CUDALibs(), gpu(pssfp_ref), gpu(parameters_ref), trajectory_ref, coil_sensitivities_ref)
 signal_ref = reshape(collect(signal_ref), ns, nr)
 
 signal = CompasToolkit.magnetization_to_signal(
@@ -51,13 +51,5 @@ signal = collect(signal)
 for c in 1:ncoils
     expected = map(x -> x[c], signal_ref)
     answer = signal[:,:,c]
-
-    println("fraction equal: ", sum(isapprox.(answer, expected, rtol=0.05)) / length(answer))
-
-    err = abs.(answer - expected)
-    println("maximum abs error: ", maximum(err))
-    println("maximum rel error: ", maximum(err ./ abs.(expected)))
-
-    idx = argmax(err ./ abs.(expected))
-    println("maximum rel error index: ", idx, " ", expected[idx], " != ", answer[idx])
+    print_equals_check(expected, answer)
 end

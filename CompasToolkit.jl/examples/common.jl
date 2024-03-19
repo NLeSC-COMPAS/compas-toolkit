@@ -48,7 +48,7 @@ function generate_pssfp_sequence(N)
     nz = 35 # nr of spins in z direction
     z = SVector{nz}(LinRange(-1,1,nz)) # z locations
 
-    return f32(pSSFP(RF_train, TR, γΔtRF, Δt, γΔtGRz, z))
+    return f32(pSSFP2D(RF_train, TR, γΔtRF, Δt, γΔtGRz, z))
 end
 
 function generate_cartesian_trajectory(N)
@@ -63,7 +63,7 @@ function generate_cartesian_trajectory(N)
     k0 = [(-ns/2 * Δkˣ) + im * (py[mod1(r,N)] * Δkʸ) for r in 1:nr]; # starting points in k-space per readout
     Δk = [Δkˣ + 0.0im for r in 1:nr]; # k-space steps per sample point for each readout
     
-    return f32(CartesianTrajectory(nr, ns, Δt_adc, k0, Δk, py))
+    return f32(CartesianTrajectory(nr, ns, Δt_adc, k0, Δkˣ, py))
 end
 
 function generate_coils(N, ncoils)
@@ -82,7 +82,7 @@ function generate_echos(N, sequence)
     T₁, T₂, B₁, B₀, ρ, X, Y = generate_parameters(N)
     parameters_ref = gpu(f32(map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)))
     
-    echos_ref = simulate(CUDALibs(), sequence, parameters_ref)
+    echos_ref = simulate_magnetization(CUDALibs(), sequence, parameters_ref)
     return collect(transpose(echos_ref))
 end
 

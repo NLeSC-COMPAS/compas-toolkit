@@ -5,6 +5,8 @@ using ComputationalResources
 using LinearAlgebra
 using StaticArrays
 
+include("common.jl")
+
 context = CompasToolkit.init_context(0)
 
 # First we assemble a Shepp Logan phantom with homogeneous T₁ and T₂
@@ -41,25 +43,19 @@ gaussian = [exp(-(i-(nRF/2))^2 * inv(nRF)) for i ∈ 1:nRF] # RF excitation wave
 nz = 35 # nr of spins in z direction
 z = SVector{nz}(LinRange(-1,1,nz)) # z locations
 
-pssfp_ref = pSSFP(RF_train, TR, γΔtRF, Δt, γΔtGRz, z)
+pssfp_ref = pSSFP2D(RF_train, TR, γΔtRF, Δt, γΔtGRz, z)
 
 
 Δt = (Δt.ex, Δt.inv, Δt.pr) # time intervals during TR
 γΔtGRz = (γΔtGRz.ex, γΔtGRz.inv, γΔtGRz.pr) # slice select gradient strengths during TR
 
 pssfp = CompasToolkit.pSSFPSequence(RF_train, TR, γΔtRF, Δt, γΔtGRz, z)
+echos = CompasToolkit.simulate_magnetization(parameters, pssfp)
 
 # isochromat model
 pssfp_ref = gpu(f32(pssfp_ref))
 parameters_ref = gpu(f32(parameters_ref))
-echos_ref = simulate(CUDALibs(), pssfp_ref, parameters_ref);
-echos_ref = collect(echos_ref)
+echos_ref = simulate_magnetization(CUDALibs(), pssfp_ref, parameters_ref);
 
-echos = CompasToolkit.simulate_magnetization(parameters, pssfp)
-echos = transpose(collect(echos))
-
-println("fraction equal: ", sum(echos .≈ echos_ref) / length(echos))
-
-err = abs.(echos - echos_ref)
-println("maximum abs error: ", maximum(err))
-println("maximum rel error: ", maximum(a / b for (a, b) in zip(err, abs.(echos_ref)) if b != 0))
+# Compare to compas data
+print_equals_check(transpose(collect(echos_ref)), collect(echos))
