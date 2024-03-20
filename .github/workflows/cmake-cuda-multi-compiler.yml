@@ -4,9 +4,9 @@ name: CUDA Build with multiple compilers
 
 on:
   push:
-    branches: [ "kmm-integration" ]
+    branches: [ "dev" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "dev" ]
 
 jobs:
   build:
