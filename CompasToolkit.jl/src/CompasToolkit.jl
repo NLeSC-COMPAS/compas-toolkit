@@ -524,6 +524,29 @@ function compute_jacobian_hermitian(
     return CompasArray{ComplexF32, 2}(context, Jᴴv_ptr, (4, nvoxels))
 end
 
+function compute_residual(
+    lhs::AbstractArray{<:Any,3},
+    rhs::AbstractArray{<:Any,3}
+)::Tuple{Float32, CompasArray{ComplexF32, 3}}
+    context = get_context()
+    n, m, k = size(lhs)
+
+    lhs = convert_array(lhs, ComplexF32, n, m, k)
+    rhs = convert_array(rhs, ComplexF32, n, m, k)
+    objective = [0.0f0]
+
+    diff_ptr = @ccall LIBRARY.compas_compute_residual(
+        pointer(context)::Ptr{Cvoid},
+        lhs.ptr::Ptr{Cvoid},
+        rhs.ptr::Ptr{Cvoid},
+        pointer(objective)::Ptr{Float32}
+    )::Ptr{Cvoid}
+
+    diff = CompasArray{ComplexF32, 3}(context, diff_ptr, (k, m, n))
+
+    return objective[1], diff
+end
+
 Base.pointer(c::Context) = c.ptr
 Base.pointer(c::TissueParameters) = c.ptr
 Base.pointer(c::CompasArray) = c.ptr

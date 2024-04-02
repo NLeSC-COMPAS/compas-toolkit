@@ -3,6 +3,7 @@
 #include "jacobian/product.h"
 #include "parameters/tissue.h"
 #include "sequences/pssfp.h"
+#include "simulate/residual.h"
 #include "simulate/sequence.h"
 #include "simulate/signal.h"
 #include "trajectories/cartesian.h"
@@ -317,5 +318,17 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
             *vector);
 
         return new compas::Array<cfloat, 2>(d_JHv);
+    });
+}
+
+extern "C" compas::Array<cfloat, 3>* compas_compute_residual(
+    const compas::CudaContext* context,
+    const compas::Array<cfloat, 3>* lhs,
+    const compas::Array<cfloat, 3>* rhs,
+    float* sum) {
+    return catch_exceptions([&] {
+        auto diff = compas::compute_residual(*context, *lhs, *rhs, sum);
+
+        return new compas::Array<cfloat, 3>(diff);
     });
 }

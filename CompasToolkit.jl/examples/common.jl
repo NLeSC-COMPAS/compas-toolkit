@@ -104,6 +104,7 @@ end
 
 function print_equals_check(expected, answer)
     atol = 1e-9
+    answer = collect(answer)
 
     for rtol in [0.001, 0.005, 0.01, 0.05, 0.1]
         is_equal = isapprox.(answer, expected, atol=atol, rtol=rtol)
