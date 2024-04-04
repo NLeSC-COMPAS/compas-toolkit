@@ -155,19 +155,11 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_fisp(
     int max_state,
     float TI) {
     return catch_exceptions([&] {
-        int nreadouts = RF_train->size();
-        int nvoxels = parameters->nvoxels;
-
-        auto* echos = new compas::Array<cfloat, 2>(nreadouts, nvoxels);
         auto sequence = compas::FISPSequence {*RF_train, *sliceprofiles, TR, TE, max_state, TI};
 
-        context->submit_device(
-            compas::simulate_magnetization_fisp,
-            write(*echos),
-            *parameters,
-            sequence);
+        auto echos = compas::simulate_magnetization_fisp(*context, *parameters, sequence);
 
-        return echos;
+        return new kmm::Array<cfloat, 2> {echos};
     });
 }
 
@@ -185,10 +177,6 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
     float gamma_dt_GRz_pr,
     const compas::Array<float>* z) {
     return catch_exceptions([&] {
-        int nreadouts = RF_train->size();
-        int nvoxels = parameters->nvoxels;
-        auto* echos = new compas::Array<cfloat, 2>(nreadouts, nvoxels);
-
         auto sequence = compas::pSSFPSequence {
             *RF_train,
             TR,
@@ -197,13 +185,9 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
             {gamma_dt_GRz_ex, gamma_dt_GRz_inv, gamma_dt_GRz_pr},
             *z};
 
-        context->submit_device(
-            compas::simulate_magnetization_pssfp,
-            write(*echos),
-            *parameters,
-            sequence);
+        auto echos = compas::simulate_magnetization_pssfp(*context, *parameters, sequence);
 
-        return echos;
+        return new kmm::Array<cfloat, 2> {echos};
     });
 }
 

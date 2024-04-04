@@ -37,7 +37,7 @@ int simulate_pssfp_sequence_batch(
     return iz;
 }
 
-void simulate_magnetization_pssfp(
+void simulate_magnetization_pssfp_impl(
     const kmm::CudaDevice& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -58,6 +58,19 @@ void simulate_magnetization_pssfp(
     offset = simulate_pssfp_sequence_batch<1>(context, offset, echos, parameters, sequence);
 
     COMPAS_ASSERT(offset == sequence.z.size());
+}
+
+Array<cfloat, 2> simulate_magnetization_pssfp(
+    const CudaContext& context,
+    TissueParameters parameters,
+    pSSFPSequence sequence) {
+    int nreadouts = sequence.RF_train.size();
+    int nvoxels = parameters.nvoxels;
+
+    auto echos = Array<cfloat, 2> {nreadouts, nvoxels};
+    context.submit_device(simulate_magnetization_pssfp_impl, write(echos), parameters, sequence);
+
+    return echos;
 }
 
 template<int max_N, int warp_size = max_N>
@@ -89,7 +102,7 @@ void simulate_fisp_sequence_for_size(
     }
 }
 
-void simulate_magnetization_fisp(
+void simulate_magnetization_fisp_impl(
     const kmm::CudaDevice& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -111,6 +124,19 @@ void simulate_magnetization_fisp(
     } else {
         COMPAS_PANIC("max_state cannot exceed 128");
     }
+}
+
+Array<cfloat, 2> simulate_magnetization_fisp(
+    const CudaContext& context,
+    TissueParameters parameters,
+    FISPSequence sequence) {
+    int nreadouts = sequence.RF_train.size();
+    int nvoxels = parameters.nvoxels;
+
+    auto echos = Array<cfloat, 2> {nreadouts, nvoxels};
+    context.submit_device(simulate_magnetization_fisp_impl, write(echos), parameters, sequence);
+
+    return echos;
 }
 
 }  // namespace compas
