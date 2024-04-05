@@ -11,8 +11,8 @@ __global__ void phase_encoding(
     cuda_view<cfloat, 2> echos,
     TissueParametersView parameters,
     TrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
     auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
 
     if (readout < echos.size(0) && voxel < echos.size(1)) {
         auto y = parameters.get(voxel).y;

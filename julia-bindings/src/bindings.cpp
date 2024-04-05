@@ -5,6 +5,7 @@
 #include "sequences/pssfp.h"
 #include "simulate/sequence.h"
 #include "simulate/signal.h"
+#include "simulate/phase_encoding.h"
 #include "trajectories/cartesian.h"
 #include "trajectories/spiral.h"
 #include "trajectories/trajectory.h"
@@ -317,5 +318,33 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
             *vector);
 
         return new compas::Array<cfloat, 2>(d_JHv);
+    });
+}
+
+extern "C" compas::Array<cfloat, 2>* phase_encoding(
+    const compas::CudaContext* context,
+    const compas::Array<cfloat, 2>* echos,
+    const compas::TissueParameters* parameters,
+    int nreadouts,
+    int samples_per_readout,
+    float delta_t,
+    const compas::Array<cfloat>* k_start,
+    cfloat delta_k) {
+    return catch_exceptions([&] {
+        // TODO: do I need to create this trajectory or could have just passed it?
+        auto trajectory = compas::CartesianTrajectory {
+            nreadouts,
+            samples_per_readout,
+            delta_t,
+            *k_start,
+            delta_k};
+
+        auto d_echos = compas::phase_encoding(
+            *context,
+            *echos,
+            *parameters,
+            trajectory);
+
+        return new compas::Array<cfloat, 2>(d_echos);
     });
 }

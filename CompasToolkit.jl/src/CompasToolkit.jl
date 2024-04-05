@@ -524,6 +524,31 @@ function compute_jacobian_hermitian(
     return CompasArray{ComplexF32, 2}(context, Jᴴv_ptr, (4, nvoxels))
 end
 
+function phase_encoding(
+    echos::AbstractMatrix,
+    parameters::TissueParameters,
+    trajectory::Trajectory
+)
+    context = get_context()
+    nreadouts::Int64 = trajectory.nreadouts
+    samples_per_readout::Int64 = trajectory.samples_per_readout
+
+    echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
+
+    phe_echos_ptr = @ccall LIBRARY.phase_encoding(
+        pointer(context)::Ptr{Cvoid},
+        pointer(echos)::Ptr{Cvoid},
+        parameters.ptr::Ptr{Cvoid},
+        trajectory.nreadouts::Int32,
+        trajectory.samples_per_readout::Int32,
+        trajectory.delta_t::Float32,
+        pointer(trajectory.k_start)::Ptr{Cvoid},
+        trajectory.delta_k::ComplexF32
+    )::Ptr{Cvoid}
+
+    return CompasArray{ComplexF32, 2}(context, phe_echos_ptr, (nreadouts, nvoxels))
+end
+
 Base.pointer(c::Context) = c.ptr
 Base.pointer(c::TissueParameters) = c.ptr
 Base.pointer(c::CompasArray) = c.ptr
