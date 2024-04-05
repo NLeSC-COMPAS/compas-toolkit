@@ -455,7 +455,10 @@ function simulate_magnetization_derivatives(
     parameters::TissueParameters,
     sequence,
     Δ::AbstractFloat
-)::@NamedTuple(T1::CompasArray{ComplexF32, 2}, T2::CompasArray{ComplexF32, 2})
+)::@NamedTuple{
+    T1::CompasArray{ComplexF32, 2},
+    T2::CompasArray{ComplexF32, 2}
+}
     return (
         T1 = simulate_magnetization_derivative(0, echos, parameters, sequence, Δ),
         T2 = simulate_magnetization_derivative(1, echos, parameters, sequence, Δ)
@@ -466,7 +469,10 @@ function simulate_magnetization_derivatives(
     echos::AbstractMatrix{ComplexF32},
     parameters::TissueParameters,
     sequence,
-)::@NamedTuple(T1::CompasArray{ComplexF32, 2}, T2::CompasArray{ComplexF32, 2})
+)::@NamedTuple{
+    T1::CompasArray{ComplexF32, 2},
+    T2::CompasArray{ComplexF32, 2}
+}
     return simulate_magnetization_derivatives(echos, parameters, sequence, 1e-4)
 end
 
@@ -535,7 +541,7 @@ end
 
 function compute_jacobian(
     echos::AbstractMatrix,
-    𝜕echos::AbstractArray{<:Any,3},
+    𝜕echos::NamedTuple{(:T1, :T2)},
     parameters::TissueParameters,
     trajectory::Trajectory,
     coils::AbstractMatrix,
@@ -548,7 +554,8 @@ function compute_jacobian(
     nvoxels::Int64 = parameters.nvoxels
 
     echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
-    𝜕echos = convert_array(𝜕echos, ComplexF32, nvoxels, nreadouts, 2)
+    𝜕echos_T1 = convert_array(𝜕echos.T1, ComplexF32, nvoxels, nreadouts)
+    𝜕echos_T2 = convert_array(𝜕echos.T2, ComplexF32, nvoxels, nreadouts)
     coils = convert_array(coils, Float32, nvoxels, ncoils)
     v = convert_array(v, ComplexF32, nvoxels, 4)
 
@@ -556,7 +563,8 @@ function compute_jacobian(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(echos)::Ptr{Cvoid},
-        pointer(𝜕echos)::Ptr{Cvoid},
+        pointer(𝜕echos_T1)::Ptr{Cvoid},
+        pointer(𝜕echos_T2)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
         pointer(coils)::Ptr{Cvoid},
         trajectory.nreadouts::Int32,
@@ -572,7 +580,7 @@ end
 
 function compute_jacobian_hermitian(
     echos::AbstractMatrix,
-    𝜕echos::AbstractArray{<:Any,3},
+    𝜕echos::NamedTuple{(:T1, :T2)},
     parameters::TissueParameters,
     trajectory::Trajectory,
     coils::AbstractMatrix,
@@ -585,7 +593,8 @@ function compute_jacobian_hermitian(
     nvoxels::Int64 = parameters.nvoxels
 
     echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
-    𝜕echos = convert_array(𝜕echos, ComplexF32, nvoxels, nreadouts, 2)
+    𝜕echos_T1 = convert_array(𝜕echos.T1, ComplexF32, nvoxels, nreadouts)
+    𝜕echos_T2 = convert_array(𝜕echos.T2, ComplexF32, nvoxels, nreadouts)
     coils = convert_array(coils, Float32, nvoxels, ncoils)
     v = convert_array(v, ComplexF32, nreadouts * samples_per_readout, ncoils)
 
@@ -593,7 +602,8 @@ function compute_jacobian_hermitian(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(echos)::Ptr{Cvoid},
-        pointer(𝜕echos)::Ptr{Cvoid},
+        pointer(𝜕echos_T1)::Ptr{Cvoid},
+        pointer(𝜕echos_T2)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
         pointer(coils)::Ptr{Cvoid},
         trajectory.nreadouts::Int32,
