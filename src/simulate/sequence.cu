@@ -37,7 +37,7 @@ int simulate_pssfp_sequence_batch(
     return iz;
 }
 
-void simulate_magnetization_pssfp_impl(
+void simulate_magnetization_kernel(
     const kmm::CudaDevice& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -60,15 +60,21 @@ void simulate_magnetization_pssfp_impl(
     COMPAS_ASSERT(offset == sequence.z.size());
 }
 
-Array<cfloat, 2> simulate_magnetization_pssfp(
+Array<cfloat, 2> simulate_magnetization(
     const CudaContext& context,
     TissueParameters parameters,
     pSSFPSequence sequence) {
     int nreadouts = sequence.RF_train.size();
     int nvoxels = parameters.nvoxels;
-
     auto echos = Array<cfloat, 2> {nreadouts, nvoxels};
-    context.submit_device(simulate_magnetization_pssfp_impl, write(echos), parameters, sequence);
+
+    void (*fun)(
+        const kmm::CudaDevice&,
+        cuda_view_mut<cfloat, 2>,
+        TissueParametersView,
+        pSSFPSequenceView) = simulate_magnetization_kernel;
+
+    context.submit_device(fun, write(echos), parameters, sequence);
 
     return echos;
 }
@@ -102,7 +108,7 @@ void simulate_fisp_sequence_for_size(
     }
 }
 
-void simulate_magnetization_fisp_impl(
+void simulate_magnetization_kernel(
     const kmm::CudaDevice& context,
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -126,15 +132,21 @@ void simulate_magnetization_fisp_impl(
     }
 }
 
-Array<cfloat, 2> simulate_magnetization_fisp(
+Array<cfloat, 2> simulate_magnetization(
     const CudaContext& context,
     TissueParameters parameters,
     FISPSequence sequence) {
     int nreadouts = sequence.RF_train.size();
     int nvoxels = parameters.nvoxels;
-
     auto echos = Array<cfloat, 2> {nreadouts, nvoxels};
-    context.submit_device(simulate_magnetization_fisp_impl, write(echos), parameters, sequence);
+
+    void (*fun)(
+        const kmm::CudaDevice&,
+        cuda_view_mut<cfloat, 2>,
+        TissueParametersView,
+        FISPSequenceView) = simulate_magnetization_kernel;
+
+    context.submit_device(fun, write(echos), parameters, sequence);
 
     return echos;
 }

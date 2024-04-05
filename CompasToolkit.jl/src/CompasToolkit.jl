@@ -388,6 +388,89 @@ function simulate_magnetization(
     return CompasArray{ComplexF32, 2}(context, echos_ptr, (nreadouts, nvoxels))
 end
 
+function simulate_magnetization_derivative(
+    field::Integer,
+    echos::AbstractMatrix{ComplexF32},
+    parameters::TissueParameters,
+    sequence::FispSequence,
+    Δ::AbstractFloat
+)::CompasArray{ComplexF32, 2}
+    context = get_context()
+    nvoxels::Int64 = parameters.nvoxels
+    nreadouts::Int64 = sequence.nreadouts
+    echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
+
+    𝜕echos_ptr = @ccall LIBRARY.compas_simulate_magnetization_derivative_fisp(
+        pointer(context)::Ptr{Cvoid},
+        field::Int32,
+        pointer(echos)::Ptr{Cvoid},
+        parameters.ptr::Ptr{Cvoid},
+        Δ::Float32,
+        sequence.RF_train.ptr::Ptr{Cvoid},
+        sequence.slice_profiles.ptr::Ptr{Cvoid},
+        sequence.TR::Float32,
+        sequence.TE::Float32,
+        sequence.max_state::Int32,
+        sequence.TI::Float32
+    )::Ptr{Cvoid}
+
+    return CompasArray{ComplexF32, 2}(context, 𝜕echos_ptr, (nreadouts, nvoxels))
+end
+
+function simulate_magnetization_derivative(
+    field::Integer,
+    echos::AbstractMatrix{ComplexF32},
+    parameters::TissueParameters,
+    sequence::pSSFPSequence,
+    Δ::AbstractFloat
+)::CompasArray{ComplexF32, 2}
+    context = get_context()
+    nvoxels::Int64 = parameters.nvoxels
+    nreadouts::Int64 = sequence.nreadouts
+    echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
+
+    𝜕echos_ptr = @ccall LIBRARY.compas_simulate_magnetization_derivative_pssfp(
+        pointer(context)::Ptr{Cvoid},
+        field::Int32,
+        pointer(echos)::Ptr{Cvoid},
+        parameters.ptr::Ptr{Cvoid},
+        Δ::Float32,
+        sequence.RF_train.ptr::Ptr{Cvoid},
+        sequence.TR::Float32,
+        sequence.gamma_dt_RF.ptr::Ptr{Cvoid},
+        sequence.dt[1]::Float32,
+        sequence.dt[2]::Float32,
+        sequence.dt[3]::Float32,
+        sequence.gamma_dt_GRz[1]::Float32,
+        sequence.gamma_dt_GRz[2]::Float32,
+        sequence.gamma_dt_GRz[3]::Float32,
+        sequence.z.ptr::Ptr{Cvoid}
+    )::Ptr{Cvoid}
+
+    return CompasArray{ComplexF32, 2}(context, 𝜕echos_ptr, (nreadouts, nvoxels))
+end
+
+function simulate_magnetization_derivatives(
+    echos::AbstractMatrix{ComplexF32},
+    parameters::TissueParameters,
+    sequence,
+    Δ::AbstractFloat
+)::@NamedTuple(T1::CompasArray{ComplexF32, 2}, T2::CompasArray{ComplexF32, 2})
+    return (
+        T1 = simulate_magnetization_derivative(0, echos, parameters, sequence, Δ),
+        T2 = simulate_magnetization_derivative(1, echos, parameters, sequence, Δ)
+    )
+end
+
+function simulate_magnetization_derivatives(
+    echos::AbstractMatrix{ComplexF32},
+    parameters::TissueParameters,
+    sequence,
+)::@NamedTuple(T1::CompasArray{ComplexF32, 2}, T2::CompasArray{ComplexF32, 2})
+    return simulate_magnetization_derivatives(echos, parameters, sequence, 1e-4)
+end
+
+
 function magnetization_to_signal(
     echos::AbstractMatrix,
     parameters::TissueParameters,

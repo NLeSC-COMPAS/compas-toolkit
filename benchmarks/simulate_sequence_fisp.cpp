@@ -47,7 +47,7 @@ int main() {
         sequence.max_state = max_state;
 
         auto [duration, runs] = benchmark([&] {
-            echos = compas::simulate_magnetization_fisp(context, parameters, sequence);
+            echos = compas::simulate_magnetization(context, parameters, sequence);
 
             context.synchronize();
         });
