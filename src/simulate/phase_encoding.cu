@@ -6,7 +6,7 @@
 namespace compas {
 
 Array<cfloat, 2> phase_encoding(
-    CudaContext ctx,
+    CudaContext& ctx,
     Array<cfloat, 2>& echos,
     TissueParameters& parameters,
     Trajectory& trajectory) {
