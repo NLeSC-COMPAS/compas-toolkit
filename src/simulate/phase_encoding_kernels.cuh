@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/view.h"
-#include "trajectories/cartesian_view.cuh"
 
 namespace compas {
 namespace kernels {
