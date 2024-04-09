@@ -44,7 +44,8 @@ template<int ncoils, int threads_per_item = 1>
 __launch_bounds__(256, 16) __global__ void jacobian_product(
     cuda_view_mut<cfloat, 2> Jv,
     cuda_view<cfloat, 2> echos,
-    cuda_view<cfloat, 3> delta_echos,
+    cuda_view<cfloat, 2> delta_echos_T1,
+    cuda_view<cfloat, 2> delta_echos_T2,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
     cuda_view<float, 2> coil_sensitivities,
@@ -74,7 +75,7 @@ __launch_bounds__(256, 16) __global__ void jacobian_product(
 
             // load magnetization and partial derivatives at echo time of the r-th readout
             auto me = echos[r][voxel];
-            auto dme = vec2<cfloat> {delta_echos[0][r][voxel], delta_echos[1][r][voxel]};
+            auto dme = vec2<cfloat> {delta_echos_T1[r][voxel], delta_echos_T2[r][voxel]};
 
             // compute decay (T₂) and rotation (gradients and B₀) to go to sample point
             auto Es = E[s][voxel];
@@ -118,7 +119,8 @@ __launch_bounds__(256, 16) __global__ void jacobian_product(
 Array<cfloat, 2> compute_jacobian(
     const CudaContext& ctx,
     Array<cfloat, 2> echos,
-    Array<cfloat, 3> delta_echos,
+    Array<cfloat, 2> delta_echos_T1,
+    Array<cfloat, 2> delta_echos_T2,
     TissueParameters parameters,
     CartesianTrajectory trajectory,
     Array<float, 2> coil_sensitivities,
@@ -131,9 +133,10 @@ Array<cfloat, 2> compute_jacobian(
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
-    COMPAS_ASSERT(delta_echos.size(0) == 2);  // T1 and T2
-    COMPAS_ASSERT(delta_echos.size(1) == nreadouts);
-    COMPAS_ASSERT(delta_echos.size(2) == nvoxels);
+    COMPAS_ASSERT(delta_echos_T1.size(0) == nreadouts);
+    COMPAS_ASSERT(delta_echos_T1.size(1) == nvoxels);
+    COMPAS_ASSERT(delta_echos_T2.size(0) == nreadouts);
+    COMPAS_ASSERT(delta_echos_T2.size(1) == nvoxels);
     COMPAS_ASSERT(coil_sensitivities.size(0) == ncoils);
     COMPAS_ASSERT(coil_sensitivities.size(1) == nvoxels);
     COMPAS_ASSERT(vector.size(0) == 4);  // four reconstruction parameters: T1, T2, rho_x, rho_y
@@ -168,7 +171,8 @@ Array<cfloat, 2> compute_jacobian(
             kernels::jacobian_product<(N), threads_per_sample>, \
             write(Jv),                                          \
             echos,                                              \
-            delta_echos,                                        \
+            delta_echos_T1,                                     \
+            delta_echos_T2,                                     \
             parameters,                                         \
             trajectory,                                         \
             coil_sensitivities,                                 \

@@ -93,17 +93,24 @@ function generate_delta_echos(N, sequence)
     # isochromat model
     T₁, T₂, B₁, B₀, ρ, X, Y = generate_parameters(N)
 
+    parameters_ref = gpu(f32(map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)))
+    echos = simulate_magnetization(CUDALibs(), sequence, parameters_ref)
+
     parameters_ref = gpu(f32(map(T₁T₂B₀ρˣρʸxy, T₁ .+ Δ, T₂, B₀, real.(ρ), imag.(ρ), X, Y)))
-    dechos_dT1 = simulate(CUDALibs(), sequence, parameters_ref)
+    𝜕echos_dT1 = simulate_magnetization(CUDALibs(), sequence, parameters_ref) - echos
 
     parameters_ref = gpu(f32(map(T₁T₂B₀ρˣρʸxy, T₁, T₂ .+ Δ, B₀, real.(ρ), imag.(ρ), X, Y)))
-    dechos_dT2 = simulate(CUDALibs(), sequence, parameters_ref)
+    𝜕echos_dT2 = simulate_magnetization(CUDALibs(), sequence, parameters_ref) - echos
 
-    return cat(collect(transpose(dechos_dT1)), collect(transpose(dechos_dT2)); dims=3) ./ Δ
+    return (
+        T1=collect(transpose(𝜕echos_dT1))  ./ Δ,
+        T2=collect(transpose(𝜕echos_dT2))  ./ Δ
+    )
 end
 
 function print_equals_check(expected, answer)
     atol = 1e-9
+    answer = collect(answer)
 
     for rtol in [0.001, 0.005, 0.01, 0.05, 0.1]
         is_equal = isapprox.(answer, expected, atol=atol, rtol=rtol)

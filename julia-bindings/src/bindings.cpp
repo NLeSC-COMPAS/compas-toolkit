@@ -3,6 +3,8 @@
 #include "jacobian/product.h"
 #include "parameters/tissue.h"
 #include "sequences/pssfp.h"
+#include "simulate/derivative.h"
+#include "simulate/residual.h"
 #include "simulate/sequence.h"
 #include "simulate/signal.h"
 #include "simulate/phase_encoding.h"
@@ -155,19 +157,11 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_fisp(
     int max_state,
     float TI) {
     return catch_exceptions([&] {
-        int nreadouts = RF_train->size();
-        int nvoxels = parameters->nvoxels;
-
-        auto* echos = new compas::Array<cfloat, 2>(nreadouts, nvoxels);
         auto sequence = compas::FISPSequence {*RF_train, *sliceprofiles, TR, TE, max_state, TI};
 
-        context->submit_device(
-            compas::simulate_magnetization_fisp,
-            write(*echos),
-            *parameters,
-            sequence);
+        auto echos = compas::simulate_magnetization(*context, *parameters, sequence);
 
-        return echos;
+        return new kmm::Array<cfloat, 2> {echos};
     });
 }
 
@@ -185,10 +179,6 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
     float gamma_dt_GRz_pr,
     const compas::Array<float>* z) {
     return catch_exceptions([&] {
-        int nreadouts = RF_train->size();
-        int nvoxels = parameters->nvoxels;
-        auto* echos = new compas::Array<cfloat, 2>(nreadouts, nvoxels);
-
         auto sequence = compas::pSSFPSequence {
             *RF_train,
             TR,
@@ -197,13 +187,9 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
             {gamma_dt_GRz_ex, gamma_dt_GRz_inv, gamma_dt_GRz_pr},
             *z};
 
-        context->submit_device(
-            compas::simulate_magnetization_pssfp,
-            write(*echos),
-            *parameters,
-            sequence);
+        auto echos = compas::simulate_magnetization(*context, *parameters, sequence);
 
-        return echos;
+        return new kmm::Array<cfloat, 2> {echos};
     });
 }
 
@@ -257,7 +243,8 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian(
     const compas::CudaContext* context,
     int ncoils,
     const compas::Array<cfloat, 2>* echos,
-    const compas::Array<cfloat, 3>* delta_echos,
+    const compas::Array<cfloat, 2>* delta_echos_T1,
+    const compas::Array<cfloat, 2>* delta_echos_T2,
     const compas::TissueParameters* parameters,
     const compas::Array<float, 2>* coils,
     int nreadouts,
@@ -277,7 +264,8 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian(
         auto Jv = compas::compute_jacobian(
             *context,
             *echos,
-            *delta_echos,
+            *delta_echos_T1,
+            *delta_echos_T2,
             *parameters,
             trajectory,
             *coils,
@@ -291,7 +279,8 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
     const compas::CudaContext* context,
     int ncoils,
     const compas::Array<cfloat, 2>* echos,
-    const compas::Array<cfloat, 3>* delta_echos,
+    const compas::Array<cfloat, 2>* delta_echos_T1,
+    const compas::Array<cfloat, 2>* delta_echos_T2,
     const compas::TissueParameters* parameters,
     const compas::Array<float, 2>* coils,
     int nreadouts,
@@ -311,7 +300,8 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
         auto d_JHv = compas::compute_jacobian_hermitian(
             *context,
             *echos,
-            *delta_echos,
+            *delta_echos_T1,
+            *delta_echos_T2,
             *parameters,
             trajectory,
             *coils,
@@ -339,12 +329,84 @@ extern "C" compas::Array<cfloat, 2>* phase_encoding(
             *k_start,
             delta_k};
 
-        auto d_echos = compas::phase_encoding(
-            *context,
-            *echos,
-            *parameters,
-            trajectory);
+        auto d_echos = compas::phase_encoding(*context, *echos, *parameters, trajectory);
 
         return new compas::Array<cfloat, 2>(d_echos);
+    });
+}
+
+extern "C" compas::Array<cfloat, 3>* compas_compute_residual(
+    const compas::CudaContext* context,
+    const compas::Array<cfloat, 3>* lhs,
+    const compas::Array<cfloat, 3>* rhs,
+    float* sum) {
+    return catch_exceptions([&] {
+        auto diff = compas::compute_residual(*context, *lhs, *rhs, sum);
+
+        return new compas::Array<cfloat, 3>(diff);
+    });
+}
+
+extern "C" compas::Array<cfloat, 2>* compas_simulate_magnetization_derivative_pssfp(
+    const compas::CudaContext* context,
+    int field,
+    const compas::Array<cfloat, 2>* echos,
+    const compas::TissueParameters* parameters,
+    float delta,
+    const compas::Array<cfloat>* RF_train,
+    float TR,
+    const compas::Array<cfloat>* gamma_dt_RF,
+    float dt_ex,
+    float dt_inv,
+    float dt_pr,
+    float gamma_dt_GRz_ex,
+    float gamma_dt_GRz_inv,
+    float gamma_dt_GRz_pr,
+    const compas::Array<float>* z) {
+    return catch_exceptions([&] {
+        auto sequence = compas::pSSFPSequence {
+            *RF_train,
+            TR,
+            *gamma_dt_RF,
+            {dt_ex, dt_inv, dt_pr},
+            {gamma_dt_GRz_ex, gamma_dt_GRz_inv, gamma_dt_GRz_pr},
+            *z};
+
+        auto delta_echos = compas::simulate_magnetization_derivative(
+            *context,
+            field,
+            *echos,
+            *parameters,
+            sequence,
+            delta);
+
+        return new compas::Array<cfloat, 2> {delta_echos};
+    });
+}
+
+extern "C" compas::Array<cfloat, 2>* compas_simulate_magnetization_derivative_fisp(
+    const compas::CudaContext* context,
+    int field,
+    const compas::Array<cfloat, 2>* echos,
+    const compas::TissueParameters* parameters,
+    float delta,
+    compas::Array<cfloat>* RF_train,
+    compas::Array<cfloat, 2>* sliceprofiles,
+    float TR,
+    float TE,
+    int max_state,
+    float TI) {
+    return catch_exceptions([&] {
+        auto sequence = compas::FISPSequence {*RF_train, *sliceprofiles, TR, TE, max_state, TI};
+
+        auto delta_echos = compas::simulate_magnetization_derivative(
+            *context,
+            field,
+            *echos,
+            *parameters,
+            sequence,
+            delta);
+
+        return new compas::Array<cfloat, 2> {delta_echos};
     });
 }

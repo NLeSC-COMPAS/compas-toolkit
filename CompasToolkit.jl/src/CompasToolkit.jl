@@ -388,6 +388,95 @@ function simulate_magnetization(
     return CompasArray{ComplexF32, 2}(context, echos_ptr, (nreadouts, nvoxels))
 end
 
+function simulate_magnetization_derivative(
+    field::Integer,
+    echos::AbstractMatrix{ComplexF32},
+    parameters::TissueParameters,
+    sequence::FispSequence,
+    Δ::AbstractFloat
+)::CompasArray{ComplexF32, 2}
+    context = get_context()
+    nvoxels::Int64 = parameters.nvoxels
+    nreadouts::Int64 = sequence.nreadouts
+    echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
+
+    𝜕echos_ptr = @ccall LIBRARY.compas_simulate_magnetization_derivative_fisp(
+        pointer(context)::Ptr{Cvoid},
+        field::Int32,
+        pointer(echos)::Ptr{Cvoid},
+        parameters.ptr::Ptr{Cvoid},
+        Δ::Float32,
+        sequence.RF_train.ptr::Ptr{Cvoid},
+        sequence.slice_profiles.ptr::Ptr{Cvoid},
+        sequence.TR::Float32,
+        sequence.TE::Float32,
+        sequence.max_state::Int32,
+        sequence.TI::Float32
+    )::Ptr{Cvoid}
+
+    return CompasArray{ComplexF32, 2}(context, 𝜕echos_ptr, (nreadouts, nvoxels))
+end
+
+function simulate_magnetization_derivative(
+    field::Integer,
+    echos::AbstractMatrix{ComplexF32},
+    parameters::TissueParameters,
+    sequence::pSSFPSequence,
+    Δ::AbstractFloat
+)::CompasArray{ComplexF32, 2}
+    context = get_context()
+    nvoxels::Int64 = parameters.nvoxels
+    nreadouts::Int64 = sequence.nreadouts
+    echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
+
+    𝜕echos_ptr = @ccall LIBRARY.compas_simulate_magnetization_derivative_pssfp(
+        pointer(context)::Ptr{Cvoid},
+        field::Int32,
+        pointer(echos)::Ptr{Cvoid},
+        parameters.ptr::Ptr{Cvoid},
+        Δ::Float32,
+        sequence.RF_train.ptr::Ptr{Cvoid},
+        sequence.TR::Float32,
+        sequence.gamma_dt_RF.ptr::Ptr{Cvoid},
+        sequence.dt[1]::Float32,
+        sequence.dt[2]::Float32,
+        sequence.dt[3]::Float32,
+        sequence.gamma_dt_GRz[1]::Float32,
+        sequence.gamma_dt_GRz[2]::Float32,
+        sequence.gamma_dt_GRz[3]::Float32,
+        sequence.z.ptr::Ptr{Cvoid}
+    )::Ptr{Cvoid}
+
+    return CompasArray{ComplexF32, 2}(context, 𝜕echos_ptr, (nreadouts, nvoxels))
+end
+
+function simulate_magnetization_derivatives(
+    echos::AbstractMatrix{ComplexF32},
+    parameters::TissueParameters,
+    sequence,
+    Δ::AbstractFloat
+)::@NamedTuple{
+    T1::CompasArray{ComplexF32, 2},
+    T2::CompasArray{ComplexF32, 2}
+}
+    return (
+        T1 = simulate_magnetization_derivative(0, echos, parameters, sequence, Δ),
+        T2 = simulate_magnetization_derivative(1, echos, parameters, sequence, Δ)
+    )
+end
+
+function simulate_magnetization_derivatives(
+    echos::AbstractMatrix{ComplexF32},
+    parameters::TissueParameters,
+    sequence,
+)::@NamedTuple{
+    T1::CompasArray{ComplexF32, 2},
+    T2::CompasArray{ComplexF32, 2}
+}
+    return simulate_magnetization_derivatives(echos, parameters, sequence, 1e-4)
+end
+
+
 function magnetization_to_signal(
     echos::AbstractMatrix,
     parameters::TissueParameters,
@@ -452,7 +541,7 @@ end
 
 function compute_jacobian(
     echos::AbstractMatrix,
-    𝜕echos::AbstractArray{<:Any,3},
+    𝜕echos::NamedTuple{(:T1, :T2)},
     parameters::TissueParameters,
     trajectory::Trajectory,
     coils::AbstractMatrix,
@@ -465,7 +554,8 @@ function compute_jacobian(
     nvoxels::Int64 = parameters.nvoxels
 
     echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
-    𝜕echos = convert_array(𝜕echos, ComplexF32, nvoxels, nreadouts, 2)
+    𝜕echos_T1 = convert_array(𝜕echos.T1, ComplexF32, nvoxels, nreadouts)
+    𝜕echos_T2 = convert_array(𝜕echos.T2, ComplexF32, nvoxels, nreadouts)
     coils = convert_array(coils, Float32, nvoxels, ncoils)
     v = convert_array(v, ComplexF32, nvoxels, 4)
 
@@ -473,7 +563,8 @@ function compute_jacobian(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(echos)::Ptr{Cvoid},
-        pointer(𝜕echos)::Ptr{Cvoid},
+        pointer(𝜕echos_T1)::Ptr{Cvoid},
+        pointer(𝜕echos_T2)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
         pointer(coils)::Ptr{Cvoid},
         trajectory.nreadouts::Int32,
@@ -489,7 +580,7 @@ end
 
 function compute_jacobian_hermitian(
     echos::AbstractMatrix,
-    𝜕echos::AbstractArray{<:Any,3},
+    𝜕echos::NamedTuple{(:T1, :T2)},
     parameters::TissueParameters,
     trajectory::Trajectory,
     coils::AbstractMatrix,
@@ -502,7 +593,8 @@ function compute_jacobian_hermitian(
     nvoxels::Int64 = parameters.nvoxels
 
     echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
-    𝜕echos = convert_array(𝜕echos, ComplexF32, nvoxels, nreadouts, 2)
+    𝜕echos_T1 = convert_array(𝜕echos.T1, ComplexF32, nvoxels, nreadouts)
+    𝜕echos_T2 = convert_array(𝜕echos.T2, ComplexF32, nvoxels, nreadouts)
     coils = convert_array(coils, Float32, nvoxels, ncoils)
     v = convert_array(v, ComplexF32, nreadouts * samples_per_readout, ncoils)
 
@@ -510,7 +602,8 @@ function compute_jacobian_hermitian(
         pointer(context)::Ptr{Cvoid},
         ncoils::Int32,
         pointer(echos)::Ptr{Cvoid},
-        pointer(𝜕echos)::Ptr{Cvoid},
+        pointer(𝜕echos_T1)::Ptr{Cvoid},
+        pointer(𝜕echos_T2)::Ptr{Cvoid},
         parameters.ptr::Ptr{Cvoid},
         pointer(coils)::Ptr{Cvoid},
         trajectory.nreadouts::Int32,
@@ -528,7 +621,7 @@ function phase_encoding(
     echos::AbstractMatrix,
     parameters::TissueParameters,
     trajectory::Trajectory
-)
+)::CompasArray{ComplexF32, 2}
     context = get_context()
     nreadouts::Int64 = trajectory.nreadouts
     samples_per_readout::Int64 = trajectory.samples_per_readout
@@ -547,6 +640,29 @@ function phase_encoding(
     )::Ptr{Cvoid}
 
     return CompasArray{ComplexF32, 2}(context, phe_echos_ptr, (nreadouts, nvoxels))
+end
+
+function compute_residual(
+    lhs::AbstractArray{<:Any,3},
+    rhs::AbstractArray{<:Any,3}
+)::Tuple{Float32, CompasArray{ComplexF32, 3}}
+    context = get_context()
+    n, m, k = size(lhs)
+
+    lhs = convert_array(lhs, ComplexF32, n, m, k)
+    rhs = convert_array(rhs, ComplexF32, n, m, k)
+    objective = [0.0f0]
+
+    diff_ptr = @ccall LIBRARY.compas_compute_residual(
+        pointer(context)::Ptr{Cvoid},
+        lhs.ptr::Ptr{Cvoid},
+        rhs.ptr::Ptr{Cvoid},
+        pointer(objective)::Ptr{Float32}
+    )::Ptr{Cvoid}
+
+    diff = CompasArray{ComplexF32, 3}(context, diff_ptr, (k, m, n))
+
+    return objective[1], diff
 end
 
 Base.pointer(c::Context) = c.ptr
