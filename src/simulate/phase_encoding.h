@@ -5,7 +5,7 @@
 namespace compas {
 
 /**
- * TODO: document function
+ * Compute the phase encoding of a signal.
  */
 Array<cfloat, 2> phase_encoding(
     const CudaContext& ctx,
