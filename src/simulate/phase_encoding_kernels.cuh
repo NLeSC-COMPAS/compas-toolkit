@@ -2,15 +2,15 @@
 
 #include "core/view.h"
 #include "parameters/tissue_view.cuh"
+#include "trajectories/cartesian_view.cuh"
 
 namespace compas {
 namespace kernels {
 
-template<typename TrajectoryView>
 __global__ void phase_encoding(
     cuda_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
-    TrajectoryView trajectory) {
+    CartesianTrajectoryView trajectory) {
     auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y);
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
 
