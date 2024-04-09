@@ -127,3 +127,9 @@ echos_ref = simulate_magnetization(resource, sequence, parameters)
 
 # Compare to compas data
 print_equals_check(transpose(collect(echos_ref)), collect(echos))
+
+# Phase encoding
+echos = CompasToolkit.phase_encoding(echos, parameters, trajectory)
+echos_ref = phase_encoding(echos_ref, trajectory, parameters)
+
+print_equals_check(transpose(collect(echos_ref)), collect(echos))
