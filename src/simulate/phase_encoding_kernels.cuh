@@ -18,7 +18,7 @@ __global__ void phase_encoding(
         auto y = parameters.get(voxel).y;
         auto k = trajectory.k_start[readout].imag();
 
-        echos[readout][voxel] = exp(cfloat(0.0f, y * k));
+        echos[readout][voxel] *= exp(cfloat(0.0f, y * k));
     }
 }
 
