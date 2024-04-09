@@ -321,7 +321,6 @@ extern "C" compas::Array<cfloat, 2>* phase_encoding(
     const compas::Array<cfloat>* k_start,
     cfloat delta_k) {
     return catch_exceptions([&] {
-        // TODO: do I need to create this trajectory or could have just passed it?
         auto trajectory = compas::CartesianTrajectory {
             nreadouts,
             samples_per_readout,
