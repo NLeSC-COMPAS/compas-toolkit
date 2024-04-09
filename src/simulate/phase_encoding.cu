@@ -1,3 +1,4 @@
+#include "core/utils.h"
 #include "simulate/phase_encoding.h"
 #include "simulate/phase_encoding_kernels.cuh"
 
