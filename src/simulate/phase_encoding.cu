@@ -12,18 +12,19 @@ Array<cfloat, 2> phase_encoding(
     int nreadouts = trajectory.nreadouts;
     int nvoxels = parameters.nvoxels;
 
-    auto phe_echos = Array<cfloat, 2>(nreadouts, nvoxels);
+    auto ph_en_echos = Array<cfloat, 2>(nreadouts, nvoxels);
 
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
     ctx.submit_kernel(grid_dim,
                       block_dim,
                       kernels::phase_encoding,
-                      write(echos),
+                      write(ph_en_echos),
+                      echos,
                       parameters,
                       trajectory);
 
-    return phe_echos;
+    return ph_en_echos;
 }
 
 } // compas

@@ -8,7 +8,8 @@ namespace compas {
 namespace kernels {
 
 __global__ void phase_encoding(
-    cuda_view_mut<cfloat, 2> echos,
+    cuda_view_mut<cfloat, 2> ph_en_echos,
+    cuda_view<cfloat, 2> echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
     auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y);
@@ -18,7 +19,7 @@ __global__ void phase_encoding(
         auto y = parameters.get(voxel).y;
         auto k = trajectory.k_start[readout].imag();
 
-        echos[readout][voxel] *= exp(cfloat(0.0f, y * k));
+        ph_en_echos[readout][voxel] = echoes[readout][voxel] * exp(cfloat(0.0f, y * k));
     }
 }
 
