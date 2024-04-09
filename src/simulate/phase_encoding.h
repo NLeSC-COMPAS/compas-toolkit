@@ -1,6 +1,9 @@
 #pragma once
 
-#include "core/complex_type.hpp"
+#include "core/context.h"
+#include "core/complex_type.h"
+#include "parameters/tissue.h"
+#include "trajectories/trajectory.h"
 
 namespace compas {
 
