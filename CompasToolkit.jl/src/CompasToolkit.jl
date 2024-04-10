@@ -623,6 +623,7 @@ function phase_encoding(
     trajectory::Trajectory
 )::CompasArray{ComplexF32, 2}
     context = get_context()
+    nvoxels::Int64 = parameters.nvoxels
     nreadouts::Int64 = trajectory.nreadouts
     samples_per_readout::Int64 = trajectory.samples_per_readout
 
