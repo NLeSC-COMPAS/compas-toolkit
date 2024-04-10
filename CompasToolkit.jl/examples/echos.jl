@@ -112,7 +112,7 @@ compas_parameters = CompasToolkit.TissueParameters(
     [p.x for p in parameters],
     [p.y for p in parameters],
 )
-compas_trajectory = CompasToolkit.Trajectory(
+compas_trajectory = CompasToolkit.CartesianTrajectory(
     trajectory.nreadouts,
     trajectory.nsamplesperreadout,
     trajectory.Δt,
