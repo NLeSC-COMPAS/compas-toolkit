@@ -643,6 +643,17 @@ function phase_encoding(
     return CompasArray{ComplexF32, 2}(context, phe_echos_ptr, (nreadouts, nvoxels))
 end
 
+function phase_encoding(
+    inputs::NamedTuple,
+    parameters::TissueParameters,
+    trajectory::Trajectory
+)::NamedTuple
+    # Apply phase_encoding to each element in `inputs`
+    return typeof(inputs)(
+        map(v -> phase_encoding(v, parameters, trajectory), inputs)
+    )
+end
+
 function compute_residual(
     lhs::AbstractArray{<:Any,3},
     rhs::AbstractArray{<:Any,3}
