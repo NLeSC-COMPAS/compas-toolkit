@@ -112,6 +112,12 @@ compas_parameters = CompasToolkit.TissueParameters(
     [p.x for p in parameters],
     [p.y for p in parameters],
 )
+compas_trajectory = CompasToolkit.Trajectory(
+    trajectory.nreadouts,
+    trajectory.nsamplesperreadout,
+    trajectory.Δt,
+    trajectory.k_start_readout,
+    trajectory.Δk_adc[1]);
 
 compas_coils = CompasToolkit.make_array(compas_context, Float32.(hcat(vec(coil₁), vec(coil₂))))
 echos = CompasToolkit.simulate_magnetization(compas_parameters, compas_sequence)
@@ -129,7 +135,7 @@ echos_ref = simulate_magnetization(resource, sequence, parameters)
 print_equals_check(transpose(collect(echos_ref)), collect(echos))
 
 # Phase encoding
-echos = CompasToolkit.phase_encoding(echos, parameters, trajectory)
+echos = CompasToolkit.phase_encoding(echos, compas_parameters, compas_trajectory)
 echos_ref = phase_encoding(echos_ref, trajectory, parameters)
 
 print_equals_check(transpose(collect(echos_ref)), collect(echos))
