@@ -5,10 +5,10 @@
 namespace compas {
 
 Array<cfloat, 2> phase_encoding(
-    CudaContext& ctx,
-    Array<cfloat, 2>& echos,
-    TissueParameters& parameters,
-    CartesianTrajectory& trajectory) {
+    const CudaContext& ctx,
+    const Array<cfloat, 2>& echos,
+    const TissueParameters& parameters,
+    const CartesianTrajectory& trajectory) {
     int nreadouts = trajectory.nreadouts;
     int nvoxels = parameters.nvoxels;
 
