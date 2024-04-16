@@ -16,10 +16,10 @@ __global__ void phase_encoding(
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
 
     if (readout < echos.size(0) && voxel < echos.size(1)) {
+        auto k_y = trajectory.k_start[readout].imag();
         auto y = parameters.get(voxel).y;
-        auto k = trajectory.k_start[readout].imag();
 
-        ph_en_echos[readout][voxel] = echos[readout][voxel] * exp(cfloat(0.0f, y * k));
+        ph_en_echos[readout][voxel] = echos[readout][voxel] * exp(cfloat(0.0f, y * k_y));
     }
 }
 

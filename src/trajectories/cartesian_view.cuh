@@ -19,7 +19,7 @@ cfloat rewind(cfloat m, float R2, float delta_t, TissueVoxel p) {
 // apply gradient prephaser (i.e. phase encoding + readout prephaser for Cartesian)
 COMPAS_DEVICE
 cfloat prephaser(cfloat m, float k_x, float k_y, float x, float y) {
-    return m * exp(cfloat(0, k_x * x + k_y * y));
+    return m * exp(cfloat(0, k_x * x /*+ k_y * y*/));
 }
 
 struct CartesianTrajectoryView {
