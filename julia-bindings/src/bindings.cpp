@@ -4,10 +4,10 @@
 #include "parameters/tissue.h"
 #include "sequences/pssfp.h"
 #include "simulate/derivative.h"
+#include "simulate/phase_encoding.h"
 #include "simulate/residual.h"
 #include "simulate/sequence.h"
 #include "simulate/signal.h"
-#include "simulate/phase_encoding.h"
 #include "trajectories/cartesian.h"
 #include "trajectories/spiral.h"
 #include "trajectories/trajectory.h"
@@ -239,7 +239,7 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_spiral(
     });
 }
 
-extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian(
+extern "C" compas::Array<cfloat, 3>* compas_compute_jacobian(
     const compas::CudaContext* context,
     int ncoils,
     const compas::Array<cfloat, 2>* echos,
@@ -271,7 +271,7 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian(
             *coils,
             *vector);
 
-        return new compas::Array<cfloat, 2>(Jv);
+        return new compas::Array<cfloat, 3>(Jv);
     });
 }
 
@@ -288,7 +288,7 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
     float delta_t,
     const compas::Array<cfloat>* k_start,
     cfloat delta_k,
-    const compas::Array<cfloat, 2>* vector) {
+    const compas::Array<cfloat, 3>* vector) {
     return catch_exceptions([&] {
         auto trajectory = compas::CartesianTrajectory {
             nreadouts,

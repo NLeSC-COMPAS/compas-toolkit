@@ -23,5 +23,5 @@ __global__ void phase_encoding(
     }
 }
 
-} // kernels
-} // compas
+}  // namespace kernels
+}  // namespace compas

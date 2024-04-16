@@ -42,7 +42,7 @@ __global__ void delta_to_sample_exponent(
 
 template<int ncoils, int threads_per_item = 1>
 __launch_bounds__(256, 16) __global__ void jacobian_product(
-    cuda_view_mut<cfloat, 2> Jv,
+    cuda_view_mut<cfloat, 3> Jv,
     cuda_view<cfloat, 2> echos,
     cuda_view<cfloat, 2> delta_echos_T1,
     cuda_view<cfloat, 2> delta_echos_T2,
@@ -109,14 +109,14 @@ __launch_bounds__(256, 16) __global__ void jacobian_product(
             }
 
             if (lane_id == 0) {
-                Jv[icoil][t] = value;
+                Jv[icoil][r][s] = value;
             }
         }
     }
 }
 }  // namespace kernels
 
-Array<cfloat, 2> compute_jacobian(
+Array<cfloat, 3> compute_jacobian(
     const CudaContext& ctx,
     Array<cfloat, 2> echos,
     Array<cfloat, 2> delta_echos_T1,
@@ -142,7 +142,7 @@ Array<cfloat, 2> compute_jacobian(
     COMPAS_ASSERT(vector.size(0) == 4);  // four reconstruction parameters: T1, T2, rho_x, rho_y
     COMPAS_ASSERT(vector.size(1) == nvoxels);
 
-    auto Jv = Array<cfloat, 2>(ncoils, nreadouts * ns);
+    auto Jv = Array<cfloat, 3>(ncoils, nreadouts, ns);
     auto E = Array<cfloat, 2>(ns, nvoxels);
     auto dEdT2 = Array<cfloat, 2>(ns, nvoxels);
 

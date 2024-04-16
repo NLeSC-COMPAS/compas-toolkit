@@ -21,7 +21,7 @@ static __device__ void expand_readout_and_accumulate_mhv(
     TissueVoxel p,
     CartesianTrajectoryView trajectory,
     int readout,
-    cuda_view<cfloat, 2> vector) {
+    cuda_view<cfloat, 3> vector) {
     auto ns = trajectory.samples_per_readout;
     auto delta_t = trajectory.delta_t;
     auto delta_k = trajectory.delta_k;
@@ -47,12 +47,11 @@ static __device__ void expand_readout_and_accumulate_mhv(
 
 #pragma unroll 8
     for (int sample = 0; sample < ns; sample++) {
-        index_t t = readout * ns + sample;
-
         // accumulate dot product in mHv
 #pragma unroll
         for (int icoil = 0; icoil < ncoils; icoil++) {
-            auto v = vector[icoil][t];
+            auto v = vector[icoil][readout][sample];
+
             mHv[icoil] = add_mul_conj(mHv[icoil], v, ms);
             dmHv[icoil][0] = add_mul_conj(dmHv[icoil][0], v, dms[0]);
             dmHv[icoil][1] = add_mul_conj(dmHv[icoil][1], v, dms[1]);
@@ -73,7 +72,7 @@ __global__ void jacobian_hermitian_product(
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
     cuda_view<float, 2> coil_sensitivities,
-    cuda_view<cfloat, 2> vector) {
+    cuda_view<cfloat, 3> vector) {
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
 
     if (voxel < parameters.nvoxels) {
@@ -130,7 +129,7 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     TissueParameters parameters,
     CartesianTrajectory trajectory,
     Array<float, 2> coil_sensitivities,
-    Array<cfloat, 2> vector) {
+    Array<cfloat, 3> vector) {
     int ns = trajectory.samples_per_readout;
     int nreadouts = trajectory.nreadouts;
     int ncoils = coil_sensitivities.size(0);
@@ -145,7 +144,8 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     COMPAS_ASSERT(coil_sensitivities.size(0) == ncoils);
     COMPAS_ASSERT(coil_sensitivities.size(1) == nvoxels);
     COMPAS_ASSERT(vector.size(0) == ncoils);
-    COMPAS_ASSERT(vector.size(1) == nreadouts * ns);
+    COMPAS_ASSERT(vector.size(1) == nreadouts);
+    COMPAS_ASSERT(vector.size(2) == ns);
 
     // four reconstruction parameters: T1, T2, rho_x, rho_y
     auto JHv = Array<cfloat, 2>(4, nvoxels);

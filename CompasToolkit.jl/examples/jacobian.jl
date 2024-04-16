@@ -137,4 +137,4 @@ Jv = CompasToolkit.compute_jacobian(
     v
 )
 
-print_equals_check(Jv_ref, transpose(collect(Jv)))
+print_equals_check(Jv_ref, transpose(reshape(collect(Jv), :, ncoils)))

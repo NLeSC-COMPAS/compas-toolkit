@@ -1,7 +1,7 @@
 #pragma once
 
-#include "core/context.h"
 #include "core/complex_type.h"
+#include "core/context.h"
 #include "parameters/tissue.h"
 #include "trajectories/cartesian.h"
 
@@ -14,7 +14,6 @@ Array<cfloat, 2> phase_encoding(
     const CudaContext& ctx,
     const Array<cfloat, 2>& echos,
     const TissueParameters& parameters,
-    const CartesianTrajectory& trajectory
-    );
+    const CartesianTrajectory& trajectory);
 
-} // compas
+}  // namespace compas
