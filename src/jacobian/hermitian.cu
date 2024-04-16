@@ -151,7 +151,7 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     auto JHv = Array<cfloat, 2>(4, nvoxels);
 
     dim3 block_dim = 256;
-    dim3 grid_dim = div_ceil(uint(nreadouts * ns), block_dim.x);
+    dim3 grid_dim = div_ceil(uint(nvoxels), block_dim.x);
 
 #define COMPAS_COMPUTE_JACOBIAN_IMPL(N)             \
     if (ncoils == (N)) {                            \
