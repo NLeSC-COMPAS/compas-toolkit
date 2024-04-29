@@ -1,5 +1,6 @@
 #pragma once
 
+#include "compas/core/vector.h"
 #include "compas/core/view.h"
 #include "compas/parameters/tissue_view.cuh"
 

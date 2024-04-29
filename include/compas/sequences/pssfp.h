@@ -2,6 +2,7 @@
 
 #include "compas/core/assertion.h"
 #include "compas/core/context.h"
+#include "compas/parameters/tissue.h"
 #include "pssfp_view.h"
 
 namespace compas {

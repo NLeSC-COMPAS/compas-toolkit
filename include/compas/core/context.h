@@ -72,7 +72,7 @@ struct CudaContext {
     kmm::Cuda m_device;
 };
 
-CudaContext make_context(int device = 0) {
+inline CudaContext make_context(int device = 0) {
     return {kmm::build_runtime(), kmm::Cuda(device)};
 }
 

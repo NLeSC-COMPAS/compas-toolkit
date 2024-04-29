@@ -1,6 +1,9 @@
 #include "compas/core/utils.h"
-#include "compas/sequences/derivative.h"
-#include "compas/sequences/simulate.h"
+#include "compas/parameters/tissue.h"
+#include "compas/sequences/fisp.h"
+#include "compas/sequences/pssfp.h"
+#include "compas/simulate/fisp.h"
+#include "compas/simulate/pssfp.h"
 #include "derivative_kernels.cuh"
 
 namespace compas {
