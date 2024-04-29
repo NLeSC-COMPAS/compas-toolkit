@@ -11,12 +11,12 @@ include("common.jl")
 @inline function ∂expand_readout_and_accumulate_mᴴv(mᴴv, ∂mᴴv, mₑ, ∂mₑ, p, trajectory::CartesianTrajectory, readout_idx, t, v)
     ns = nsamplesperreadout(trajectory, readout_idx)
     Δt = trajectory.Δt
-    Δk = trajectory.Δk_adc[readout_idx]
+    Δkₓ = trajectory.Δk_adc
     R₂ = inv(p.T₂)
     x  = p.x
 
     # Gradient rotation per sample point
-    θ = Δk * x
+    θ = Δkₓ * x
     # B₀ rotation per sample point
 #     θ += (hasB₀(p) ? Δt*π*p.B₀*2 : 0)
     θ += (true ? Δt*π*p.B₀*2 : 0)
@@ -70,7 +70,7 @@ function Jᴴv_kernel!(Jᴴv, echos, ∂echos, parameters, coil_sensitivities::A
         for readout = 1:nr
             # load magnetization and partial derivatives at echo time of the r-th readout
             mₑ = echos[voxel,readout]
-            ∂mₑ = ∂mˣʸ∂T₁T₂(∂echos[voxel,readout,1], ∂echos[voxel,readout,2])
+            ∂mₑ = ∂mˣʸ∂T₁T₂(∂echos.T1[voxel,readout], ∂echos.T2[voxel,readout])
 
             mᴴv, ∂mᴴv, t = ∂expand_readout_and_accumulate_mᴴv(mᴴv, ∂mᴴv, mₑ, ∂mₑ, p, trajectory, readout, t, v)
         end # loop over readouts
@@ -135,8 +135,10 @@ echos = generate_echos(N, pssfp_ref)
 ∂echos = generate_delta_echos(N, pssfp_ref)
 
 Random.seed!(1337)
-v = rand(ComplexF32, nsamples(trajectory_ref), ncoils)
-v_ref = map(SVector{ncoils}, eachcol(v)...)
+v = rand(ComplexF32, trajectory_ref.nsamplesperreadout, trajectory_ref.nreadouts, ncoils)
+
+v_ref = reshape(v, nsamples(trajectory_ref), ncoils)
+v_ref = map(SVector{ncoils}, eachcol(v_ref)...)
 
 Jᴴv_ref = compute_Jᴴv(gpu(echos), gpu(∂echos), gpu(parameters_ref), gpu(coil_sensitivities_ref), gpu(trajectory_ref), gpu(v_ref))
 Jᴴv_ref = reduce(hcat, collect(Jᴴv_ref)) # Vector{Svector} -> Matrix

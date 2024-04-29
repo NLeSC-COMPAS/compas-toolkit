@@ -1,10 +1,24 @@
 # Compas Toolkit
 
-The Compas Toolkit is a C++ library designed for use in quantitative MRI research, with GPU acceleration.
-This toolkit is primarily implemented in CUDA, but it also offers bindings to access its functionality from the Julia programming language.
+[![github](https://img.shields.io/badge/github-repo-000.svg?logo=github&labelColor=gray&color=blue)](https://github.com/NLeSC-COMPAS/compas-toolkit)
+![Github Build](https://github.com/NLeSC-COMPAS/compas-toolkit/actions/workflows/cmake-cuda-multi-compiler.yml/badge.svg)
+![GitHub License](https://img.shields.io/github/license/NLeSC-COMPAS/compas-toolkit)
+![GitHub Tag](https://img.shields.io/github/v/tag/NLeSC-COMPAS/compas-toolkit)
+
+The Compas Toolkit is a high-performance C++ library offering GPU-accelerated functions for use in quantitative MRI research.
+The toolkit offers fast simulations of various MRI sequences and k-space trajectories commonly used in qMRI studies.
+While the core of the toolkit is implemented using CUDA, the functionality is accessible from both C++ and Julia.
 
 
-## Installation
+## Features
+
+* Flexible API that can be composed in different ways.
+* Highly tuned GPU kernels that provide high performance.
+* Implemented using CUDA, optimized for Nvidia GPUs.
+* Usable from Julia and C++.
+
+
+## Prerequisites
 
 Compilation requires the following software:
 
@@ -12,9 +26,22 @@ Compilation requires the following software:
 - NVIDIA CUDA Compiler (version 11.0 or higher)
 - Julia (version 1.9 or later, only for Julia bindings)
 
+
+## Installation
+
+To install the Compas Toolkit, follow these steps:
+
+### Clone the repository
+
+First, clone the GitHub repository:
+
+```bash
+$ git clone https://github.com/NLeSC-COMPAS/compas-toolkit
+```
+
 ### Compiling the C++ code
 
-First, configure the CMake project inside a new `build` directory:
+Next, configure the CMake project inside a new `build` directory:
 
 ```bash
 $ mkdir -p build
@@ -32,7 +59,8 @@ This generates a static library named `libcompas-toolkit.a`.
 
 ### Compiling the Julia bindings
 
-Compile the Julia bindings with the following command, which will install the library into a local `lib/` directory:
+To compile the Julia bindings, use the following command.
+This will install the library into a local `lib/` directory:
 
 ```bash
 $ make install
@@ -42,6 +70,13 @@ If everything has gone as planned, you'll now have a shared library called `libc
 
 ## Usage
 
-To use the Compas Toolkit in your Julia package, simply add the `CompasToolkit.jl` directory to your project dependencies. You can then import the library with `using CompasToolkit`.
+To use the Compas Toolkit in Julia, simply build the Julia bindings using the instructions above and then add the directory `CompasToolkit.jl` to you Julia project.
+
+```julia
+$ julia
+> using Pkg; Pkg.add(path="<path to compas-toolkit>/CompasToolkit.jl/")
+```
+
+You can then import the library with `using CompasToolkit`.
 
 For examples of using the toolkit, take a look at the scripts available in the `CompasToolkit.jl/tests` directory.

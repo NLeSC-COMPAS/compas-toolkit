@@ -1,13 +1,10 @@
 #pragma once
 
-#include "trajectories/cartesian.h"
-#include "simulate/signal.h"
-#include "parameters/tissue.h"
-#include "core/context.h"
-#include "core/complex_type.h"
 #include <random>
 #include <iostream>
 #include <chrono>
+#include "compas/parameters/tissue.h"
+#include "compas/core/context.h"
 
 template <typename F>
 static std::pair<double, int> benchmark(F fun) {

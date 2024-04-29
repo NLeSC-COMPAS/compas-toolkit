@@ -1,6 +1,6 @@
-#include "tissue.h"
+#include "compas/parameters/tissue.h"
 
-#include "core/utils.h"
+#include "compas/core/utils.h"
 
 namespace compas {
 TissueParameters make_tissue_parameters(

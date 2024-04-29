@@ -3,8 +3,10 @@
 #include <random>
 
 #include "common.hpp"
-#include "core/context.h"
-#include "simulate/sequence.h"
+#include "compas/core/complex_type.h"
+#include "compas/core/context.h"
+#include "compas/sequences/fisp.h"
+#include "compas/simulate/fisp.h"
 
 using namespace compas;
 
@@ -47,11 +49,7 @@ int main() {
         sequence.max_state = max_state;
 
         auto [duration, runs] = benchmark([&] {
-            context.submit_device(
-                compas::simulate_magnetization_fisp,
-                write(echos),
-                parameters,
-                sequence);
+            echos = compas::simulate_magnetization(context, parameters, sequence);
 
             context.synchronize();
         });

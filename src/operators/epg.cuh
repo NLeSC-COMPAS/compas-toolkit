@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../core/complex_type.h"
-#include "../core/macros.h"
-#include "../core/vector.h"
-#include "../core/view.h"
-#include "../parameters/tissue_view.cuh"
+#include "compas/core/complex_type.h"
+#include "compas/core/macros.h"
+#include "compas/core/vector.h"
+#include "compas/core/view.h"
+#include "compas/parameters/tissue_view.cuh"
 
 namespace compas {
 

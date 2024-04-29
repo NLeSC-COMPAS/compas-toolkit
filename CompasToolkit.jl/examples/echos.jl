@@ -112,6 +112,12 @@ compas_parameters = CompasToolkit.TissueParameters(
     [p.x for p in parameters],
     [p.y for p in parameters],
 )
+compas_trajectory = CompasToolkit.CartesianTrajectory(
+    trajectory.nreadouts,
+    trajectory.nsamplesperreadout,
+    trajectory.Δt,
+    trajectory.k_start_readout,
+    trajectory.Δk_adc[1]);
 
 compas_coils = CompasToolkit.make_array(compas_context, Float32.(hcat(vec(coil₁), vec(coil₂))))
 echos = CompasToolkit.simulate_magnetization(compas_parameters, compas_sequence)
@@ -120,10 +126,17 @@ echos = CompasToolkit.simulate_magnetization(compas_parameters, compas_sequence)
 parameters          = gpu(f32(vec(parameters)))
 sequence            = gpu(f32(sequence))
 coil_sensitivities  = gpu(f32(coil_sensitivities))
+trajectory          = gpu(f32(trajectory))
 
 # Simulate data
 resource = CUDALibs()
 echos_ref = simulate_magnetization(resource, sequence, parameters)
 
 # Compare to compas data
+print_equals_check(transpose(collect(echos_ref)), collect(echos))
+
+# Phase encoding
+echos = CompasToolkit.phase_encoding(echos, compas_parameters, compas_trajectory)
+phase_encoding!(echos_ref, trajectory, parameters)
+
 print_equals_check(transpose(collect(echos_ref)), collect(echos))

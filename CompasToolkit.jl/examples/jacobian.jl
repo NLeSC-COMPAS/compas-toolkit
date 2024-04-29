@@ -14,7 +14,7 @@ include("common.jl")
     R₂ = inv(p.T₂)
     ns = nsamplesperreadout(trajectory, readout_idx)
     Δt = trajectory.Δt
-    Δkₓ = trajectory.Δk_adc[readout_idx]
+    Δkₓ = trajectory.Δk_adc
     x = p.x
 
     # There are ns samples per readout, echo time is assumed to occur
@@ -60,7 +60,7 @@ function Jv_kernel!(Jv, echos, ∂echos, parameters, coil_sensitivities::Abstrac
             # R₂ = inv(p.T₂)
             # load magnetization and partial derivatives at echo time of the r-th readout
             m  =  echos[voxel,r]
-            ∂m = ∂mˣʸ∂T₁T₂(∂echos[voxel,r,1], ∂echos[voxel,r,2])
+            ∂m = ∂mˣʸ∂T₁T₂(∂echos.T1[voxel,r], ∂echos.T2[voxel,r])
             # compute decay (T₂) and rotation (gradients and B₀) to go to sample point
             m, ∂m = ∂to_sample_point(m, ∂m, trajectory, r, s, p)
             # store magnetization from this voxel, scaled with v (~ proton density) and C in accumulator
@@ -137,4 +137,4 @@ Jv = CompasToolkit.compute_jacobian(
     v
 )
 
-print_equals_check(Jv_ref, transpose(collect(Jv)))
+print_equals_check(Jv_ref, transpose(reshape(collect(Jv), :, ncoils)))

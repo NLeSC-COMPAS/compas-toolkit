@@ -3,11 +3,8 @@
 #include <random>
 
 #include "common.hpp"
-#include "core/complex_type.h"
-#include "core/context.h"
-#include "parameters/tissue.h"
-#include "simulate/signal.h"
-#include "trajectories/cartesian.h"
+#include "compas/trajectories/cartesian.h"
+#include "compas/trajectories/signal.h"
 
 using namespace compas;
 
