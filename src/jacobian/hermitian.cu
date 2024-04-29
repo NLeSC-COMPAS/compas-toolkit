@@ -1,6 +1,6 @@
-#include "core/utils.h"
-#include "core/vector.h"
-#include "product.h"
+#include "compas/core/utils.h"
+#include "compas/core/vector.h"
+#include "compas/jacobian/product.h"
 
 namespace compas {
 

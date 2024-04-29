@@ -1,8 +1,8 @@
 #pragma once
 
 #include "../operators/epg.cuh"
-#include "../parameters/tissue_view.cuh"
-#include "fisp_view.h"
+#include "compas/parameters/tissue_view.cuh"
+#include "compas/sequences/fisp_view.h"
 
 namespace compas {
 namespace kernels {
