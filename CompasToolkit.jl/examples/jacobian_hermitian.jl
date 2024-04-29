@@ -137,7 +137,7 @@ echos = generate_echos(N, pssfp_ref)
 Random.seed!(1337)
 v = rand(ComplexF32, trajectory_ref.nsamplesperreadout, trajectory_ref.nreadouts, ncoils)
 
-v_ref = reshape(nsamples, nsamples(trajectory_ref), ncoils)
+v_ref = reshape(v, nsamples(trajectory_ref), ncoils)
 v_ref = map(SVector{ncoils}, eachcol(v_ref)...)
 
 Jᴴv_ref = compute_Jᴴv(gpu(echos), gpu(∂echos), gpu(parameters_ref), gpu(coil_sensitivities_ref), gpu(trajectory_ref), gpu(v_ref))
