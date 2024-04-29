@@ -5,9 +5,9 @@
 ![GitHub License](https://img.shields.io/github/license/NLeSC-COMPAS/compas-toolkit)
 ![GitHub Tag](https://img.shields.io/github/v/tag/NLeSC-COMPAS/compas-toolkit)
 
-The Compas Toolkit is a high-performance C++ library offering GPU-accelerated kernels for functions frequently used in advanced quantitative MRI research.
-It facilitates detailed simulations of various MRI sequences and k-space trajectories, which are critical in quantitative MRI studies.
-While the core of the toolkit is implemented using CUDA, its features are accessible from both C++ and the Julia programming language.
+The Compas Toolkit is a high-performance C++ library offering GPU-accelerated functions for use in quantitative MRI research.
+The toolkit offers fast simulations of various MRI sequences and k-space trajectories commonly used in qMRI studies.
+While the core of the toolkit is implemented using CUDA, the functionality is accessible from both C++ and Julia.
 
 
 ## Features
