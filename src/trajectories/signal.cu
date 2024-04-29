@@ -245,10 +245,10 @@ cublasComputeType_t cublas_compute_type_from_simulate_method(SimulateSignalMetho
 
 Array<cfloat, 3> magnetization_to_signal(
     const CudaContext& context,
-    const Array<cfloat, 2>& echos,
-    const TissueParameters& parameters,
+    Array<cfloat, 2> echos,
+    TissueParameters parameters,
     const Trajectory& trajectory,
-    const Array<float, 2>& coil_sensitivities,
+    Array<float, 2> coil_sensitivities,
     SimulateSignalMethod method) {
     int ncoils = coil_sensitivities.size(0);
     int nvoxels = parameters.nvoxels;
