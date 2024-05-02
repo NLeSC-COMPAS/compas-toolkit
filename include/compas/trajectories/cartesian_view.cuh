@@ -6,8 +6,8 @@
 
 namespace compas {
 
-// given magnetization at echo time,
-// undo T2 decay and B0 phase that happened between start readout and echo time
+/** Given magnetization at echo time, undo T2 decay and B0 phase that happened between start readout and echo time.
+  */
 COMPAS_DEVICE
 cfloat rewind(cfloat m, float R2, float delta_t, TissueVoxel p) {
     // m is magnetization at echo time
@@ -16,7 +16,17 @@ cfloat rewind(cfloat m, float R2, float delta_t, TissueVoxel p) {
     return m * exp(delta_t * arg);
 }
 
-// apply gradient prephaser (i.e. phase encoding + readout prephaser for Cartesian)
+/**
+ *
+ * Apply gradient prephaser (i.e. phase encoding + readout prephaser for Cartesian).
+ *
+ * @param m
+ * @param k_x
+ * @param k_y
+ * @param x
+ * @param y
+ * @return
+ */
 COMPAS_DEVICE
 cfloat prephaser(cfloat m, float k_x, float k_y, float x, float y) {
     return m * exp(cfloat(0, k_x * x /*+ k_y * y*/));

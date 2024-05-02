@@ -7,6 +7,9 @@
 
 namespace compas {
 
+/**
+ *
+ */
 enum struct SimulateSignalMethod {
     Direct,
     MatmulPedantic,
@@ -15,6 +18,16 @@ enum struct SimulateSignalMethod {
     MatmulBF16,
 };
 
+/**
+ *
+ * @param context
+ * @param echos
+ * @param parameters
+ * @param trajectory
+ * @param coil_sensitivities
+ * @param method
+ * @return
+ */
 Array<cfloat, 3> magnetization_to_signal(
     const CudaContext& context,
     Array<cfloat, 2> echos,

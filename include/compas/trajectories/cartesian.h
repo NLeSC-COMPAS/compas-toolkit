@@ -8,6 +8,9 @@
 
 namespace compas {
 
+/**
+ * Object representing a Cartesian trajectory.
+ */
 struct CartesianTrajectory: public Trajectory {
     Array<cfloat> k_start;
     cfloat delta_k;
@@ -23,6 +26,18 @@ struct CartesianTrajectory: public Trajectory {
         delta_k(delta_k) {}
 };
 
+/**
+ *
+ * Create a Cartesian trajectory object.
+ *
+ * @param context
+ * @param nreadouts
+ * @param samples_per_readout
+ * @param delta_t
+ * @param k_start
+ * @param delta_k
+ * @return
+ */
 inline CartesianTrajectory make_cartesian_trajectory(
     const CudaContext& context,
     int nreadouts,

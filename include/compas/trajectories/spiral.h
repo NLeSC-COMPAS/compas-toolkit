@@ -7,6 +7,9 @@
 
 namespace compas {
 
+/**
+ * Object representing a Spiral trajectory.
+ */
 struct SpiralTrajectory: public Trajectory {
     Array<cfloat> k_start;
     Array<cfloat> delta_k;
@@ -22,6 +25,18 @@ struct SpiralTrajectory: public Trajectory {
         delta_k(delta_k) {}
 };
 
+/**
+ *
+ * Create a Spiral trajectory object.
+ *
+ * @param context
+ * @param nreadouts
+ * @param samples_per_readout
+ * @param delta_t
+ * @param k_start
+ * @param delta_k
+ * @return
+ */
 inline SpiralTrajectory make_spiral_trajectory(
     const CudaContext& context,
     int nreadouts,
