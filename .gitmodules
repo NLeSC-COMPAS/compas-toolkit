@@ -1,0 +1,9 @@
+[submodule "thirdparty/Catch2"]
+	path = thirdparty/Catch2
+	url = https://github.com/catchorg/Catch2.git
+[submodule "thirdparty/kernel_launcher"]
+	path = thirdparty/kernel_launcher
+	url = https://github.com/KernelTuner/kernel_launcher.git
+[submodule "thirdparty/kmm"]
+	path = thirdparty/kmm
+	url = https://github.com/NLeSC-COMPAS/kmm.git
