@@ -7,4 +7,4 @@
 
 make_cartesian_trajectory
 =========================
-.. doxygenfunction:: kmm::make_cartesian_trajectory
+.. doxygenfunction:: compas::make_cartesian_trajectory

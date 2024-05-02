@@ -7,4 +7,4 @@
 
 make_spiral_trajectory
 ======================
-.. doxygenfunction:: kmm::make_spiral_trajectory
+.. doxygenfunction:: compas::make_spiral_trajectory

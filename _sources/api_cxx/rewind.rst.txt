@@ -7,4 +7,4 @@
 
 rewind
 ======
-.. doxygenfunction:: kmm::rewind
+.. doxygenfunction:: compas::rewind

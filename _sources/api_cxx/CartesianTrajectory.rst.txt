@@ -7,4 +7,4 @@
 
 CartesianTrajectory
 ===================
-.. doxygenclass:: kmm::CartesianTrajectory
+.. doxygenclass:: compas::CartesianTrajectory

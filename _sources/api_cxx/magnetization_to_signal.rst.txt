@@ -7,4 +7,4 @@
 
 magnetization_to_signal
 =======================
-.. doxygenfunction:: kmm::magnetization_to_signal
+.. doxygenfunction:: compas::magnetization_to_signal

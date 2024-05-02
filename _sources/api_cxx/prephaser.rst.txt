@@ -7,4 +7,4 @@
 
 prephaser
 =========
-.. doxygenfunction:: kmm::prephaser
+.. doxygenfunction:: compas::prephaser

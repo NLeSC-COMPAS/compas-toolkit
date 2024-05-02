@@ -7,4 +7,4 @@
 
 phase_encoding
 ==============
-.. doxygenfunction:: kmm::phase_encoding
+.. doxygenfunction:: compas::phase_encoding
