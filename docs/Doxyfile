@@ -991,6 +991,7 @@ INPUT_FILE_ENCODING    =
 
 FILE_PATTERNS          = *.c \
                          *.cc \
+                         *.cu \
                          *.cxx \
                          *.cxxm \
                          *.cpp \
@@ -1008,6 +1009,7 @@ FILE_PATTERNS          = *.c \
                          *.ddl \
                          *.odl \
                          *.h \
+                         *.cuh \
                          *.hh \
                          *.hxx \
                          *.hpp \

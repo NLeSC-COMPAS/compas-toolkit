@@ -8,7 +8,7 @@
 namespace compas {
 
 /**
- *
+ * Object to represent the kind of signal.
  */
 enum struct SimulateSignalMethod {
     Direct,
