@@ -36,7 +36,7 @@ To install the Compas Toolkit, follow these steps:
 First, clone the GitHub repository:
 
 ```bash
-$ git clone https://github.com/NLeSC-COMPAS/compas-toolkit
+$ git clone --recurse-submodules https://github.com/NLeSC-COMPAS/compas-toolkit
 ```
 
 ### Compiling the C++ code
