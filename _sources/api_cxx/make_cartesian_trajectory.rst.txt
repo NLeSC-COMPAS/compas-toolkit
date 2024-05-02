@@ -1,0 +1,10 @@
+..
+  ============================================================
+  This file has been auto-generated. DO NOT MODIFY ITS CONTENT
+  ============================================================
+
+.. _make_cartesian_trajectory:
+
+make_cartesian_trajectory
+=========================
+.. doxygenfunction:: kmm::make_cartesian_trajectory

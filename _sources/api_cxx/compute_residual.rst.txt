@@ -1,0 +1,10 @@
+..
+  ============================================================
+  This file has been auto-generated. DO NOT MODIFY ITS CONTENT
+  ============================================================
+
+.. _compute_residual:
+
+compute_residual
+================
+.. doxygenfunction:: kmm::compute_residual

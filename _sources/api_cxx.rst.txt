@@ -9,5 +9,25 @@ C++ API Reference
    :titlesonly:
    :hidden:
 
+   api_cxx/CartesianTrajectory.rst
+   api_cxx/compute_residual.rst
+   api_cxx/make_cartesian_trajectory.rst
+   api_cxx/prephaser.rst
+   api_cxx/rewind.rst
+
+.. raw:: html
+
+   <h2>Trajectories</h2>
+
+* :doc:`CartesianTrajectory <api_cxx/CartesianTrajectory>`
+* :doc:`make_cartesian_trajectory <api_cxx/make_cartesian_trajectory>`
+* :doc:`rewind <api_cxx/rewind>`
+* :doc:`prephaser <api_cxx/prephaser>`
+
+.. raw:: html
+
+   <h2>utils</h2>
+
+* :doc:`compute_residual <api_cxx/compute_residual>`
 
 
