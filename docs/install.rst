@@ -17,7 +17,8 @@ Clone the repository
 First, clone the GitHub repository:
 
 .. code-block:: bash
-    $ git clone https://github.com/NLeSC-COMPAS/compas-toolkit
+
+    git clone https://github.com/NLeSC-COMPAS/compas-toolkit
 
 
 Compiling the C++ code
@@ -26,15 +27,17 @@ Compiling the C++ code
 Next, configure the CMake project inside a new ``build`` directory:
 
 .. code-block:: bash
-    $ mkdir -p build
-    $ cd build
-    $ cmake -B. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=80 ..
+
+    mkdir -p build
+    cd build
+    cmake -B. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=80 ..
 
 
 After the configuration, build the toolkit by running:
 
 .. code-block:: bash
-    $ make compas-toolkit
+
+    make compas-toolkit
 
 This generates a static library named ``libcompas-toolkit.a``.
 
@@ -45,7 +48,8 @@ To compile the Julia bindings, use the following command.
 This will install the library into a local ``lib/`` directory:
 
 .. code-block:: bash
-    $ make install
+
+    make install
 
 
 If everything has gone as planned, you'll now have a shared library called ``libcompas-julia.so`` in the local ``lib/`` directory. Additionally, a Julia file should have been automatically generated as ``CompasToolkit.jl/src/CompasToolkit.jl``.
