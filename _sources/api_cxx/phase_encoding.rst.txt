@@ -1,0 +1,10 @@
+..
+  ============================================================
+  This file has been auto-generated. DO NOT MODIFY ITS CONTENT
+  ============================================================
+
+.. _phase_encoding:
+
+phase_encoding
+==============
+.. doxygenfunction:: kmm::phase_encoding

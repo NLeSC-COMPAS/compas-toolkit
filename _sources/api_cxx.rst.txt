@@ -10,19 +10,34 @@ C++ API Reference
    :hidden:
 
    api_cxx/CartesianTrajectory.rst
+   api_cxx/SimulateSignalMethod.rst
+   api_cxx/SpiralTrajectory.rst
    api_cxx/compute_residual.rst
+   api_cxx/magnetization_to_signal.rst
    api_cxx/make_cartesian_trajectory.rst
+   api_cxx/make_spiral_trajectory.rst
+   api_cxx/phase_encoding.rst
    api_cxx/prephaser.rst
    api_cxx/rewind.rst
 
 .. raw:: html
 
-   <h2>Trajectories</h2>
+   <h2>Cartesian trajectories</h2>
 
 * :doc:`CartesianTrajectory <api_cxx/CartesianTrajectory>`
 * :doc:`make_cartesian_trajectory <api_cxx/make_cartesian_trajectory>`
 * :doc:`rewind <api_cxx/rewind>`
 * :doc:`prephaser <api_cxx/prephaser>`
+* :doc:`phase_encoding <api_cxx/phase_encoding>`
+* :doc:`SimulateSignalMethod <api_cxx/SimulateSignalMethod>`
+* :doc:`magnetization_to_signal <api_cxx/magnetization_to_signal>`
+
+.. raw:: html
+
+   <h2>Spiral trajectories</h2>
+
+* :doc:`SpiralTrajectory <api_cxx/SpiralTrajectory>`
+* :doc:`make_spiral_trajectory <api_cxx/make_spiral_trajectory>`
 
 .. raw:: html
 

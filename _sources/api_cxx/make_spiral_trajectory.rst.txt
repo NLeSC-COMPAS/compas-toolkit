@@ -1,0 +1,10 @@
+..
+  ============================================================
+  This file has been auto-generated. DO NOT MODIFY ITS CONTENT
+  ============================================================
+
+.. _make_spiral_trajectory:
+
+make_spiral_trajectory
+======================
+.. doxygenfunction:: kmm::make_spiral_trajectory
