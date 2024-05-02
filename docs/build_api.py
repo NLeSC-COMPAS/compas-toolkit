@@ -11,7 +11,7 @@ def build_doxygen_page(name, items):
 
     for item in items:
         directive = "doxygenclass" if item[0].isupper() else "doxygenfunction"
-        content += f".. {directive}:: kmm::{item}\n"
+        content += f".. {directive}:: compas::{item}\n"
 
     filename = f"api_cxx/{name}.rst"
     print(f"writing to {filename}")
