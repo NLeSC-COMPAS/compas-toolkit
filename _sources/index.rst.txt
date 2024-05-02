@@ -33,8 +33,8 @@ Usage
 To use the Compas Toolkit in Julia, simply build the Julia bindings using the instructions above and then add the directory ``CompasToolkit.jl`` to you Julia project.
 
 .. code-block:: julia
-   $ julia
-   > using Pkg; Pkg.add(path="<path to compas-toolkit>/CompasToolkit.jl/")
+
+   using Pkg; Pkg.add(path="<path to compas-toolkit>/CompasToolkit.jl/")
 
 
 You can then import the library with ``using CompasToolkit``.

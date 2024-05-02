@@ -95,6 +95,9 @@ While the core of the toolkit is implemented using CUDA, the functionality is ac
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading"></a></h2>
 <p>To use the Compas Toolkit in Julia, simply build the Julia bindings using the instructions above and then add the directory <code class="docutils literal notranslate"><span class="pre">CompasToolkit.jl</span></code> to you Julia project.</p>
+<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="linenos">1</span><span class="k">using</span><span class="w"> </span><span class="n">Pkg</span><span class="p">;</span><span class="w"> </span><span class="n">Pkg</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s">&quot;&lt;path to compas-toolkit&gt;/CompasToolkit.jl/&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 <p>You can then import the library with <code class="docutils literal notranslate"><span class="pre">using</span> <span class="pre">CompasToolkit</span></code>.</p>
 <p>For examples of using the toolkit, take a look at the scripts available in the <code class="docutils literal notranslate"><span class="pre">CompasToolkit.jl/tests</span></code> directory.</p>
 </section>
