@@ -8,7 +8,7 @@
 
    Compas Toolkit <self>
    install
-   api
+   api_cxx
    Github repository <https://github.com/NLeSC-COMPAS/compas-toolkit>
 
 Compas Toolkit

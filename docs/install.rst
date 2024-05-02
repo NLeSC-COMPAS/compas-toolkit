@@ -16,9 +16,9 @@ Clone the repository
 
 First, clone the GitHub repository:
 
-```bash
-$ git clone https://github.com/NLeSC-COMPAS/compas-toolkit
-```
+.. code-block:: bash
+    $ git clone https://github.com/NLeSC-COMPAS/compas-toolkit
+
 
 Compiling the C++ code
 ----------------------
