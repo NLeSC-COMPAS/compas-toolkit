@@ -53,15 +53,25 @@ __launch_bounds__(256, 16) __global__ void jacobian_product(
     int nreadouts = trajectory.nreadouts;
     int nvoxels = parameters.nvoxels;
 
+    COMPAS_ASSUME(echos.size(0) == nreadouts);
+    COMPAS_ASSUME(echos.size(1) == nvoxels);
+    COMPAS_ASSUME(delta_echos_T1.size(0) == nreadouts);
+    COMPAS_ASSUME(delta_echos_T1.size(1) == nvoxels);
+    COMPAS_ASSUME(delta_echos_T2.size(0) == nreadouts);
+    COMPAS_ASSUME(delta_echos_T2.size(1) == nvoxels);
+    COMPAS_ASSUME(coil_sensitivities.size(0) == ncoils);
+    COMPAS_ASSUME(coil_sensitivities.size(1) == nvoxels);
+    COMPAS_ASSUME(v.size(0) == 4);  // four reconstruction parameters: T1, T2, rho_x, rho_y
+    COMPAS_ASSUME(v.size(1) == nvoxels);
+
     index_t s = index_t(blockIdx.x * blockDim.x + threadIdx.x) / threads_per_item;
     index_t r = index_t(blockIdx.y * blockDim.y + threadIdx.y);
-    index_t t = r * ns + s;
     index_t lane_id = threadIdx.x % threads_per_item;
-    cfloat result[ncoils];
+    cfloat partial_result[ncoils];
 
 #pragma unroll
     for (int icoil = 0; icoil < ncoils; icoil++) {
-        result[icoil] = cfloat(0);
+        partial_result[icoil] = cfloat(0);
     }
 
     if (r < nreadouts && s < ns) {
@@ -89,24 +99,24 @@ __launch_bounds__(256, 16) __global__ void jacobian_product(
 #pragma unroll
             for (int icoil = 0; icoil < ncoils; icoil++) {
                 auto C = coil_sensitivities[icoil][voxel];
-                result[icoil] += dot(lin_scale, dmv) * C;
+                partial_result[icoil] += dot(lin_scale, dmv) * C;
             }
         }
 
 #pragma unroll
         for (int icoil = 0; icoil < ncoils; icoil++) {
-            cfloat value = result[icoil];
+            cfloat result = partial_result[icoil];
 
 #pragma unroll 6
             for (uint delta = threads_per_item / 2; delta > 0; delta /= 2) {
                 static constexpr uint mask = uint((1L << threads_per_item) - 1);
 
-                value.re += __shfl_down_sync(mask, value.re, delta, threads_per_item);
-                value.im += __shfl_down_sync(mask, value.im, delta, threads_per_item);
+                result.re += __shfl_down_sync(mask, result.re, delta, threads_per_item);
+                result.im += __shfl_down_sync(mask, result.im, delta, threads_per_item);
             }
 
             if (lane_id == 0) {
-                Jv[icoil][r][s] = value;
+                Jv[icoil][r][s] = result;
             }
         }
     }

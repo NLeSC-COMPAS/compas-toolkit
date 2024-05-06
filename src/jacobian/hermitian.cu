@@ -43,6 +43,9 @@ Array<cfloat, 2> compute_jacobian_hermitian(
             grid_dim,                               \
             block_dim,                              \
             kernels::jacobian_hermitian_product<N>, \
+            nreadouts,                              \
+            ns,                                     \
+            nvoxels,                                \
             write(JHv),                             \
             echos,                                  \
             delta_echos_T1,                         \

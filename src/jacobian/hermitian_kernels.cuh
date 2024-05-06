@@ -74,10 +74,25 @@ __global__ void jacobian_hermitian_product(
     CartesianTrajectoryView trajectory,
     cuda_view<float, 2> coil_sensitivities,
     cuda_view<cfloat, 3> vector) {
+    int nsamples_per_readout = trajectory.samples_per_readout;
+    int nreadouts = trajectory.nreadouts;
+    int nvoxels = parameters.nvoxels;
+
+    COMPAS_ASSUME(echos.size(0) == nreadouts);
+    COMPAS_ASSUME(echos.size(1) == nvoxels);
+    COMPAS_ASSUME(delta_echos_T1.size(0) == nreadouts);
+    COMPAS_ASSUME(delta_echos_T1.size(1) == nvoxels);
+    COMPAS_ASSUME(delta_echos_T2.size(0) == nreadouts);
+    COMPAS_ASSUME(delta_echos_T2.size(1) == nvoxels);
+    COMPAS_ASSUME(coil_sensitivities.size(0) == ncoils);
+    COMPAS_ASSUME(coil_sensitivities.size(1) == nvoxels);
+    COMPAS_ASSUME(vector.size(0) == ncoils);
+    COMPAS_ASSUME(vector.size(1) == nreadouts);
+    COMPAS_ASSUME(vector.size(2) == nsamples_per_readout);
+
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
 
-    if (voxel < parameters.nvoxels) {
-        int nreadouts = trajectory.nreadouts;
+    if (voxel < nvoxels) {
         auto p = parameters.get(voxel);
 
         vec<cfloat, ncoils> mHv;
@@ -95,10 +110,7 @@ __global__ void jacobian_hermitian_product(
             expand_readout_and_accumulate_mhv(mHv, dmHv, me, dme, p, trajectory, readout, vector);
         }
 
-#pragma unroll
-        for (int i = 0; i < 4; i++) {
-            JHv[i][voxel] = 0;
-        }
+        vec<cfloat, 4> result = {0.0F, 0.0F, 0.0F, 0.0F};
 
 #pragma unroll
         for (int icoil = 0; icoil < ncoils; icoil++) {
@@ -115,8 +127,13 @@ __global__ void jacobian_hermitian_product(
 
 #pragma unroll
             for (int i = 0; i < 4; i++) {
-                JHv[i][voxel] += conj(lin_scale[i]) * tmp[i];
+                result[i] += conj(lin_scale[i]) * tmp[i];
             }
+        }
+
+#pragma unroll
+        for (int i = 0; i < 4; i++) {
+            JHv[i][voxel] = result[i];
         }
     }
 }
