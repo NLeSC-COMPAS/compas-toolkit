@@ -45,7 +45,7 @@ jobs:
         run: |
           julia --project=CompasToolkit.jl/docs -e '
             using Pkg
-            Pkg.develop(PackateSpec(path=pwd()))
+            Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()
           '
           julia --project=CompasToolkit.jl/docs CompasToolkit.jl/docs/make.jl
