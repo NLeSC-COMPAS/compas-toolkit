@@ -56,6 +56,9 @@ function get_context()::Context
     end
 end
 
+"""
+Object representing an array of size `N` and type `T`.
+"""
 mutable struct CompasArray{T, N} <: AbstractArray{T, N}
     context::Context
     ptr::Ptr{Cvoid}
