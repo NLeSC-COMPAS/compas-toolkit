@@ -24,14 +24,17 @@ struct alignas(2 * sizeof(double)) complex_storage<double> {
 template<typename T>
 struct alignas(2 * sizeof(T)) complex_type: complex_storage<T> {
     COMPAS_HOST_DEVICE
-    complex_type(T real = {}, T imag = {}) : complex_storage<T> {real, imag} {}
+    complex_type(T real = {}, T imag = {}) {
+        this->re = real;
+        this->im = imag;
+    }
 
     //    COMPAS_HOST_DEVICE
     complex_type(const complex_type<T>& that) = default;
 
     template<typename R>
     COMPAS_HOST_DEVICE explicit complex_type(const complex_type<R>& that) :
-        complex_storage<T> {T(that.re), T(that.im)} {}
+        complex_type {T(that.re), T(that.im)} {}
 
     COMPAS_HOST_DEVICE
     T real() const {

@@ -66,6 +66,9 @@ static COMPAS_DEVICE void expand_readout_and_accumulate_mhv(
 
 template<int ncoils = 1>
 __global__ void jacobian_hermitian_product(
+    int nreadouts,
+    int nsamples_per_readout,
+    int nvoxels,
     cuda_view_mut<cfloat, 2> JHv,
     cuda_view<cfloat, 2> echos,
     cuda_view<cfloat, 2> delta_echos_T1,
@@ -74,10 +77,6 @@ __global__ void jacobian_hermitian_product(
     CartesianTrajectoryView trajectory,
     cuda_view<float, 2> coil_sensitivities,
     cuda_view<cfloat, 3> vector) {
-    int nsamples_per_readout = trajectory.samples_per_readout;
-    int nreadouts = trajectory.nreadouts;
-    int nvoxels = parameters.nvoxels;
-
     COMPAS_ASSUME(echos.size(0) == nreadouts);
     COMPAS_ASSUME(echos.size(1) == nvoxels);
     COMPAS_ASSUME(delta_echos_T1.size(0) == nreadouts);

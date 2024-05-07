@@ -53,23 +53,27 @@ Array<cfloat, 3> compute_jacobian(
         div_ceil(uint(nreadouts), block_dim.y)};
 
     // Repeat for each coil
-#define COMPAS_COMPUTE_JACOBIAN_IMPL(N)                         \
-    if (ncoils == (N)) {                                        \
-        ctx.submit_kernel(                                      \
-            grid_dim,                                           \
-            block_dim,                                          \
-            kernels::jacobian_product<(N), threads_per_sample>, \
-            write(Jv),                                          \
-            echos,                                              \
-            delta_echos_T1,                                     \
-            delta_echos_T2,                                     \
-            parameters,                                         \
-            trajectory,                                         \
-            coil_sensitivities,                                 \
-            E,                                                  \
-            dEdT2,                                              \
-            vector);                                            \
-        return Jv;                                              \
+#define COMPAS_COMPUTE_JACOBIAN_IMPL(N)                               \
+    if (ncoils == (N)) {                                              \
+        ctx.submit_kernel(                                            \
+            grid_dim,                                                 \
+            block_dim,                                                \
+            kernels::jacobian_product<threads_per_sample, 1, 1, (N)>, \
+            nvoxels,                                                  \
+            nreadouts,                                                \
+            ns,                                                       \
+            ncoils,                                                   \
+            write(Jv),                                                \
+            echos,                                                    \
+            delta_echos_T1,                                           \
+            delta_echos_T2,                                           \
+            parameters.parameters.size(1),                            \
+            parameters.parameters,                                    \
+            coil_sensitivities,                                       \
+            E,                                                        \
+            dEdT2,                                                    \
+            vector);                                                  \
+        return Jv;                                                    \
     }
 
     COMPAS_COMPUTE_JACOBIAN_IMPL(1)

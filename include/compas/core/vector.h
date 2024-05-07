@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cmath>
-
 #include "assertion.h"
 
 namespace compas {
@@ -39,33 +37,30 @@ struct vector_storage<T, 0> {
 template<typename T>
 struct vector_storage<T, 1> {
     COMPAS_HOST_DEVICE
-    vector_storage(T x = {}) : x(x) {}
+    vector_storage(T x = {}) : x {x} {}
 
     COMPAS_HOST_DEVICE
     T* data() {
-        return items;
+        return &x;
     }
 
     COMPAS_HOST_DEVICE
     const T* data() const {
-        return items;
+        return &x;
     }
 
     COMPAS_HOST_DEVICE
     operator T() const {
-        return x;
+        return;
     }
 
-    union {
-        T x;
-        T items[1];
-    };
+    T x;
 };
 
 template<typename T>
 struct alignas(2 * alignof(T)) vector_storage<T, 2> {
     COMPAS_HOST_DEVICE
-    vector_storage(T x, T y) : x(x), y(y) {}
+    vector_storage(T x, T y) : items {x, y} {}
 
     COMPAS_HOST_DEVICE
     vector_storage() : vector_storage(T {}, T {}) {}
@@ -92,7 +87,7 @@ struct alignas(2 * alignof(T)) vector_storage<T, 2> {
 template<typename T>
 struct vector_storage<T, 3> {
     COMPAS_HOST_DEVICE
-    vector_storage(T x, T y, T z) : x(x), y(y), z(z) {}
+    vector_storage(T x, T y, T z) : items {x, y, z} {}
 
     COMPAS_HOST_DEVICE
     vector_storage() : vector_storage(T {}, T {}, T {}) {}
@@ -120,7 +115,7 @@ struct vector_storage<T, 3> {
 template<typename T>
 struct alignas(4 * alignof(T)) vector_storage<T, 4> {
     COMPAS_HOST_DEVICE
-    vector_storage(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
+    vector_storage(T x, T y, T z, T w) : items {x, y, z, w} {}
 
     COMPAS_HOST_DEVICE
     vector_storage() : vector_storage(T {}, T {}, T {}, T {}) {}
