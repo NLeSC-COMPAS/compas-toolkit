@@ -43,12 +43,14 @@ jobs:
           python -m pip install sphinx_rtd_theme unidecode nbsphinx wheel breathe exhale
       - name: Build Julia documentation
         run: |
-          julia --project=CompasToolkit.jl/docs -e '
+          ls
+          cd compas-toolkit/CompasToolkit.jl
+          julia --project=docs -e '
             using Pkg
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()
           '
-          julia --project=CompasToolkit.jl/docs CompasToolkit.jl/docs/make.jl
+          julia --project=docs CompasToolkit.jl/docs/make.jl
       - name: Build and commit
         uses: sphinx-notes/pages@v2
         with:
