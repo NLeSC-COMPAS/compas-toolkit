@@ -67,7 +67,7 @@ def build_index_page(groups):
 
 
 groups = {
-    "Cartesian trajectories": ["CartesianTrajectory", "make_cartesian_trajectory", "rewind", "prephaser", "phase_encoding", "SimulateSignalMethod", "magnetization_to_signal"],
+    "Cartesian trajectories": ["CartesianTrajectory", "CartesianTrajectoryView", "make_cartesian_trajectory", "rewind", "prephaser", "phase_encoding", "SimulateSignalMethod", "magnetization_to_signal"],
     "Spiral trajectories": ["SpiralTrajectory", "make_spiral_trajectory"],
     "utils": ["compute_residual"]
 }

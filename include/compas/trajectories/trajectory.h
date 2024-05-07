@@ -4,6 +4,9 @@
 
 namespace compas {
 
+/**
+ * Generic class to represent a trajectory object.
+ */
 struct Trajectory: public Object {
     int nreadouts;
     int samples_per_readout;
