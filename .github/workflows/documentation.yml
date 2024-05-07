@@ -59,7 +59,8 @@ jobs:
             Pkg.develop(PackageSpec(path=pwd()))
             Pkg.instantiate()
           '
-          julia --project=docs CompasToolkit.jl/docs/make.jl
+          julia --project=docs docs/make.jl
+          cp -R docs/build ../docs/api_julia
       - name: Build and commit
         uses: sphinx-notes/pages@v2
         with:
