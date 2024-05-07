@@ -23,6 +23,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: Jimver/cuda-toolkit@v0.2.14
+        id: cuda-toolkit
+        with:
+          method: 'network'
+          sub-packages: '["toolkit"]'
       - name: Setup python
         uses: actions/setup-python@v2
         with:
@@ -34,6 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
         with:
+          submodules: 'recursive'
           fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
       - name: Setup dependencies
         run: |
@@ -41,9 +47,13 @@ jobs:
           sudo apt-get install python3-sphinx pandoc doxygen
           python -m pip install --upgrade pip
           python -m pip install sphinx_rtd_theme unidecode nbsphinx wheel breathe exhale
-      - name: Build Julia documentation
+      - name: Build compas-toolkit and Julia documentation
         run: |
-          cd CompasToolkit.jl
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON -DSPDLOG_FMT_EXTERNAL:BOOL=ON ..
+          make
+          make install
+          cd ../CompasToolkit.jl
           julia --project=docs -e '
             using Pkg
             Pkg.develop(PackageSpec(path=pwd()))
