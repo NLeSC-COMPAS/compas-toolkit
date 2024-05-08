@@ -1,7 +1,7 @@
 module CompasToolkit
 include("Constants.jl")
 
-function __init__()
+function check_version()
     expected_version = VERSION
     gotten_version = version()
 
@@ -27,6 +27,7 @@ mutable struct Context
     ptr::Ptr{Cvoid}
 
     function Context(device::Integer)
+        check_version()
         ptr = @ccall LIBRARY.compas_make_context(device::Int32)::Ptr{Cvoid}
         obj = new(ptr)
         destroy = (obj) -> @ccall LIBRARY.compas_destroy_context(ptr::Ptr{Cvoid})::Cvoid
