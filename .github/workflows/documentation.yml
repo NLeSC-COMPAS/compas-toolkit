@@ -45,7 +45,7 @@ jobs:
           '
           julia --project=docs docs/make.jl
           mkdir -p /tmp/sphinxnotes-pages
-          cp docs/build /tmp/sphinxnotes-pages/api_julia
+          cp -R docs/build /tmp/sphinxnotes-pages/api_julia
       - name: Build and commit
         uses: sphinx-notes/pages@v2
         with:
