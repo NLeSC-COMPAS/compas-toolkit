@@ -23,11 +23,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: Jimver/cuda-toolkit@v0.2.14
+      - uses: Jimver/cuda-toolkit@v0.2.15
         id: cuda-toolkit
         with:
           method: 'network'
-          sub-packages: '["toolkit"]'
+          sub-packages: '["toolkit", "driver"]'
       - name: Setup python
         uses: actions/setup-python@v2
         with:
