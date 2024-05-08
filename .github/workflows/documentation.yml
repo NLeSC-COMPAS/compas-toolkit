@@ -44,7 +44,7 @@ jobs:
             Pkg.instantiate()
           '
           julia --project=docs docs/make.jl
-          cp -R docs/build ../docs/julia
+          cp -R docs/build ../docs/api_julia
       - name: Build and commit
         uses: sphinx-notes/pages@v2
         with:

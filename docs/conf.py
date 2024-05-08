@@ -81,7 +81,7 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 # Copy the Julia documentation
-html_extra_path = ["julia"]
+html_extra_path = ["api_julia"]
 
 
 # -- Breathe configuration -------------------------------------------------
