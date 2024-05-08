@@ -34,7 +34,7 @@ jobs:
           sudo apt-get install python3-sphinx pandoc doxygen
           python -m pip install --upgrade pip
           python -m pip install sphinx_rtd_theme unidecode nbsphinx wheel breathe exhale
-      - name: Build Julia documentation
+      - name: Build Julia documentation and copy to output
         run: |
           cd CompasToolkit.jl
           touch src/Constants.jl
@@ -44,14 +44,12 @@ jobs:
             Pkg.instantiate()
           '
           julia --project=docs docs/make.jl
+          mkdir -p /tmp/sphinxnotes-pages
+          cp docs/build /tmp/sphinxnotes-pages/api_julia
       - name: Build and commit
         uses: sphinx-notes/pages@v2
         with:
           documentation_path: './docs'
-      - name: Copy Julia documentation tooutput
-        run: |
-          ls
-          cp CompasToolkit.jl/docs/build /tmp/sphinxnotes-pages/api_julia
       - name: Push documentation
         uses: ad-m/github-push-action@master
         with:
