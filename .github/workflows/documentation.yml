@@ -48,8 +48,10 @@ jobs:
         uses: sphinx-notes/pages@v2
         with:
           documentation_path: './docs'
-      - name: Copy Julia to documentation output
-        run: cp CompasToolkit.jl/docs/build /tmp/sphinxnotes-pages/api_julia
+      - name: Copy Julia documentation tooutput
+        run: |
+          ls
+          cp CompasToolkit.jl/docs/build /tmp/sphinxnotes-pages/api_julia
       - name: Push documentation
         uses: ad-m/github-push-action@master
         with:
