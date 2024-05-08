@@ -23,19 +23,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: Jimver/cuda-toolkit@v0.2.15
-        id: cuda-toolkit
-        with:
-          method: 'network'
-          sub-packages: '["toolkit"]'
       - name: Setup python
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
-      - name: Setup Julia
-        uses: julia-actions/setup-julia@v1
-        with:
-          version: "1"
       - name: Checkout
         uses: actions/checkout@v2
         with:
@@ -47,20 +38,6 @@ jobs:
           sudo apt-get install python3-sphinx pandoc doxygen
           python -m pip install --upgrade pip
           python -m pip install sphinx_rtd_theme unidecode nbsphinx wheel breathe exhale
-      - name: Build compas-toolkit and Julia documentation
-        run: |
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON -DSPDLOG_FMT_EXTERNAL:BOOL=ON ..
-          make
-          make install
-          cd ../CompasToolkit.jl
-          julia --project=docs -e '
-            using Pkg
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()
-          '
-          julia --project=docs docs/make.jl
-          cp -R docs/build ../docs/api_julia
       - name: Build and commit
         uses: sphinx-notes/pages@v2
         with:
