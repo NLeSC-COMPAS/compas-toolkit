@@ -45,15 +45,16 @@ jobs:
           '
           julia --project=docs docs/make.jl
           mkdir -p /tmp/sphinxnotes-pages
-          cp -R docs/build /tmp/sphinxnotes-pages/api_julia
+          cp -R docs/build ../../api_julia
       - name: Build and commit
         uses: sphinx-notes/pages@v2
         with:
           documentation_path: './docs'
-      - name: Debugging step
+      - name: Copy Julia documentation and commit
         run: |
-          pwd
-          ls
+          cp -R ../api_julia .
+          git add api_julia
+          git commit -a -m "Adding generated Julia documentation"
       - name: Push documentation
         uses: ad-m/github-push-action@master
         with:
