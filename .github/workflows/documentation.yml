@@ -50,6 +50,10 @@ jobs:
         uses: sphinx-notes/pages@v2
         with:
           documentation_path: './docs'
+      - name: Debugging step
+        run: |
+          pwd
+          ls
       - name: Push documentation
         uses: ad-m/github-push-action@master
         with:
