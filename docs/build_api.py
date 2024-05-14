@@ -10,7 +10,9 @@ def build_doxygen_page(name, items):
     content += name + "\n" + "=" * len(name) + "\n"
 
     for item in items:
-        directive = "doxygenclass" if item[0].isupper() else "doxygenfunction"
+        is_struct = any(c.lower() != c for c in item) and '(' not in item
+
+        directive = "doxygenstruct" if is_struct else "doxygenfunction"
         content += f".. {directive}:: compas::{item}\n"
 
     filename = f"api_cxx/{name}.rst"
@@ -69,12 +71,20 @@ def build_index_page(groups):
 groups = {
     "Data structures": [
         "CudaContext",
-        "TissueParameterField",
+        #"TissueParameterField",
         "TissueParameters",
     ],
-    "Jacobian computation": [
-        "compute_jacobian",
-        "compute_jacobian_hermitian",
+    "Sequences": [
+        "FISPSequence",
+        "pSSFPSequence",
+        ("simulate_magnetization",[
+        "simulate_magnetization(const CudaContext&, TissueParameters, FISPSequence)",
+        "simulate_magnetization(const CudaContext&, TissueParameters, pSSFPSequence)",
+        ]),
+        ("simulate_magnetization_derivative",[
+            "simulate_magnetization_derivative(const CudaContext &, int, Array<cfloat, 2>, TissueParameters, FISPSequence, float)",
+            "simulate_magnetization_derivative(const CudaContext &, int, Array<cfloat, 2>, TissueParameters, pSSFPSequence, float)"
+        ]),
     ],
     "Trajectories": [
         "Trajectory",
@@ -84,11 +94,9 @@ groups = {
         "magnetization_to_signal",
         "phase_encoding",
     ],
-    "Sequences": [
-        "FISPSequence",
-        "pSSFPSequence",
-        "simulate_magnetization",
-        "simulate_magnetization_derivative",
+    "Jacobian computation": [
+        "compute_jacobian",
+        "compute_jacobian_hermitian",
     ],
     "Utilities": [
         "compute_residual",
