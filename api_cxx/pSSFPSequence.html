@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>compute_residual &mdash; Compas Toolkit 0.1 documentation</title>
+  <title>pSSFPSequence &mdash; Compas Toolkit 0.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
       <link rel="stylesheet" type="text/css" href="../_static/my-styles.css?v=0155ed14" />
@@ -22,8 +22,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="magnetization_to_signal" href="magnetization_to_signal.html" />
-    <link rel="prev" title="compute_jacobian_hermitian" href="compute_jacobian_hermitian.html" /> 
+    <link rel="next" title="phase_encoding" href="phase_encoding.html" />
+    <link rel="prev" title="magnetization_to_signal" href="magnetization_to_signal.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -60,9 +60,9 @@
 <li class="toctree-l2"><a class="reference internal" href="Trajectory.html">Trajectory</a></li>
 <li class="toctree-l2"><a class="reference internal" href="compute_jacobian.html">compute_jacobian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="compute_jacobian_hermitian.html">compute_jacobian_hermitian</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">compute_residual</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compute_residual.html">compute_residual</a></li>
 <li class="toctree-l2"><a class="reference internal" href="magnetization_to_signal.html">magnetization_to_signal</a></li>
-<li class="toctree-l2"><a class="reference internal" href="pSSFPSequence.html">pSSFPSequence</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">pSSFPSequence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="phase_encoding.html">phase_encoding</a></li>
 <li class="toctree-l2"><a class="reference internal" href="simulate_magnetization.html">simulate_magnetization</a></li>
 <li class="toctree-l2"><a class="reference internal" href="simulate_magnetization_derivative.html">simulate_magnetization_derivative</a></li>
@@ -87,9 +87,9 @@
   <ul class="wy-breadcrumbs">
       <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="../api_cxx.html">C++ API Reference</a></li>
-      <li class="breadcrumb-item active">compute_residual</li>
+      <li class="breadcrumb-item active">pSSFPSequence</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="../_sources/api_cxx/compute_residual.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/api_cxx/pSSFPSequence.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -97,36 +97,20 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="compute-residual">
-<span id="id1"></span><h1>compute_residual<a class="headerlink" href="#compute-residual" title="Permalink to this heading"></a></h1>
-<dl class="cpp function">
-<dt class="sig sig-object cpp" id="_CPPv4N6compas16compute_residualE11CudaContext5ArrayI6cfloatXL3EEE5ArrayI6cfloatXL3EEEPf">
-<span id="_CPPv3N6compas16compute_residualE11CudaContext5ArrayI6cfloatXL3EEE5ArrayI6cfloatXL3EEEPf"></span><span id="_CPPv2N6compas16compute_residualE11CudaContext5ArrayI6cfloatX3EE5ArrayI6cfloatX3EEPf"></span><span id="compas::compute_residual__CudaContext.Array:cfloat.3:.Array:cfloat.3:.floatP"></span><span class="target" id="residual_8h_1aece71795c2f36b5521f41c44b2e07de9"></span><span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cfloat</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">compas</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">compute_residual</span></span></span><span class="sig-paren">(</span><span class="n"><span class="pre">CudaContext</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">ctx</span></span>, <span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cfloat</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">lhs</span></span>, <span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cfloat</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">rhs</span></span>, <span class="kt"><span class="pre">float</span></span><span class="w"> </span><span class="p"><span class="pre">*</span></span><span class="n sig-param"><span class="pre">objective_out</span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">nullptr</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6compas16compute_residualE11CudaContext5ArrayI6cfloatXL3EEE5ArrayI6cfloatXL3EEEPf" title="Permalink to this definition"></a><br /></dt>
-<dd><p>Returns the result of <code class="docutils literal notranslate"><span class="pre">lhs</span> <span class="pre">-</span> <span class="pre">rhs</span></code>.</p>
-<p>Additionally, if <code class="docutils literal notranslate"><span class="pre">objective_out</span></code> is provided, this function writes the sum over the squares of the differences between <code class="docutils literal notranslate"><span class="pre">lhs</span></code> and <code class="docutils literal notranslate"><span class="pre">rhs</span></code> to <code class="docutils literal notranslate"><span class="pre">objective_out</span></code>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>ctx</strong> – CUDA context. </p></li>
-<li><p><strong>lhs</strong> – The left-hand side. </p></li>
-<li><p><strong>rhs</strong> – The right-hand side. </p></li>
-<li><p><strong>objective_out</strong> – Optionally, pointer to where the sum over the squares of the differences must be stored. </p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p></p>
-</dd>
-</dl>
-</dd></dl>
-
+  <section id="pssfpsequence">
+<span id="id1"></span><h1>pSSFPSequence<a class="headerlink" href="#pssfpsequence" title="Permalink to this heading"></a></h1>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>doxygenfunction: Cannot find function “compas::pSSFPSequence” in doxygen xml output for project “Compas Toolkit” from directory: ./_doxygen/xml</p>
+</div>
 </section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="compute_jacobian_hermitian.html" class="btn btn-neutral float-left" title="compute_jacobian_hermitian" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="magnetization_to_signal.html" class="btn btn-neutral float-right" title="magnetization_to_signal" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="magnetization_to_signal.html" class="btn btn-neutral float-left" title="magnetization_to_signal" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="phase_encoding.html" class="btn btn-neutral float-right" title="phase_encoding" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

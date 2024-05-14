@@ -1,0 +1,10 @@
+..
+  ============================================================
+  This file has been auto-generated. DO NOT MODIFY ITS CONTENT
+  ============================================================
+
+.. _compute_jacobian_hermitian:
+
+compute_jacobian_hermitian
+==========================
+.. doxygenfunction:: compas::compute_jacobian_hermitian

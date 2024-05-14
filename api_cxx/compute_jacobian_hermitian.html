@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>compute_jacobian_hermitian &mdash; Compas Toolkit 0.1 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../_static/my-styles.css?v=0155ed14" />
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=e031e9a9"></script>
+        <script src="../_static/doctools.js?v=888ff710"></script>
+        <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="compute_residual" href="compute_residual.html" />
+    <link rel="prev" title="compute_jacobian" href="compute_jacobian.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Compas Toolkit
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">Compas Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../api_cxx.html">C++ API Reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="CartesianTrajectory.html">CartesianTrajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CudaContext.html">CudaContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FISPSequence.html">FISPSequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SimulateSignalMethod.html">SimulateSignalMethod</a></li>
+<li class="toctree-l2"><a class="reference internal" href="SpiralTrajectory.html">SpiralTrajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TissueParameterField.html">TissueParameterField</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TissueParameters.html">TissueParameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Trajectory.html">Trajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compute_jacobian.html">compute_jacobian</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">compute_jacobian_hermitian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compute_residual.html">compute_residual</a></li>
+<li class="toctree-l2"><a class="reference internal" href="magnetization_to_signal.html">magnetization_to_signal</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pSSFPSequence.html">pSSFPSequence</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phase_encoding.html">phase_encoding</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulate_magnetization.html">simulate_magnetization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulate_magnetization_derivative.html">simulate_magnetization_derivative</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference external" href="https://nlesc-compas.github.io/compas-toolkit/api_julia">Julia API</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/NLeSC-COMPAS/compas-toolkit">Github Repository</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Compas Toolkit</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../api_cxx.html">C++ API Reference</a></li>
+      <li class="breadcrumb-item active">compute_jacobian_hermitian</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api_cxx/compute_jacobian_hermitian.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="compute-jacobian-hermitian">
+<span id="id1"></span><h1>compute_jacobian_hermitian<a class="headerlink" href="#compute-jacobian-hermitian" title="Permalink to this heading"></a></h1>
+<dl class="cpp function">
+<dt class="sig sig-object cpp" id="_CPPv4N6compas26compute_jacobian_hermitianERK11CudaContext5ArrayI6cfloatXL2EEE5ArrayI6cfloatXL2EEE5ArrayI6cfloatXL2EEE16TissueParameters19CartesianTrajectory5ArrayIfXL2EEE5ArrayI6cfloatXL3EEE">
+<span id="_CPPv3N6compas26compute_jacobian_hermitianERK11CudaContext5ArrayI6cfloatXL2EEE5ArrayI6cfloatXL2EEE5ArrayI6cfloatXL2EEE16TissueParameters19CartesianTrajectory5ArrayIfXL2EEE5ArrayI6cfloatXL3EEE"></span><span id="_CPPv2N6compas26compute_jacobian_hermitianERK11CudaContext5ArrayI6cfloatX2EE5ArrayI6cfloatX2EE5ArrayI6cfloatX2EE16TissueParameters19CartesianTrajectory5ArrayIfX2EE5ArrayI6cfloatX3EE"></span><span id="compas::compute_jacobian_hermitian__CudaContextCR.Array:cfloat.2:.Array:cfloat.2:.Array:cfloat.2:.TissueParameters.CartesianTrajectory.Array:float.2:.Array:cfloat.3:"></span><span class="target" id="hermitian_8h_1a551f59484932e2eda3dbda3e032c3d5a"></span><span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cfloat</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">compas</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">compute_jacobian_hermitian</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">CudaContext</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">ctx</span></span>, <span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cfloat</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">echos</span></span>, <span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cfloat</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">delta_echos_T1</span></span>, <span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cfloat</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">delta_echos_T2</span></span>, <span class="n"><span class="pre">TissueParameters</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">parameters</span></span>, <span class="n"><span class="pre">CartesianTrajectory</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">trajectory</span></span>, <span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">float</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">coil_sensitivities</span></span>, <span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cfloat</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">3</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="n sig-param"><span class="pre">vector</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6compas26compute_jacobian_hermitianERK11CudaContext5ArrayI6cfloatXL2EEE5ArrayI6cfloatXL2EEE5ArrayI6cfloatXL2EEE16TissueParameters19CartesianTrajectory5ArrayIfXL2EEE5ArrayI6cfloatXL3EEE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Computes the product of the Hermitian transpose of the Jacobian matrix with the given vector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ctx</strong> – </p></li>
+<li><p><strong>echos</strong> – The magnetization at echo time. Size: [nreadouts, nvoxels] </p></li>
+<li><p><strong>delta_echos_T1</strong> – The partial derivatives of <code class="docutils literal notranslate"><span class="pre">echo</span></code> with respect to T1. </p></li>
+<li><p><strong>delta_echos_T2</strong> – The partial derivatives of <code class="docutils literal notranslate"><span class="pre">echo</span></code> with respect to T2. </p></li>
+<li><p><strong>parameters</strong> – The tissue parameters (T1, T2, etc.) </p></li>
+<li><p><strong>trajectory</strong> – Cartesian k-space sampling trajectory. </p></li>
+<li><p><strong>coil_sensitivities</strong> – The sensitivities of the receiver coils. Size: [ncoils, nvoxels] </p></li>
+<li><p><strong>vector</strong> – The input vector. Size: [ncoils, nreadouts, nsamples_per_readout] </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The result of <code class="docutils literal notranslate"><span class="pre">Jᴴv</span></code>. Size: [nfields, nvoxels]. There are 4 fields: T1, T2, and rho<sub>x</sub>/rho<sub>y</sub>. </p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="compute_jacobian.html" class="btn btn-neutral float-left" title="compute_jacobian" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="compute_residual.html" class="btn btn-neutral float-right" title="compute_residual" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, The COMPAS Team.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

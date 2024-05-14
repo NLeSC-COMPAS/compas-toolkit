@@ -3,8 +3,8 @@
   This file has been auto-generated. DO NOT MODIFY ITS CONTENT
   ============================================================
 
-.. _make_cartesian_trajectory:
+.. _TissueParameterField:
 
-make_cartesian_trajectory
-=========================
-.. doxygenfunction:: compas::make_cartesian_trajectory
+TissueParameterField
+====================
+.. doxygenclass:: compas::TissueParameterField

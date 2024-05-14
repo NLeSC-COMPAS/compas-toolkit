@@ -3,8 +3,8 @@
   This file has been auto-generated. DO NOT MODIFY ITS CONTENT
   ============================================================
 
-.. _make_spiral_trajectory:
+.. _CudaContext:
 
-make_spiral_trajectory
-======================
-.. doxygenfunction:: compas::make_spiral_trajectory
+CudaContext
+===========
+.. doxygenclass:: compas::CudaContext

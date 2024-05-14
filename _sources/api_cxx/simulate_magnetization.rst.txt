@@ -1,0 +1,10 @@
+..
+  ============================================================
+  This file has been auto-generated. DO NOT MODIFY ITS CONTENT
+  ============================================================
+
+.. _simulate_magnetization:
+
+simulate_magnetization
+======================
+.. doxygenfunction:: compas::simulate_magnetization

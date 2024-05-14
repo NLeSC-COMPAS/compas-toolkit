@@ -51,16 +51,21 @@
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">C++ API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="api_cxx/CartesianTrajectory.html">CartesianTrajectory</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_cxx/CartesianTrajectoryView.html">CartesianTrajectoryView</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_cxx/CudaContext.html">CudaContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_cxx/FISPSequence.html">FISPSequence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_cxx/SimulateSignalMethod.html">SimulateSignalMethod</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_cxx/SpiralTrajectory.html">SpiralTrajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_cxx/TissueParameterField.html">TissueParameterField</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_cxx/TissueParameters.html">TissueParameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_cxx/Trajectory.html">Trajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_cxx/compute_jacobian.html">compute_jacobian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_cxx/compute_jacobian_hermitian.html">compute_jacobian_hermitian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_cxx/compute_residual.html">compute_residual</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_cxx/magnetization_to_signal.html">magnetization_to_signal</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_cxx/make_cartesian_trajectory.html">make_cartesian_trajectory</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_cxx/make_spiral_trajectory.html">make_spiral_trajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_cxx/pSSFPSequence.html">pSSFPSequence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api_cxx/phase_encoding.html">phase_encoding</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_cxx/prephaser.html">prephaser</a></li>
-<li class="toctree-l2"><a class="reference internal" href="api_cxx/rewind.html">rewind</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_cxx/simulate_magnetization.html">simulate_magnetization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api_cxx/simulate_magnetization_derivative.html">simulate_magnetization_derivative</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference external" href="https://nlesc-compas.github.io/compas-toolkit/api_julia">Julia API</a></li>
@@ -95,21 +100,30 @@
 <h1>C++ API Reference<a class="headerlink" href="#c-api-reference" title="Permalink to this heading"></a></h1>
 <div class="toctree-wrapper compound">
 </div>
-<h2>Cartesian trajectories</h2><ul class="simple">
+<h2>Data structures</h2><ul class="simple">
+<li><p><a class="reference internal" href="api_cxx/CudaContext.html"><span class="doc">CudaContext</span></a></p></li>
+<li><p><a class="reference internal" href="api_cxx/TissueParameterField.html"><span class="doc">TissueParameterField</span></a></p></li>
+<li><p><a class="reference internal" href="api_cxx/TissueParameters.html"><span class="doc">TissueParameters</span></a></p></li>
+</ul>
+<h2>Jacobian computation</h2><ul class="simple">
+<li><p><a class="reference internal" href="api_cxx/compute_jacobian.html"><span class="doc">compute_jacobian</span></a></p></li>
+<li><p><a class="reference internal" href="api_cxx/compute_jacobian_hermitian.html"><span class="doc">compute_jacobian_hermitian</span></a></p></li>
+</ul>
+<h2>Trajectories</h2><ul class="simple">
+<li><p><a class="reference internal" href="api_cxx/Trajectory.html"><span class="doc">Trajectory</span></a></p></li>
 <li><p><a class="reference internal" href="api_cxx/CartesianTrajectory.html"><span class="doc">CartesianTrajectory</span></a></p></li>
-<li><p><a class="reference internal" href="api_cxx/CartesianTrajectoryView.html"><span class="doc">CartesianTrajectoryView</span></a></p></li>
-<li><p><a class="reference internal" href="api_cxx/make_cartesian_trajectory.html"><span class="doc">make_cartesian_trajectory</span></a></p></li>
-<li><p><a class="reference internal" href="api_cxx/rewind.html"><span class="doc">rewind</span></a></p></li>
-<li><p><a class="reference internal" href="api_cxx/prephaser.html"><span class="doc">prephaser</span></a></p></li>
-<li><p><a class="reference internal" href="api_cxx/phase_encoding.html"><span class="doc">phase_encoding</span></a></p></li>
+<li><p><a class="reference internal" href="api_cxx/SpiralTrajectory.html"><span class="doc">SpiralTrajectory</span></a></p></li>
 <li><p><a class="reference internal" href="api_cxx/SimulateSignalMethod.html"><span class="doc">SimulateSignalMethod</span></a></p></li>
 <li><p><a class="reference internal" href="api_cxx/magnetization_to_signal.html"><span class="doc">magnetization_to_signal</span></a></p></li>
+<li><p><a class="reference internal" href="api_cxx/phase_encoding.html"><span class="doc">phase_encoding</span></a></p></li>
 </ul>
-<h2>Spiral trajectories</h2><ul class="simple">
-<li><p><a class="reference internal" href="api_cxx/SpiralTrajectory.html"><span class="doc">SpiralTrajectory</span></a></p></li>
-<li><p><a class="reference internal" href="api_cxx/make_spiral_trajectory.html"><span class="doc">make_spiral_trajectory</span></a></p></li>
+<h2>Sequences</h2><ul class="simple">
+<li><p><a class="reference internal" href="api_cxx/FISPSequence.html"><span class="doc">FISPSequence</span></a></p></li>
+<li><p><a class="reference internal" href="api_cxx/pSSFPSequence.html"><span class="doc">pSSFPSequence</span></a></p></li>
+<li><p><a class="reference internal" href="api_cxx/simulate_magnetization.html"><span class="doc">simulate_magnetization</span></a></p></li>
+<li><p><a class="reference internal" href="api_cxx/simulate_magnetization_derivative.html"><span class="doc">simulate_magnetization_derivative</span></a></p></li>
 </ul>
-<h2>utils</h2><ul class="simple">
+<h2>Utilities</h2><ul class="simple">
 <li><p><a class="reference internal" href="api_cxx/compute_residual.html"><span class="doc">compute_residual</span></a></p></li>
 </ul>
 </section>

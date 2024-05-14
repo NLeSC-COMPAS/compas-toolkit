@@ -3,8 +3,8 @@
   This file has been auto-generated. DO NOT MODIFY ITS CONTENT
   ============================================================
 
-.. _prephaser:
+.. _simulate_magnetization_derivative:
 
-prephaser
-=========
-.. doxygenfunction:: compas::prephaser
+simulate_magnetization_derivative
+=================================
+.. doxygenfunction:: compas::simulate_magnetization_derivative

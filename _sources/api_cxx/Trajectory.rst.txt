@@ -3,8 +3,8 @@
   This file has been auto-generated. DO NOT MODIFY ITS CONTENT
   ============================================================
 
-.. _CartesianTrajectoryView:
+.. _Trajectory:
 
-CartesianTrajectoryView
-=======================
-.. doxygenclass:: compas::CartesianTrajectoryView
+Trajectory
+==========
+.. doxygenclass:: compas::Trajectory

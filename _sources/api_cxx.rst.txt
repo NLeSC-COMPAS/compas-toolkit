@@ -10,40 +10,60 @@ C++ API Reference
    :hidden:
 
    api_cxx/CartesianTrajectory.rst
-   api_cxx/CartesianTrajectoryView.rst
+   api_cxx/CudaContext.rst
+   api_cxx/FISPSequence.rst
    api_cxx/SimulateSignalMethod.rst
    api_cxx/SpiralTrajectory.rst
+   api_cxx/TissueParameterField.rst
+   api_cxx/TissueParameters.rst
+   api_cxx/Trajectory.rst
+   api_cxx/compute_jacobian.rst
+   api_cxx/compute_jacobian_hermitian.rst
    api_cxx/compute_residual.rst
    api_cxx/magnetization_to_signal.rst
-   api_cxx/make_cartesian_trajectory.rst
-   api_cxx/make_spiral_trajectory.rst
+   api_cxx/pSSFPSequence.rst
    api_cxx/phase_encoding.rst
-   api_cxx/prephaser.rst
-   api_cxx/rewind.rst
+   api_cxx/simulate_magnetization.rst
+   api_cxx/simulate_magnetization_derivative.rst
 
 .. raw:: html
 
-   <h2>Cartesian trajectories</h2>
+   <h2>Data structures</h2>
 
+* :doc:`CudaContext <api_cxx/CudaContext>`
+* :doc:`TissueParameterField <api_cxx/TissueParameterField>`
+* :doc:`TissueParameters <api_cxx/TissueParameters>`
+
+.. raw:: html
+
+   <h2>Jacobian computation</h2>
+
+* :doc:`compute_jacobian <api_cxx/compute_jacobian>`
+* :doc:`compute_jacobian_hermitian <api_cxx/compute_jacobian_hermitian>`
+
+.. raw:: html
+
+   <h2>Trajectories</h2>
+
+* :doc:`Trajectory <api_cxx/Trajectory>`
 * :doc:`CartesianTrajectory <api_cxx/CartesianTrajectory>`
-* :doc:`CartesianTrajectoryView <api_cxx/CartesianTrajectoryView>`
-* :doc:`make_cartesian_trajectory <api_cxx/make_cartesian_trajectory>`
-* :doc:`rewind <api_cxx/rewind>`
-* :doc:`prephaser <api_cxx/prephaser>`
-* :doc:`phase_encoding <api_cxx/phase_encoding>`
+* :doc:`SpiralTrajectory <api_cxx/SpiralTrajectory>`
 * :doc:`SimulateSignalMethod <api_cxx/SimulateSignalMethod>`
 * :doc:`magnetization_to_signal <api_cxx/magnetization_to_signal>`
+* :doc:`phase_encoding <api_cxx/phase_encoding>`
 
 .. raw:: html
 
-   <h2>Spiral trajectories</h2>
+   <h2>Sequences</h2>
 
-* :doc:`SpiralTrajectory <api_cxx/SpiralTrajectory>`
-* :doc:`make_spiral_trajectory <api_cxx/make_spiral_trajectory>`
+* :doc:`FISPSequence <api_cxx/FISPSequence>`
+* :doc:`pSSFPSequence <api_cxx/pSSFPSequence>`
+* :doc:`simulate_magnetization <api_cxx/simulate_magnetization>`
+* :doc:`simulate_magnetization_derivative <api_cxx/simulate_magnetization_derivative>`
 
 .. raw:: html
 
-   <h2>utils</h2>
+   <h2>Utilities</h2>
 
 * :doc:`compute_residual <api_cxx/compute_residual>`
 

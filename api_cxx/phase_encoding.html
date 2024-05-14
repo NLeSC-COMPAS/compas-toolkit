@@ -22,8 +22,8 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="prephaser" href="prephaser.html" />
-    <link rel="prev" title="make_spiral_trajectory" href="make_spiral_trajectory.html" /> 
+    <link rel="next" title="simulate_magnetization" href="simulate_magnetization.html" />
+    <link rel="prev" title="pSSFPSequence" href="pSSFPSequence.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -51,16 +51,21 @@
 <li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../api_cxx.html">C++ API Reference</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="CartesianTrajectory.html">CartesianTrajectory</a></li>
-<li class="toctree-l2"><a class="reference internal" href="CartesianTrajectoryView.html">CartesianTrajectoryView</a></li>
+<li class="toctree-l2"><a class="reference internal" href="CudaContext.html">CudaContext</a></li>
+<li class="toctree-l2"><a class="reference internal" href="FISPSequence.html">FISPSequence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="SimulateSignalMethod.html">SimulateSignalMethod</a></li>
 <li class="toctree-l2"><a class="reference internal" href="SpiralTrajectory.html">SpiralTrajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TissueParameterField.html">TissueParameterField</a></li>
+<li class="toctree-l2"><a class="reference internal" href="TissueParameters.html">TissueParameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="Trajectory.html">Trajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compute_jacobian.html">compute_jacobian</a></li>
+<li class="toctree-l2"><a class="reference internal" href="compute_jacobian_hermitian.html">compute_jacobian_hermitian</a></li>
 <li class="toctree-l2"><a class="reference internal" href="compute_residual.html">compute_residual</a></li>
 <li class="toctree-l2"><a class="reference internal" href="magnetization_to_signal.html">magnetization_to_signal</a></li>
-<li class="toctree-l2"><a class="reference internal" href="make_cartesian_trajectory.html">make_cartesian_trajectory</a></li>
-<li class="toctree-l2"><a class="reference internal" href="make_spiral_trajectory.html">make_spiral_trajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pSSFPSequence.html">pSSFPSequence</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">phase_encoding</a></li>
-<li class="toctree-l2"><a class="reference internal" href="prephaser.html">prephaser</a></li>
-<li class="toctree-l2"><a class="reference internal" href="rewind.html">rewind</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulate_magnetization.html">simulate_magnetization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="simulate_magnetization_derivative.html">simulate_magnetization_derivative</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference external" href="https://nlesc-compas.github.io/compas-toolkit/api_julia">Julia API</a></li>
@@ -97,7 +102,20 @@
 <dl class="cpp function">
 <dt class="sig sig-object cpp" id="_CPPv4N6compas14phase_encodingERK11CudaContextRK5ArrayI6cfloatXL2EEERK16TissueParametersRK19CartesianTrajectory">
 <span id="_CPPv3N6compas14phase_encodingERK11CudaContextRK5ArrayI6cfloatXL2EEERK16TissueParametersRK19CartesianTrajectory"></span><span id="_CPPv2N6compas14phase_encodingERK11CudaContextRK5ArrayI6cfloatX2EERK16TissueParametersRK19CartesianTrajectory"></span><span id="compas::phase_encoding__CudaContextCR.Array:cfloat.2:CR.TissueParametersCR.CartesianTrajectoryCR"></span><span class="target" id="phase__encoding_8h_1a2f4e0f049bde0c4b51705c17a25cab3d"></span><span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cfloat</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-prename descclassname"><span class="n"><span class="pre">compas</span></span><span class="p"><span class="pre">::</span></span></span><span class="sig-name descname"><span class="n"><span class="pre">phase_encoding</span></span></span><span class="sig-paren">(</span><span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">CudaContext</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">ctx</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="n"><span class="pre">cfloat</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">echos</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">TissueParameters</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">parameters</span></span>, <span class="k"><span class="pre">const</span></span><span class="w"> </span><span class="n"><span class="pre">CartesianTrajectory</span></span><span class="w"> </span><span class="p"><span class="pre">&amp;</span></span><span class="n sig-param"><span class="pre">trajectory</span></span><span class="sig-paren">)</span><a class="headerlink" href="#_CPPv4N6compas14phase_encodingERK11CudaContextRK5ArrayI6cfloatXL2EEERK16TissueParametersRK19CartesianTrajectory" title="Permalink to this definition"></a><br /></dt>
-<dd><p>Compute the phase encoding of a signal. </p>
+<dd><p>Apply phase encoding to the given magnetization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ctx</strong> – Compas context. </p></li>
+<li><p><strong>echos</strong> – The magnetization at echo times. Size: <code class="docutils literal notranslate"><span class="pre">[nreadouts,</span> <span class="pre">nvoxels]</span></code>. </p></li>
+<li><p><strong>parameters</strong> – The tissue parameters. </p></li>
+<li><p><strong>trajectory</strong> – The <code class="docutils literal notranslate"><span class="pre">Trajectory</span></code>. </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The phase encoded magnetization at echo times. </p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -106,8 +124,8 @@
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="make_spiral_trajectory.html" class="btn btn-neutral float-left" title="make_spiral_trajectory" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="prephaser.html" class="btn btn-neutral float-right" title="prephaser" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="pSSFPSequence.html" class="btn btn-neutral float-left" title="pSSFPSequence" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="simulate_magnetization.html" class="btn btn-neutral float-right" title="simulate_magnetization" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
