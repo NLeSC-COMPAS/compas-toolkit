@@ -91,7 +91,7 @@ def main():
 
     tune_params = dict()
     tune_params["BLOCK_SIZE_X"] = [16, 32, 64] #[1, 2, 4, 8, 16, 32, 64, 128]
-    tune_params["BLOCK_SIZE_Y"] = [1, 2, 4, 8, 16] #[1, 2, 4, 8, 16, 32, 64, 128]
+    tune_params["BLOCK_SIZE_Y"] = [1, 2, 4, 8, 12, 16] #[1, 2, 4, 8, 16, 32, 64, 128]
     tune_params["BLOCK_SIZE_Z"] = [1]
     tune_params["THREADS_PER_ITEM"] = [1, 2, 4, 8, 16, 32]  # 1, 2, 4, 8, 16, 32]
     tune_params["COILS_PER_THREAD"] = [n for n in range(1, 9) if ncoils % n == 0]
@@ -103,6 +103,8 @@ def main():
         "BLOCK_SIZE_X * BLOCK_SIZE_Y >= 64",
         "BLOCK_SIZE_X * BLOCK_SIZE_Y <= 1024",
         "BLOCK_SIZE_X >= THREADS_PER_ITEM",
+        "SAMPLES_PER_THREAD * READOUTS_PER_THREAD <= 16",
+        "BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z * BLOCKS_PER_SM <= 2048",
     ]
 
     def problem_size(config):
