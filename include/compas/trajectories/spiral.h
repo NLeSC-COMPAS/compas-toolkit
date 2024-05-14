@@ -8,11 +8,12 @@
 namespace compas {
 
 /**
- * Object representing a Spiral trajectory.
+ *  Describes a Spiral gradient trajectory. This is represented by storing the starting position in `k-space` for
+ *  each readout and the step (`delta_k`) per sample point. The step can be different for each readout.
  */
 struct SpiralTrajectory: public Trajectory {
-    Array<cfloat> k_start;
-    Array<cfloat> delta_k;
+    Array<cfloat> k_start;  // Size: nreadouts
+    Array<cfloat> delta_k;  // Size: nreadouts
 
     SpiralTrajectory(
         int nreadouts,

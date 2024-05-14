@@ -9,11 +9,14 @@
 namespace compas {
 
 /**
- * Object representing a Cartesian trajectory.
+ *  Describes a Cartesian gradient trajectory. This is represented by storing the starting position in `k-space` for
+ *  each readout and the step (`delta_k`) per sample point. It is assumed that the step is the same for all readouts.
+ *  Note that the cartesian trajectory is a special case of the spiral trajectory, having the same step size for each
+ *  readout (meaning it can be represented using a single value instead of an array of values).
  */
 struct CartesianTrajectory: public Trajectory {
-    Array<cfloat> k_start;
-    cfloat delta_k;
+    Array<cfloat> k_start;  // Size: nreadouts
+    cfloat delta_k;  // Size: nreadouts
 
     CartesianTrajectory(
         int nreadouts,
@@ -27,7 +30,6 @@ struct CartesianTrajectory: public Trajectory {
 };
 
 /**
- *
  * Create a Cartesian trajectory object.
  *
  * @param context

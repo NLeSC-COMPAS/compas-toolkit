@@ -4,8 +4,8 @@
 
 namespace compas {
 
-/**
- * Generic class to represent a trajectory object.
+/***
+ * The base class for the `CartesianTrajectory` and `SpiralTrajectory`.
  */
 struct Trajectory: public Object {
     int nreadouts;

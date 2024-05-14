@@ -67,9 +67,32 @@ def build_index_page(groups):
 
 
 groups = {
-    "Cartesian trajectories": ["CartesianTrajectory", "CartesianTrajectoryView", "make_cartesian_trajectory", "rewind", "prephaser", "phase_encoding", "SimulateSignalMethod", "magnetization_to_signal"],
-    "Spiral trajectories": ["SpiralTrajectory", "make_spiral_trajectory"],
-    "utils": ["compute_residual"]
+    "Data structures": [
+        "CudaContext",
+        "TissueParameterField",
+        "TissueParameters",
+    ],
+    "Jacobian computation": [
+        "compute_jacobian",
+        "compute_jacobian_hermitian",
+    ],
+    "Trajectories": [
+        "Trajectory",
+        "CartesianTrajectory",
+        "SpiralTrajectory",
+        "SimulateSignalMethod",
+        "magnetization_to_signal",
+        "phase_encoding",
+    ],
+    "Sequences": [
+        "FISPSequence",
+        "pSSFPSequence",
+        "simulate_magnetization",
+        "simulate_magnetization_derivative",
+    ],
+    "Utilities": [
+        "compute_residual",
+    ],
 }
 
 
