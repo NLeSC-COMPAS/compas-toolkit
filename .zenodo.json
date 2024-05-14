@@ -10,6 +10,10 @@
     {
       "affiliation": "Netherlands eScience Center",
       "name": "Stijn Heldens"
+    },
+    {
+      "affiliation": "UMC Utrecht",
+      "name": "Oscar van der Heide"
     }
   ],
   "keywords": ["GPU", "Julia", "Cuda", "MRI", "Quantitative MRI"],
