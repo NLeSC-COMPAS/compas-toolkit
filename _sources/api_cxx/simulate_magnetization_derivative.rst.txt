@@ -7,4 +7,5 @@
 
 simulate_magnetization_derivative
 =================================
-.. doxygenfunction:: compas::simulate_magnetization_derivative
+.. doxygenfunction:: compas::simulate_magnetization_derivative(const CudaContext &, int, Array<cfloat, 2>, TissueParameters, FISPSequence, float)
+.. doxygenfunction:: compas::simulate_magnetization_derivative(const CudaContext &, int, Array<cfloat, 2>, TissueParameters, pSSFPSequence, float)

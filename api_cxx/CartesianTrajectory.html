@@ -49,13 +49,13 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../index.html">Compas Toolkit</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../example.html">Example</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="../api_cxx.html">C++ API Reference</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">CartesianTrajectory</a></li>
 <li class="toctree-l2"><a class="reference internal" href="CudaContext.html">CudaContext</a></li>
 <li class="toctree-l2"><a class="reference internal" href="FISPSequence.html">FISPSequence</a></li>
 <li class="toctree-l2"><a class="reference internal" href="SimulateSignalMethod.html">SimulateSignalMethod</a></li>
 <li class="toctree-l2"><a class="reference internal" href="SpiralTrajectory.html">SpiralTrajectory</a></li>
-<li class="toctree-l2"><a class="reference internal" href="TissueParameterField.html">TissueParameterField</a></li>
 <li class="toctree-l2"><a class="reference internal" href="TissueParameters.html">TissueParameters</a></li>
 <li class="toctree-l2"><a class="reference internal" href="Trajectory.html">Trajectory</a></li>
 <li class="toctree-l2"><a class="reference internal" href="compute_jacobian.html">compute_jacobian</a></li>
@@ -99,10 +99,12 @@
              
   <section id="cartesiantrajectory">
 <span id="id1"></span><h1>CartesianTrajectory<a class="headerlink" href="#cartesiantrajectory" title="Permalink to this heading"></a></h1>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>doxygenclass: Cannot find class “compas::CartesianTrajectory” in doxygen xml output for project “Compas Toolkit” from directory: ./_doxygen/xml</p>
-</div>
+<dl class="cpp struct">
+<dt class="sig sig-object cpp" id="_CPPv4N6compas19CartesianTrajectoryE">
+<span id="_CPPv3N6compas19CartesianTrajectoryE"></span><span id="_CPPv2N6compas19CartesianTrajectoryE"></span><span id="compas::CartesianTrajectory"></span><span class="target" id="structcompas_1_1CartesianTrajectory"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">CartesianTrajectory</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">compas</span></span><span class="p"><span class="pre">::</span></span><a class="reference internal" href="Trajectory.html#_CPPv4N6compas10TrajectoryE" title="compas::Trajectory"><span class="n"><span class="pre">Trajectory</span></span></a><a class="headerlink" href="#_CPPv4N6compas19CartesianTrajectoryE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Describes a Cartesian gradient trajectory. This is represented by storing the starting position in <code class="docutils literal notranslate"><span class="pre">k-space</span></code> for each readout and the step (<code class="docutils literal notranslate"><span class="pre">delta_k</span></code>) per sample point. It is assumed that the step is the same for all readouts. Note that the cartesian trajectory is a special case of the spiral trajectory, having the same step size for each readout (meaning it can be represented using a single value instead of an array of values). </p>
+</dd></dl>
+
 </section>
 
 

@@ -7,4 +7,4 @@
 
 TissueParameters
 ================
-.. doxygenclass:: compas::TissueParameters
+.. doxygenstruct:: compas::TissueParameters

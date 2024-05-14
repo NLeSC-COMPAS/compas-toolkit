@@ -7,4 +7,4 @@
 
 FISPSequence
 ============
-.. doxygenclass:: compas::FISPSequence
+.. doxygenstruct:: compas::FISPSequence

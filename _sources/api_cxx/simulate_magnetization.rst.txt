@@ -7,4 +7,5 @@
 
 simulate_magnetization
 ======================
-.. doxygenfunction:: compas::simulate_magnetization
+.. doxygenfunction:: compas::simulate_magnetization(const CudaContext&, TissueParameters, FISPSequence)
+.. doxygenfunction:: compas::simulate_magnetization(const CudaContext&, TissueParameters, pSSFPSequence)

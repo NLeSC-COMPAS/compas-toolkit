@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Compas Toolkit &mdash; Compas Toolkit 0.1 documentation</title>
+  <title>Example &mdash; Compas Toolkit 0.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
       <link rel="stylesheet" type="text/css" href="_static/my-styles.css?v=0155ed14" />
@@ -22,7 +22,8 @@
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Installation" href="install.html" /> 
+    <link rel="next" title="C++ API Reference" href="api_cxx.html" />
+    <link rel="prev" title="Installation" href="install.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -33,7 +34,7 @@
 
           
           
-          <a href="#" class="icon icon-home">
+          <a href="index.html" class="icon icon-home">
             Compas Toolkit
           </a>
 <div role="search">
@@ -46,9 +47,9 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Compas Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Compas Toolkit</a></li>
 <li class="toctree-l1"><a class="reference internal" href="install.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="example.html">Example</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Example</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_cxx.html">C++ API Reference</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://nlesc-compas.github.io/compas-toolkit/api_julia">Julia API</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/NLeSC-COMPAS/compas-toolkit">Github Repository</a></li>
@@ -60,17 +61,17 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="#">Compas Toolkit</a>
+          <a href="index.html">Compas Toolkit</a>
       </nav>
 
       <div class="wy-nav-content">
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
-      <li class="breadcrumb-item active">Compas Toolkit</li>
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Example</li>
       <li class="wy-breadcrumbs-aside">
-            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+            <a href="_sources/example.rst.txt" rel="nofollow"> View page source</a>
       </li>
   </ul>
   <hr/>
@@ -78,46 +79,17 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="toctree-wrapper compound">
-</div>
-<section id="compas-toolkit">
-<h1>Compas Toolkit<a class="headerlink" href="#compas-toolkit" title="Permalink to this heading"></a></h1>
-<p>The Compas Toolkit is a high-performance C++ library offering GPU-accelerated functions for use in quantitative MRI research.
-The toolkit offers fast simulations of various MRI sequences and k-space trajectories commonly used in qMRI studies.
-While the core of the toolkit is implemented using CUDA, the functionality is accessible from both C++ and Julia.</p>
-<section id="features">
-<h2>Features<a class="headerlink" href="#features" title="Permalink to this heading"></a></h2>
-<ul class="simple">
-<li><p>Flexible API that can be composed in different ways.</p></li>
-<li><p>Highly tuned GPU kernels that provide high performance.</p></li>
-<li><p>Implemented using CUDA, optimized for Nvidia GPUs.</p></li>
-<li><p>Usable from Julia and C++.</p></li>
-</ul>
-</section>
-<section id="usage">
-<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading"></a></h2>
-<p>To use the Compas Toolkit in Julia, simply build the Julia bindings using the instructions above and then add the directory <code class="docutils literal notranslate"><span class="pre">CompasToolkit.jl</span></code> to you Julia project.</p>
-<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="linenos">1</span><span class="k">using</span><span class="w"> </span><span class="n">Pkg</span><span class="p">;</span><span class="w"> </span><span class="n">Pkg</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="s">&quot;&lt;path to compas-toolkit&gt;/CompasToolkit.jl/&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-<p>You can then import the library with <code class="docutils literal notranslate"><span class="pre">using</span> <span class="pre">CompasToolkit</span></code>.</p>
-<p>For examples of using the toolkit, take a look at the scripts available in the <code class="docutils literal notranslate"><span class="pre">CompasToolkit.jl/tests</span></code> directory.</p>
-</section>
-</section>
-<section id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this heading"></a></h1>
-<ul class="simple">
-<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
-<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
-<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
-</ul>
+  <section id="example">
+<h1>Example<a class="headerlink" href="#example" title="Permalink to this heading"></a></h1>
+<p>TODO</p>
 </section>
 
 
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="install.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="install.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="api_cxx.html" class="btn btn-neutral float-right" title="C++ API Reference" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

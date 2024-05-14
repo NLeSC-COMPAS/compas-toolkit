@@ -7,4 +7,4 @@
 
 pSSFPSequence
 =============
-.. doxygenfunction:: compas::pSSFPSequence
+.. doxygenstruct:: compas::pSSFPSequence

@@ -7,4 +7,4 @@
 
 Trajectory
 ==========
-.. doxygenclass:: compas::Trajectory
+.. doxygenstruct:: compas::Trajectory

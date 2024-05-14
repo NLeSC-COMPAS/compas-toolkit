@@ -14,7 +14,6 @@ C++ API Reference
    api_cxx/FISPSequence.rst
    api_cxx/SimulateSignalMethod.rst
    api_cxx/SpiralTrajectory.rst
-   api_cxx/TissueParameterField.rst
    api_cxx/TissueParameters.rst
    api_cxx/Trajectory.rst
    api_cxx/compute_jacobian.rst
@@ -31,15 +30,16 @@ C++ API Reference
    <h2>Data structures</h2>
 
 * :doc:`CudaContext <api_cxx/CudaContext>`
-* :doc:`TissueParameterField <api_cxx/TissueParameterField>`
 * :doc:`TissueParameters <api_cxx/TissueParameters>`
 
 .. raw:: html
 
-   <h2>Jacobian computation</h2>
+   <h2>Sequences</h2>
 
-* :doc:`compute_jacobian <api_cxx/compute_jacobian>`
-* :doc:`compute_jacobian_hermitian <api_cxx/compute_jacobian_hermitian>`
+* :doc:`FISPSequence <api_cxx/FISPSequence>`
+* :doc:`pSSFPSequence <api_cxx/pSSFPSequence>`
+* :doc:`simulate_magnetization <api_cxx/simulate_magnetization>`
+* :doc:`simulate_magnetization_derivative <api_cxx/simulate_magnetization_derivative>`
 
 .. raw:: html
 
@@ -54,12 +54,10 @@ C++ API Reference
 
 .. raw:: html
 
-   <h2>Sequences</h2>
+   <h2>Jacobian computation</h2>
 
-* :doc:`FISPSequence <api_cxx/FISPSequence>`
-* :doc:`pSSFPSequence <api_cxx/pSSFPSequence>`
-* :doc:`simulate_magnetization <api_cxx/simulate_magnetization>`
-* :doc:`simulate_magnetization_derivative <api_cxx/simulate_magnetization_derivative>`
+* :doc:`compute_jacobian <api_cxx/compute_jacobian>`
+* :doc:`compute_jacobian_hermitian <api_cxx/compute_jacobian_hermitian>`
 
 .. raw:: html
 
