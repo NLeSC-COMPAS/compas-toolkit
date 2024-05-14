@@ -72,8 +72,13 @@ mutable struct CompasArray{T, N} <: AbstractArray{T, N}
     end
 end
 
+# AbstractArray
 Base.size(array::CompasArray) = reverse(array.sizes)
 Base.getindex(array::CompasArray, i) = throw(ArgumentError("cannot index into a 'CompasArray'"))
+
+# 
+Base.show(io::IO, ca::CompasArray) = print(io, typeof(ca), " of size ", size(ca))
+Base.show(io::IO, ::MIME"text/plain", ca::CompasArray) = print(io, ca)
 
 function make_array(context::Context, input::Array{Float32, N})::CompasArray{Float32, N} where {N}
     sizes::Vector{Int64} = [reverse(size(input))...]
