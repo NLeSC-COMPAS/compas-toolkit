@@ -25,5 +25,4 @@ jobs:
           version: ${{ github.event.release.tag_name }}
           zenodo_json: .zenodo.json
           archive: ${{ env.archive }}
-            # TODO: add doi after first released version
-            #doi: ''
+            doi: '10.5281/zenodo.11203406'
