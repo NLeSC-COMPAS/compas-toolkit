@@ -9,10 +9,7 @@
 #include <vector>
 
 #include "compas/core/view.h"
-#include "kmm/array.hpp"
-#include "kmm/cuda/cuda.hpp"
-#include "kmm/host/host.hpp"
-#include "kmm/runtime_handle.hpp"
+#include "kmm/kmm.hpp"
 
 #define COMPAS_CUDA_CHECK(...) KMM_CUDA_CHECK(__VA_ARGS__)
 
