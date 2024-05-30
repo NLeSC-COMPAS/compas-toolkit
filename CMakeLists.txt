@@ -44,6 +44,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cudart_static)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cuda_driver)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cublas)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::nvrtc)
+set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_ARCHITECTURES "80")
 
 # Installation of library files
 set(COMPAS_LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib")
