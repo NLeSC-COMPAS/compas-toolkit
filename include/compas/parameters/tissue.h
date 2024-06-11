@@ -7,8 +7,13 @@
 
 namespace compas {
 
+/**
+ * Stores the tissue parameters for each voxel. Note that, instead of having seperate 1D arrays for each field, data
+ * is instead stored in a single 2D matrix where each row is different field (see `TissueParameterField`) and each
+ * column is a voxel.
+ */
 struct TissueParameters: public Object {
-    Array<float, 2> parameters;
+    Array<float, 2> parameters;  // Size: [TissueParameterField::NUM_FIELDS, nvoxels]
     int nvoxels;
     bool has_z = true;
     bool has_b0 = true;

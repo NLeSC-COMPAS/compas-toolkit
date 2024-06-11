@@ -5,6 +5,10 @@
 
 namespace compas {
 
+/**
+ * The fields that are stored in `TissueParameters` represented as integers. For example, `TissueParameterField::T1`
+ * is `0`, thus the first row of `TissueParameters` are the T1 values of the voxels.
+ */
 namespace TissueParameterField {
 enum {
     T1 = 0,
@@ -31,6 +35,9 @@ struct TissueVoxel {
     float z;
 };
 
+/**
+ * Device-side representation of `TissueParameters`
+ */
 struct TissueParametersView {
     cuda_view<float, 2> parameters;
     int nvoxels;
@@ -38,6 +45,9 @@ struct TissueParametersView {
     bool has_b0;
     bool has_b1;
 
+    /**
+     * Returns the parameters for the voxel at location `i`.
+     */
     COMPAS_DEVICE TissueVoxel get(index_t i) const {
         TissueVoxel voxel;
 

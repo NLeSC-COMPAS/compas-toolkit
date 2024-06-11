@@ -4,6 +4,9 @@
 
 namespace compas {
 
+/***
+ * The base class for the `CartesianTrajectory` and `SpiralTrajectory`.
+ */
 struct Trajectory: public Object {
     int nreadouts;
     int samples_per_readout;

@@ -7,9 +7,13 @@
 
 namespace compas {
 
+/**
+ *  Describes a Spiral gradient trajectory. This is represented by storing the starting position in `k-space` for
+ *  each readout and the step (`delta_k`) per sample point. The step can be different for each readout.
+ */
 struct SpiralTrajectory: public Trajectory {
-    Array<cfloat> k_start;
-    Array<cfloat> delta_k;
+    Array<cfloat> k_start;  // Size: nreadouts
+    Array<cfloat> delta_k;  // Size: nreadouts
 
     SpiralTrajectory(
         int nreadouts,
@@ -22,6 +26,18 @@ struct SpiralTrajectory: public Trajectory {
         delta_k(delta_k) {}
 };
 
+/**
+ *
+ * Create a Spiral trajectory object.
+ *
+ * @param context
+ * @param nreadouts
+ * @param samples_per_readout
+ * @param delta_t
+ * @param k_start
+ * @param delta_k
+ * @return
+ */
 inline SpiralTrajectory make_spiral_trajectory(
     const CudaContext& context,
     int nreadouts,

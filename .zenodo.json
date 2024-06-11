@@ -1,0 +1,21 @@
+{
+  "upload_type": "software",
+  "description": "High-Performance GPU library for quantitative MRI research.",
+  "title": "Compas Toolkit",
+  "creators": [
+    {
+      "affiliation": "Netherlands eScience Center",
+      "name": "Alessio Sclocco"
+    },
+    {
+      "affiliation": "Netherlands eScience Center",
+      "name": "Stijn Heldens"
+    },
+    {
+      "affiliation": "UMC Utrecht",
+      "name": "Oscar van der Heide"
+    }
+  ],
+  "keywords": ["GPU", "Julia", "Cuda", "MRI", "Quantitative MRI"],
+  "license": "Apache-2.0"
+}

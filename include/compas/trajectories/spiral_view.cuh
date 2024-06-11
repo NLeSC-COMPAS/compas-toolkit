@@ -1,9 +1,9 @@
 #pragma once
 
-#include "compas/trajectories/cartesian_view.cuh"
 #include "compas/core/complex_type.h"
 #include "compas/core/view.h"
 #include "compas/parameters/tissue_view.cuh"
+#include "compas/trajectories/cartesian_view.cuh"
 
 namespace compas {
 

@@ -8,8 +8,10 @@
 
    Compas Toolkit <self>
    install
+   example
    api_cxx
-   Github repository <https://github.com/NLeSC-COMPAS/compas-toolkit>
+   Julia API <https://nlesc-compas.github.io/compas-toolkit/api_julia>
+   Github Repository <https://github.com/NLeSC-COMPAS/compas-toolkit>
 
 Compas Toolkit
 ===============
@@ -33,8 +35,8 @@ Usage
 To use the Compas Toolkit in Julia, simply build the Julia bindings using the instructions above and then add the directory ``CompasToolkit.jl`` to you Julia project.
 
 .. code-block:: julia
-   $ julia
-   > using Pkg; Pkg.add(path="<path to compas-toolkit>/CompasToolkit.jl/")
+
+   using Pkg; Pkg.add(path="<path to compas-toolkit>/CompasToolkit.jl/")
 
 
 You can then import the library with ``using CompasToolkit``.
