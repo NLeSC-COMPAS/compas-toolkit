@@ -4,7 +4,7 @@
 namespace compas {
 namespace kernels {
 
-__global__ void delta_to_sample_exponent(
+static __global__ void delta_to_sample_exponent(
     cuda_view_mut<cfloat, 2> E,
     cuda_view_mut<cfloat, 2> dEdT2,
     CartesianTrajectoryView trajectory,
