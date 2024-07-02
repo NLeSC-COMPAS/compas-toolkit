@@ -47,18 +47,15 @@ Array<cfloat, 2> compute_jacobian_hermitian(
         trajectory,
         parameters);
 
-    static constexpr int threads_per_item = 32;
-    static constexpr int sample_tiling_factor = 4;
-
-#define COMPAS_COMPUTE_JACOBIAN_IMPL(C, V, R)                                                     \
-    if (ncoils == (C) && nvoxels % (V) == 0 && nreadouts % (R) == 0) {                            \
-        block_dim = 256;                                                                          \
-        grid_dim = div_ceil(uint(nvoxels / (V)) * (threads_per_item), block_dim.x);               \
+#define COMPAS_COMPUTE_JACOBIAN_IMPL(C, V, R, S, BX, BY, BZ)                                                     \
+    if (ncoils == (C) && nreadouts % (R) == 0 && ns % (S) == 0) {               \
+        block_dim = {BX, BY, BZ};                                                                           \
+        grid_dim = div_ceil(uint(nvoxels), uint(V));               \
                                                                                                   \
         ctx.submit_kernel(                                                                        \
             grid_dim,                                                                             \
             block_dim,                                                                            \
-            kernels::jacobian_hermitian_product<C, V, R, sample_tiling_factor, threads_per_item>, \
+            kernels::jacobian_hermitian_product<C, V, R, S, BX, BY, BZ, 1, false, true>, \
             nreadouts,                                                                            \
             ns,                                                                                   \
             nvoxels,                                                                              \
@@ -77,22 +74,20 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     }
 
 #define COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(C) \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 2, 8)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 2, 4)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 2, 2)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 2, 1)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 1, 8)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 1, 4)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 1, 2)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 1, 1)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 16, 16, 64, 2, 4)         \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 16, 4, 64, 2, 1)         \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 8, 8, 64, 2, 1)         \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 8, 1, 64, 2, 1)         \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 4, 1, 64, 1, 1)         \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 2, 1, 64, 1, 1)         \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 1, 1, 64, 1, 1)
 
     COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(1)
     COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(2)
     COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(3)
     COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(4)
-    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(5)
 
-    throw std::runtime_error("cannot support more than 8 coils");
+    throw std::runtime_error("cannot support more than 5 coils");
 }
 
 }  // namespace compas

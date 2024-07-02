@@ -47,12 +47,15 @@ def main():
 
     template_args = ",".join([
         str(ncoils),
-        "VOXELS_PER_THREAD",
-        "READOUT_TILING_FACTOR",
-        "SAMPLE_TILING_FACTOR",
-        "THREADS_PER_ITEM",
+        "VOXEL_TILE_SIZE",
+        "READOUT_TILE_SIZE",
+        "SAMPLE_TILE_SIZE",
         "BLOCK_SIZE_X",
+        "BLOCK_SIZE_Y",
+        "BLOCK_SIZE_Z",
         "BLOCKS_PER_SM",
+        "USE_SMEM_VECTOR",
+        "USE_SMEM_ECHOS",
     ])
 
     kernel_name = f"compas::kernels::jacobian_hermitian_product<{template_args}>"
@@ -70,33 +73,32 @@ def main():
     block_size_names = [f"BLOCK_SIZE_{c}" for c in "XYZ"]
 
     tune_params = dict()
-    tune_params["BLOCK_SIZE_X"] = [64, 128, 256, 512]
-    tune_params["BLOCK_SIZE_Y"] = [1]
-    tune_params["BLOCK_SIZE_Z"] = [1]
+    tune_params["BLOCK_SIZE_X"] = [8, 16, 32, 64]
+    tune_params["BLOCK_SIZE_Y"] = [1, 2, 4, 8, 16]
+    tune_params["BLOCK_SIZE_Z"] = [1, 2, 4, 8, 16]
 
-    tune_params["THREADS_PER_ITEM"] = [1, 2, 4, 8, 16, 32]
-    tune_params["VOXELS_PER_THREAD"] = [1, 2, 3, 4]
-    tune_params["READOUT_TILING_FACTOR"] = [1, 2, 4, 8, 16]
-    tune_params["SAMPLE_TILING_FACTOR"] = [1, 2, 4, 8, 16]
-    tune_params["BLOCKS_PER_SM"] = [4, 8, 12, 16]
+    tune_params["READOUT_TILE_SIZE"] = [1, 2, 4, 8, 16]
+    tune_params["SAMPLE_TILE_SIZE"] = [1, 2, 4, 8, 16]
+    tune_params["VOXEL_TILE_SIZE"] = [16, 32, 64]
+    tune_params["BLOCKS_PER_SM"] = [1]
+    tune_params["USE_SMEM_VECTOR"] = [0, 1]
+    tune_params["USE_SMEM_ECHOS"] = [0, 1]
 
     restrictions = [
-        "BLOCK_SIZE_X * BLOCK_SIZE_Y >= 64",
-        "BLOCK_SIZE_X * BLOCK_SIZE_Y <= 1024",
-        "BLOCK_SIZE_X >= THREADS_PER_ITEM",
-        "READOUT_TILING_FACTOR * SAMPLE_TILING_FACTOR <= 16",
+        "BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z >= 64",
+        "BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z <= 1024",
         "BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z * BLOCKS_PER_SM <= 2048",
-        f"{nvoxels} % VOXELS_PER_THREAD == 0",
+        #"READOUT_TILE_SIZE * SAMPLE_TILE_SIZE * VOXEL_TILE_SIZE <= 64",
+        "VOXEL_TILE_SIZE % BLOCK_SIZE_X == 0",
+        "READOUT_TILE_SIZE % BLOCK_SIZE_Y == 0",
+        "SAMPLE_TILE_SIZE % BLOCK_SIZE_Z == 0",
+        f"{nreadouts} % READOUT_TILE_SIZE == 0",
+        f"{nsamples_per_readout} % SAMPLE_TILE_SIZE == 0",
     ]
 
-    def problem_size(config):
-        return [
-                div_ceil(nvoxels * config["THREADS_PER_ITEM"], config["VOXELS_PER_THREAD"]), 
-                1,
-                1,
-        ]
+    problem_size = [nvoxels, 1, 1]
 
-    kernel_tuner.tune_kernel(
+    results, env = kernel_tuner.tune_kernel(
         kernel_name,
         kernel_source,
         problem_size,
@@ -109,6 +111,33 @@ def main():
         strategy=cli_args.strategy,
         cache=cli_args.cache,
     )
+
+
+    results = sorted(results, key=lambda p: p["time"])
+    best_results = []
+
+    print("finished tuning, best results:")
+
+    for record in results:
+        should_skip = False
+
+        for r in best_results:
+            if record["READOUT_TILE_SIZE"] % r["READOUT_TILE_SIZE"] == 0 and \
+                    record["SAMPLE_TILE_SIZE"] % r["SAMPLE_TILE_SIZE"] == 0:
+                should_skip = True
+
+        if should_skip:
+            continue
+
+        best_results.append(record)
+        print((
+            record["SAMPLE_TILE_SIZE"],
+            record["VOXEL_TILE_SIZE"],
+            record["READOUT_TILE_SIZE"],
+            record["BLOCK_SIZE_X"],
+            record["BLOCK_SIZE_Y"],
+            record["BLOCK_SIZE_Z"],
+        ), record["time"])
 
 
 if __name__ == "__main__":
