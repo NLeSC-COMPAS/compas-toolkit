@@ -47,47 +47,46 @@ Array<cfloat, 2> compute_jacobian_hermitian(
         trajectory,
         parameters);
 
-#define COMPAS_COMPUTE_JACOBIAN_IMPL(C, V, R, S, BX, BY, BZ)                                                     \
-    if (ncoils == (C) && nreadouts % (R) == 0 && ns % (S) == 0) {               \
-        block_dim = {BX, BY, BZ};                                                                           \
-        grid_dim = div_ceil(uint(nvoxels), uint(V));               \
-                                                                                                  \
-        ctx.submit_kernel(                                                                        \
-            grid_dim,                                                                             \
-            block_dim,                                                                            \
-            kernels::jacobian_hermitian_product<C, V, R, S, BX, BY, BZ, 1, false, true>, \
-            nreadouts,                                                                            \
-            ns,                                                                                   \
-            nvoxels,                                                                              \
-            ncoils,                                                                               \
-            write(JHv),                                                                           \
-            echos,                                                                                \
-            delta_echos_T1,                                                                       \
-            delta_echos_T2,                                                                       \
-            parameters.parameters.size(1),                                                        \
-            parameters.parameters,                                                                \
-            coil_sensitivities,                                                                   \
-            vector,                                                                               \
-            E,                                                                                    \
-            dEdT2);                                                                               \
-        return JHv;                                                                               \
+#define COMPAS_COMPUTE_JACOBIAN_IMPL(C, V, R, S, BX, BY, BZ)                \
+    if (ncoils == (C) && nreadouts % (R) == 0 && ns % (S) == 0) {           \
+        block_dim = {BX, BY, BZ};                                           \
+        grid_dim = div_ceil(uint(nvoxels), uint(V));                        \
+                                                                            \
+        ctx.submit_kernel(                                                  \
+            grid_dim,                                                       \
+            block_dim,                                                      \
+            kernels::jacobian_hermitian_product<C, V, R, S, BX, BY, BZ, 1>, \
+            nreadouts,                                                      \
+            ns,                                                             \
+            nvoxels,                                                        \
+            ncoils,                                                         \
+            write(JHv),                                                     \
+            echos,                                                          \
+            delta_echos_T1,                                                 \
+            delta_echos_T2,                                                 \
+            parameters.parameters.size(1),                                  \
+            parameters.parameters,                                          \
+            coil_sensitivities,                                             \
+            vector,                                                         \
+            E,                                                              \
+            dEdT2);                                                         \
+        return JHv;                                                         \
     }
 
-#define COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(C) \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 16, 16, 64, 2, 4)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 16, 4, 64, 2, 1)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 8, 8, 64, 2, 1)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 8, 1, 64, 2, 1)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 4, 1, 64, 1, 1)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 2, 1, 64, 1, 1)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 64, 1, 1, 64, 1, 1)
+#define COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(C)        \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 2, 32, 32, 2, 2) \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 2, 16, 32, 2, 2) \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 8, 8, 32, 2, 1)  \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 4, 4, 32, 2, 1)  \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 2, 2, 32, 2, 1)  \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 128, 1, 1, 128, 1, 1)
 
     COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(1)
     COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(2)
     COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(3)
     COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(4)
 
-    throw std::runtime_error("cannot support more than 5 coils");
+    throw std::runtime_error("cannot support more than 4 coils");
 }
 
 }  // namespace compas

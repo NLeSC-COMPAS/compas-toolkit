@@ -34,23 +34,22 @@ template<
         int block_size_y=1,
         int block_size_z=1,
         int blocks_per_sm=1,
-        bool smem_vector=false,
-        bool smem_echos=false>
+        bool use_smem=true>
 __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __global__ void jacobian_hermitian_product(
     int nreadouts,
     int nsamples_per_readout,
     int nvoxels,
     int ncoils,
-    cfloat* JHv_ptr,
-    const cfloat* echos_ptr,
-    const cfloat* delta_echos_T1_ptr,
-    const cfloat* delta_echos_T2_ptr,
+    cfloat* __restrict__ JHv_ptr,
+    const cfloat* __restrict__ echos_ptr,
+    const cfloat* __restrict__ delta_echos_T1_ptr,
+    const cfloat* __restrict__ delta_echos_T2_ptr,
     int parameters_stride,
-    const float* parameters_ptr,
-    const float* coil_sensitivities_ptr,
-    const cfloat* vector_ptr,
-    const cfloat* E_ptr,
-    const cfloat* dEdT2_ptr) {
+    const float* __restrict__ parameters_ptr,
+    const float* __restrict__ coil_sensitivities_ptr,
+    const cfloat* __restrict__ vector_ptr,
+    const cfloat* __restrict__ E_ptr,
+    const cfloat* __restrict__ dEdT2_ptr) {
 
     cuda_view_mut<cfloat, 2> JHv = {JHv_ptr, {{4, nvoxels}}};
     cuda_view<cfloat, 2> echos = {echos_ptr, {{nreadouts, nvoxels}}};
@@ -62,6 +61,11 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
     cuda_view<cfloat, 2> dEdT2 = {dEdT2_ptr, {{nsamples_per_readout, nvoxels}}};
     cuda_view<float, 2> parameters = {parameters_ptr, {{TissueParameterField::NUM_FIELDS, parameters_stride}}};
 
+    static constexpr index_t voxels_per_thread =
+            (voxel_tile_size / block_size_x) + int(voxel_tile_size % block_size_x > 0);
+    static constexpr index_t readouts_per_thread = readout_tile_size / block_size_y;
+    static constexpr index_t samples_per_thread = sample_tile_size / block_size_z;
+
     auto tid_x = block_size_x > 0 ? index_t(threadIdx.x) : 0;
     auto tid_y = block_size_y > 0 ? index_t(threadIdx.y) : 0;
     auto tid_z = block_size_z > 0 ? index_t(threadIdx.z) : 0;
@@ -72,110 +76,78 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
     __builtin_assume(tid_z >= 0 && tid_z < block_size_z);
 
     __shared__ float shared_reduction[2][block_size_z][block_size_y][block_size_x];
-    __shared__ float shared_vector[2][coils_per_thread][readout_tile_size][sample_tile_size];
-    __shared__ float shared_echos[2][readout_tile_size][voxel_tile_size];
-    __shared__ float shared_dechos[4][readout_tile_size][voxel_tile_size];
-
-    if (voxel_block_offset >= nvoxels) {
-        return;
-    }
-
-    static constexpr index_t voxels_per_thread =
-            (voxel_tile_size / block_size_x) + int(voxel_tile_size % block_size_x > 0);
+    __shared__ float shared_E[2][samples_per_thread][block_size_z][block_size_x];
+    __shared__ float shared_dEdT2[2][samples_per_thread][block_size_z][block_size_x];
 
     cfloat mHv[voxels_per_thread][coils_per_thread] = {cfloat(0)};
     vec2<cfloat> dmHv[voxels_per_thread][coils_per_thread] = {cfloat(0)};
 
-    for (index_t readout_offset = 0; readout_offset < nreadouts; readout_offset += readout_tile_size) {
-        if (smem_echos) {
-            __syncthreads();
+    for (index_t lv = 0; lv < voxels_per_thread; lv++) {
+        index_t v = lv * block_size_x + tid_x;
+        index_t voxel = voxel_block_offset + v;
 
-            if (tid_z == 0) {
-#pragma unroll voxels_per_thread
-                for (index_t v = tid_x; v < voxel_tile_size; v += block_size_x) {
-                    index_t voxel = voxel_block_offset + v;
-                    if (voxel >= nvoxels) {
-                        break;
-                    }
-
-#pragma unroll readout_tile_size / block_size_y
-                    for (index_t r = tid_y; r < readout_tile_size; r += block_size_y) {
-                        auto readout = readout_offset + r;
-
-                        shared_echos[0][r][v] = echos[readout][voxel].re;
-                        shared_echos[1][r][v] = echos[readout][voxel].im;
-
-                        shared_dechos[0][r][v] = delta_echos_T1[readout][voxel].re;
-                        shared_dechos[1][r][v] = delta_echos_T1[readout][voxel].im;
-
-                        shared_dechos[2][r][v] = delta_echos_T2[readout][voxel].re;
-                        shared_dechos[3][r][v] = delta_echos_T2[readout][voxel].im;
-                    }
-                }
-            }
-
-            __syncthreads();
+        if (voxel >= nvoxels || v >= voxel_tile_size) {
+            break;
         }
 
         for (index_t sample_offset = 0; sample_offset < nsamples_per_readout; sample_offset += sample_tile_size) {
-            if (smem_vector) {
-                __syncthreads();
+            cfloat local_E[samples_per_thread];
+            cfloat local_dEdT2[samples_per_thread];
 
-#pragma unroll
-                for (int icoil = tid_z; icoil < coils_per_thread; icoil += block_size_z) {
-#pragma unroll
-                    for (int r = tid_y; r < readout_tile_size; r += block_size_y) {
-#pragma unroll
-                        for (int s = tid_x; s < sample_tile_size; s += block_size_x) {
-                            auto readout = readout_offset + r;
-                            auto sample = sample_offset + s;
-
-                            shared_vector[0][icoil][r][s] = vector[icoil][readout][sample].re;
-                            shared_vector[1][icoil][r][s] = vector[icoil][readout][sample].im;
-                        }
-                    }
-                }
-
+            if (use_smem) {
                 __syncthreads();
             }
 
-#pragma unroll voxels_per_thread
-            for (index_t lv = 0; lv < voxels_per_thread; lv++) {
-                index_t v = lv * block_size_x + tid_x;
-                index_t voxel = voxel_block_offset + v;
+#pragma unroll samples_per_thread
+            for (index_t s = 0; s < samples_per_thread; s++) {
+                auto sample = sample_offset + s * block_size_z + tid_z;
 
-                if (voxel >= nvoxels || v >= voxel_tile_size) {
-                    break;
-                }
+                if (use_smem) {
+                    if (tid_y == 0) {
+                        shared_E[0][s][tid_z][tid_x] = E[sample][voxel].real();
+                        shared_E[1][s][tid_z][tid_x] = E[sample][voxel].imag();
 
-#pragma unroll readout_tile_size / block_size_y
-                for (index_t r = tid_y; r < readout_tile_size; r += block_size_y) {
-                    auto readout = readout_offset + r;
-                    cfloat me;
-                    vec2<cfloat> dme;
-
-                    if (smem_echos) {
-                        me = cfloat(shared_echos[0][r][v], shared_echos[1][r][v]);
-                        dme[0] = cfloat(shared_dechos[0][r][v], shared_dechos[1][r][v]);
-                        dme[1] = cfloat(shared_dechos[2][r][v], shared_dechos[3][r][v]);
-                    } else {
-                        me = echos[readout][voxel];
-                        dme = vec2<cfloat>{delta_echos_T1[readout][voxel], delta_echos_T2[readout][voxel]};
+                        shared_dEdT2[0][s][tid_z][tid_x] = dEdT2[sample][voxel].real();
+                        shared_dEdT2[1][s][tid_z][tid_x] = dEdT2[sample][voxel].imag();
                     }
+                } else {
+                    local_E[s] = E[sample][voxel];
+                    local_dEdT2[s] = dEdT2[sample][voxel];
+                }
+            }
 
-#pragma unroll sample_tile_size / block_size_z
-                    for (index_t s = tid_z; s < sample_tile_size; s += block_size_z) {
-                        auto sample = sample_offset + s;
-                        auto Es = E[sample][voxel];
+            if (use_smem) {
+                __syncthreads();
+            }
+
+            for (index_t readout_offset = 0; readout_offset < nreadouts; readout_offset += readout_tile_size) {
+
+#pragma unroll readouts_per_thread
+                for (index_t r = 0; r < readouts_per_thread; r++) {
+                    auto readout = readout_offset + r * block_size_y + tid_y;
+                    cfloat me = echos[readout][voxel];
+                    vec2<cfloat> dme = vec2<cfloat>{delta_echos_T1[readout][voxel], delta_echos_T2[readout][voxel]};
+
+#pragma unroll samples_per_thread
+                    for (index_t s = 0; s < samples_per_thread; s++) {
+                        auto sample = sample_offset + s * block_size_z + tid_z;
+                        cfloat Es;
+                        cfloat dET2s;
+
+                        if (use_smem) {
+                            Es = cfloat {shared_E[0][s][tid_z][tid_x], shared_E[1][s][tid_z][tid_x]};
+                            dET2s = cfloat {shared_dEdT2[0][s][tid_z][tid_x], shared_dEdT2[1][s][tid_z][tid_x]};
+                        } else {
+                            Es = local_E[s];
+                            dET2s = local_dEdT2[s];
+                        }
 
                         auto ms = Es * me;
-                        auto dms = vec2<cfloat>{dme[0] * Es, dme[1] * Es + me * dEdT2[sample][voxel]};
+                        auto dms = vec2<cfloat>{dme[0] * Es, dme[1] * Es + me * dET2s};
 
 #pragma unroll coils_per_thread
                         for (index_t icoil = 0; icoil < coils_per_thread; icoil++) {
-                            auto f = smem_vector ?
-                                     cfloat(shared_vector[0][icoil][r][s], shared_vector[1][icoil][r][s]) :
-                                     vector[icoil][readout][sample];
+                            auto f = vector[icoil][readout][sample];
 
                             // accumulate dot product in mHv
                             mHv[lv][icoil] = add_mul_conj(mHv[lv][icoil], f, ms);

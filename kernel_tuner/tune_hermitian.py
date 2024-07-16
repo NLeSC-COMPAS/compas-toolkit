@@ -9,6 +9,7 @@ def main():
     parser = argparse.ArgumentParser(description="Tune Jacobian hermitian kernel.")
     parser.add_argument("--cache", type=str, help="The cache name", default=None)
     parser.add_argument("--strategy", type=str, help="The strategy name", default=None)
+    parser.add_argument("--ncoils", type=int, help="The number of coils", default=2)
     cli_args = parser.parse_args()
 
     N, K = 224, 5
@@ -16,7 +17,7 @@ def main():
     nvoxels = np.int32(N * N)
     nreadouts = np.int32(N * K)
     nsamples_per_readout = np.int32(N)
-    ncoils = np.int32(4)
+    ncoils = np.int32(cli_args.ncoils)
 
     JHv = random_complex(4, nvoxels)
     echos = random_complex(nreadouts, nvoxels)
@@ -54,8 +55,7 @@ def main():
         "BLOCK_SIZE_Y",
         "BLOCK_SIZE_Z",
         "BLOCKS_PER_SM",
-        "USE_SMEM_VECTOR",
-        "USE_SMEM_ECHOS",
+        "USE_SMEM",
     ])
 
     kernel_name = f"compas::kernels::jacobian_hermitian_product<{template_args}>"
@@ -73,22 +73,21 @@ def main():
     block_size_names = [f"BLOCK_SIZE_{c}" for c in "XYZ"]
 
     tune_params = dict()
-    tune_params["BLOCK_SIZE_X"] = [8, 16, 32, 64]
+    tune_params["BLOCKS_PER_SM"] = [1, 4, 8]
+    tune_params["BLOCK_SIZE_X"] = [8, 16, 32, 64, 128]
     tune_params["BLOCK_SIZE_Y"] = [1, 2, 4, 8, 16]
     tune_params["BLOCK_SIZE_Z"] = [1, 2, 4, 8, 16]
 
-    tune_params["READOUT_TILE_SIZE"] = [1, 2, 4, 8, 16]
-    tune_params["SAMPLE_TILE_SIZE"] = [1, 2, 4, 8, 16]
-    tune_params["VOXEL_TILE_SIZE"] = [16, 32, 64]
-    tune_params["BLOCKS_PER_SM"] = [1]
-    tune_params["USE_SMEM_VECTOR"] = [0, 1]
-    tune_params["USE_SMEM_ECHOS"] = [0, 1]
+    tune_params["READOUT_TILE_SIZE"] = [1, 2, 4, 8, 16, 32, 64]
+    tune_params["SAMPLE_TILE_SIZE"] = [1, 2, 4, 8, 16, 32, 64]
+    tune_params["VOXEL_TILE_SIZE"] = [16, 32, 64, 128]
 
     restrictions = [
+        "BLOCK_SIZE_X == VOXEL_TILE_SIZE",
         "BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z >= 64",
         "BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z <= 1024",
         "BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z * BLOCKS_PER_SM <= 2048",
-        #"READOUT_TILE_SIZE * SAMPLE_TILE_SIZE * VOXEL_TILE_SIZE <= 64",
+        #"READOUT_TILE_SIZE * SAMPLE_TILE_SIZE <= 64",
         "VOXEL_TILE_SIZE % BLOCK_SIZE_X == 0",
         "READOUT_TILE_SIZE % BLOCK_SIZE_Y == 0",
         "SAMPLE_TILE_SIZE % BLOCK_SIZE_Z == 0",
