@@ -25,6 +25,6 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     Array<cfloat, 2> delta_echos_T2,
     TissueParameters parameters,
     CartesianTrajectory trajectory,
-    Array<float, 2> coil_sensitivities,
+    Array<cfloat, 2> coil_sensitivities,
     Array<cfloat, 3> vector);
 }  // namespace compas

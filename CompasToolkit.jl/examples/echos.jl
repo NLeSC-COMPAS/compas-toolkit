@@ -87,7 +87,7 @@ parameters = vec(make_phantom(N, coordinates));
 
 # Make coil sensitivities
 ncoils = 2
-coil_sensitivities = rand((0.75:0.01:1.25), ncoils,N^2) .|> Float32
+coil_sensitivities = rand((0.75:0.01:1.25), ncoils,N^2) .|> ComplexF32
 coil_sensitivities .= 1
 coil_sensitivities = map(SVector{ncoils}, eachcol(coil_sensitivities))
 

@@ -13,7 +13,7 @@ Array<cfloat, 3> compute_jacobian(
     Array<cfloat, 2> delta_echos_T2,
     TissueParameters parameters,
     CartesianTrajectory trajectory,
-    Array<float, 2> coil_sensitivities,
+    Array<cfloat, 2> coil_sensitivities,
     Array<cfloat, 2> vector) {
     static constexpr int threads_per_sample = 16;
     static constexpr dim3 block_dim = {64, 4};

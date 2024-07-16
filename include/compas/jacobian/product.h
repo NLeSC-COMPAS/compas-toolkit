@@ -25,7 +25,7 @@ Array<cfloat, 3> compute_jacobian(
     Array<cfloat, 2> delta_echos_T2,
     TissueParameters parameters,
     CartesianTrajectory trajectory,
-    Array<float, 2> coil_sensitivities,
+    Array<cfloat, 2> coil_sensitivities,
     Array<cfloat, 2> vector);
 
 }  // namespace compas

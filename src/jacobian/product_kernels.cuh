@@ -55,7 +55,7 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_pro
     const cfloat* delta_echos_T2_ptr,
     int parameters_stride,
     const float* parameters_ptr,
-    const float* coil_sensitivities_ptr,
+    const cfloat* coil_sensitivities_ptr,
     const cfloat* E_ptr,
     const cfloat* dEdT2_ptr,
     const cfloat* v_ptr) {
@@ -63,7 +63,7 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_pro
     auto delta_echos_T1 = cuda_view<cfloat, 2> {delta_echos_T1_ptr, {{nreadouts, nvoxels}}};
     auto delta_echos_T2 = cuda_view<cfloat, 2> {delta_echos_T2_ptr, {{nreadouts, nvoxels}}};
 
-    auto coil_sensitivities = cuda_view<float, 2> {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
+    auto coil_sensitivities = cuda_view<cfloat, 2> {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
 
     auto E = cuda_view<cfloat, 2> {E_ptr, {{samples_per_readout, nvoxels}}};
     auto dEdT2 = cuda_view<cfloat, 2> {dEdT2_ptr, {{samples_per_readout, nvoxels}}};

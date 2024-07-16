@@ -24,7 +24,7 @@ def main():
     delta_echos_T1 = random_complex(nreadouts, nvoxels)
     delta_echos_T2 = random_complex(nreadouts, nvoxels)
     parameters = random_complex(10, nvoxels)
-    coil_sensitivities = random_float(ncoils, nvoxels)
+    coil_sensitivities = random_complex(ncoils, nvoxels)
     E = random_complex(nsamples_per_readout, nvoxels)
     dEdT2 = random_complex(nsamples_per_readout, nvoxels)
     v = random_complex(ncoils, nreadouts, nvoxels)
@@ -81,6 +81,7 @@ def main():
     tune_params["READOUT_TILE_SIZE"] = [1, 2, 4, 8, 16, 32, 64]
     tune_params["SAMPLE_TILE_SIZE"] = [1, 2, 4, 8, 16, 32, 64]
     tune_params["VOXEL_TILE_SIZE"] = [16, 32, 64, 128]
+    tune_params["USE_SMEM"] = [0, 1]
 
     restrictions = [
         "BLOCK_SIZE_X == VOXEL_TILE_SIZE",

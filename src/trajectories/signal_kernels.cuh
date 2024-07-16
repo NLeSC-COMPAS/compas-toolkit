@@ -47,7 +47,7 @@ __global__ void prepare_signal_cartesian(
 
 __global__ void prepare_signal_cartesian_with_coil(
     cuda_view_mut<cfloat, 2> exponents,
-    cuda_view<float> coil_sensitivities,
+    cuda_view<cfloat> coil_sensitivities,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
@@ -117,7 +117,7 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
     cuda_view_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
     cuda_view<cfloat, 2> exponents,  // [num_samples num_voxels]
     cuda_view<cfloat, 2> factors,  // [num_readouts num_voxels]
-    cuda_view<float, 2> coil_sensitivities  // [num_coils num_voxels]
+    cuda_view<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
 ) {
     static_assert(threads_per_block % threads_cooperative == 0);
 
@@ -149,7 +149,7 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
     }
 
     for (index_t voxel = lane; voxel < num_voxels; voxel += threads_cooperative) {
-        float local_coils[coil_tiling_factor] = {0};
+        cfloat local_coils[coil_tiling_factor] = {0};
 
 #pragma unroll
         for (int c = 0; c < coil_tiling_factor; c++) {
@@ -209,7 +209,7 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_s
     cuda_view_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
     cuda_view<cfloat, 2> exponents,  // [num_readouts num_voxels]
     cuda_view<cfloat, 2> factors,  // [num_readouts num_voxels]
-    cuda_view<float, 2> coil_sensitivities  // [num_coils num_voxels]
+    cuda_view<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
 ) {
     static_assert(threads_per_block % threads_cooperative == 0);
 
@@ -231,7 +231,7 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_s
     }
 
     for (index_t voxel = lane; voxel < num_voxels; voxel += threads_cooperative) {
-        float local_coils[coil_tiling_factor] = {0};
+        cfloat local_coils[coil_tiling_factor] = {0};
 
 #pragma unroll
         for (int c = 0; c < coil_tiling_factor; c++) {

@@ -54,7 +54,7 @@ Array<cfloat, 3> magnetization_to_signal(
     Array<cfloat, 2> echos,
     TissueParameters parameters,
     const Trajectory& trajectory,
-    Array<float, 2> coil_sensitivities,
+    Array<cfloat, 2> coil_sensitivities,
     SimulateSignalMethod method = SimulateSignalMethod::Direct);
 
 }  // namespace compas

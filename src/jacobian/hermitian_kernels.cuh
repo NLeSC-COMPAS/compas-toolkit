@@ -46,7 +46,7 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
     const cfloat* __restrict__ delta_echos_T2_ptr,
     int parameters_stride,
     const float* __restrict__ parameters_ptr,
-    const float* __restrict__ coil_sensitivities_ptr,
+    const cfloat* __restrict__ coil_sensitivities_ptr,
     const cfloat* __restrict__ vector_ptr,
     const cfloat* __restrict__ E_ptr,
     const cfloat* __restrict__ dEdT2_ptr) {
@@ -55,7 +55,7 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
     cuda_view<cfloat, 2> echos = {echos_ptr, {{nreadouts, nvoxels}}};
     cuda_view<cfloat, 2> delta_echos_T1 = {delta_echos_T1_ptr, {{nreadouts, nvoxels}}};
     cuda_view<cfloat, 2> delta_echos_T2 = {delta_echos_T2_ptr, {{nreadouts, nvoxels}}};
-    cuda_view<float, 2> coil_sensitivities = {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
+    cuda_view<cfloat, 2> coil_sensitivities = {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
     cuda_view<cfloat, 3> vector = {vector_ptr, {{ncoils, nreadouts, nsamples_per_readout}}};
     cuda_view<cfloat, 2> E = {E_ptr, {{nsamples_per_readout, nvoxels}}};
     cuda_view<cfloat, 2> dEdT2 = {dEdT2_ptr, {{nsamples_per_readout, nvoxels}}};
