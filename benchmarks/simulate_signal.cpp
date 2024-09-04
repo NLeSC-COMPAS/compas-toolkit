@@ -13,7 +13,7 @@ static void benchmark_method(
     SimulateSignalMethod method,
     const CudaContext& context,
     Array<cfloat, 2> echos,
-    Array<float, 2> coil_sensitivities,
+    Array<cfloat, 2> coil_sensitivities,
     TissueParameters parameters,
     CartesianTrajectory trajectory,
     std::vector<cfloat>& signal_ref) {
@@ -73,7 +73,7 @@ int main() {
         h_echos[i] = float(i) / float(h_echos.size());
     }
 
-    auto h_coils = std::vector<float>(ncoils * nvoxels);
+    auto h_coils = std::vector<cfloat>(ncoils * nvoxels);
     for (int i = 0; i < ncoils; i++) {
         std::fill_n(h_coils.data() + nvoxels * i, nvoxels, float(i + 1) / ncoils);
     }

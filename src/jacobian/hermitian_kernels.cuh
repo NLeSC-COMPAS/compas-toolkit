@@ -3,136 +3,221 @@
 #include "compas/core/vector.h"
 #include "compas/parameters/tissue_view.cuh"
 #include "compas/trajectories/cartesian_view.cuh"
+#include "product_kernels.cuh"
 
 namespace compas {
 namespace kernels {
 
+// Defined in product_kernels.cuh
+__global__ void delta_to_sample_exponent(
+        cuda_view_mut<cfloat, 2> E,
+        cuda_view_mut<cfloat, 2> dEdT2,
+        CartesianTrajectoryView trajectory,
+        TissueParametersView parameters);
+
 /// Computes `a + b * conj(c)`
+__device__
 static COMPAS_DEVICE cfloat add_mul_conj(cfloat a, cfloat b, cfloat c) {
     // Writing out the full equation results in better codegen with more FMAs
-    return {a.re + b.re * c.re + b.im * c.im, a.im + (-b.re) * c.im + b.im * c.re};
+    return {
+        fmaf(b.im, c.im, fmaf(b.re, c.re, a.re)),
+        fmaf(b.im, c.re, fmaf(-b.re, c.im, a.im))
+    };
 }
 
-template<int ncoils>
-static COMPAS_DEVICE void expand_readout_and_accumulate_mhv(
-    vec<cfloat, ncoils>& mHv,
-    vec<vec2<cfloat>, ncoils>& dmHv,
-    cfloat me,
-    vec2<cfloat> dme,
-    TissueVoxel p,
-    CartesianTrajectoryView trajectory,
-    int readout,
-    cuda_view<cfloat, 3> vector) {
-    auto ns = trajectory.samples_per_readout;
-    auto delta_t = trajectory.delta_t;
-    auto delta_k = trajectory.delta_k;
-    auto R2 = float(1.0f / p.T2);
-    auto x = p.x;
-    auto y = p.y;
-
-    // Gradient rotation per sample point
-    auto Theta = delta_k.re * x + delta_k.im * y;
-    // B₀ rotation per sample point
-    Theta += delta_t * p.B0 * float(2 * M_PI);
-
-    //"Rewind" to start of readout
-    cfloat R = exp(float(ns) * 0.5f * cfloat(delta_t * R2, -Theta));
-    vec2<cfloat> dR = {0, -float(ns) * 0.5f * delta_t * R2 * R2 * R};
-
-    auto dms = dme * R + me * dR;
-    auto ms = me * R;
-
-    // T2 decay and gradient- and B₀ induced rotation per sample
-    auto E2 = exp(cfloat(-delta_t * R2, Theta));
-    auto dE2 = vec2<cfloat> {0, delta_t * R2 * R2 * E2};
-
-#pragma unroll 8
-    for (int sample = 0; sample < ns; sample++) {
-        // accumulate dot product in mHv
-#pragma unroll
-        for (int icoil = 0; icoil < ncoils; icoil++) {
-            auto v = vector[icoil][readout][sample];
-
-            mHv[icoil] = add_mul_conj(mHv[icoil], v, ms);
-            dmHv[icoil][0] = add_mul_conj(dmHv[icoil][0], v, dms[0]);
-            dmHv[icoil][1] = add_mul_conj(dmHv[icoil][1], v, dms[1]);
-        }
-
-        // compute magnetization at next sample point
-        dms = dms * E2 + ms * dE2;
-        ms = ms * E2;
-    }
-}
-
-template<int ncoils = 1>
-__global__ void jacobian_hermitian_product(
+template<
+        int coils_per_thread = 1,
+        int voxel_tile_size=1,
+        int readout_tile_size=1,
+        int sample_tile_size=1,
+        int block_size_x=64,
+        int block_size_y=1,
+        int block_size_z=1,
+        int blocks_per_sm=1,
+        bool use_smem=true>
+__launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __global__ void jacobian_hermitian_product(
     int nreadouts,
     int nsamples_per_readout,
     int nvoxels,
-    cuda_view_mut<cfloat, 2> JHv,
-    cuda_view<cfloat, 2> echos,
-    cuda_view<cfloat, 2> delta_echos_T1,
-    cuda_view<cfloat, 2> delta_echos_T2,
-    TissueParametersView parameters,
-    CartesianTrajectoryView trajectory,
-    cuda_view<float, 2> coil_sensitivities,
-    cuda_view<cfloat, 3> vector) {
-    COMPAS_ASSUME(echos.size(0) == nreadouts);
-    COMPAS_ASSUME(echos.size(1) == nvoxels);
-    COMPAS_ASSUME(delta_echos_T1.size(0) == nreadouts);
-    COMPAS_ASSUME(delta_echos_T1.size(1) == nvoxels);
-    COMPAS_ASSUME(delta_echos_T2.size(0) == nreadouts);
-    COMPAS_ASSUME(delta_echos_T2.size(1) == nvoxels);
-    COMPAS_ASSUME(coil_sensitivities.size(0) == ncoils);
-    COMPAS_ASSUME(coil_sensitivities.size(1) == nvoxels);
-    COMPAS_ASSUME(vector.size(0) == ncoils);
-    COMPAS_ASSUME(vector.size(1) == nreadouts);
-    COMPAS_ASSUME(vector.size(2) == nsamples_per_readout);
+    int ncoils,
+    cfloat* __restrict__ JHv_ptr,
+    const cfloat* __restrict__ echos_ptr,
+    const cfloat* __restrict__ delta_echos_T1_ptr,
+    const cfloat* __restrict__ delta_echos_T2_ptr,
+    int parameters_stride,
+    const float* __restrict__ parameters_ptr,
+    const cfloat* __restrict__ coil_sensitivities_ptr,
+    const cfloat* __restrict__ vector_ptr,
+    const cfloat* __restrict__ E_ptr,
+    const cfloat* __restrict__ dEdT2_ptr) {
 
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
+    cuda_view_mut<cfloat, 2> JHv = {JHv_ptr, {{4, nvoxels}}};
+    cuda_view<cfloat, 2> echos = {echos_ptr, {{nreadouts, nvoxels}}};
+    cuda_view<cfloat, 2> delta_echos_T1 = {delta_echos_T1_ptr, {{nreadouts, nvoxels}}};
+    cuda_view<cfloat, 2> delta_echos_T2 = {delta_echos_T2_ptr, {{nreadouts, nvoxels}}};
+    cuda_view<cfloat, 2> coil_sensitivities = {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
+    cuda_view<cfloat, 3> vector = {vector_ptr, {{ncoils, nreadouts, nsamples_per_readout}}};
+    cuda_view<cfloat, 2> E = {E_ptr, {{nsamples_per_readout, nvoxels}}};
+    cuda_view<cfloat, 2> dEdT2 = {dEdT2_ptr, {{nsamples_per_readout, nvoxels}}};
+    cuda_view<float, 2> parameters = {parameters_ptr, {{TissueParameterField::NUM_FIELDS, parameters_stride}}};
 
-    if (voxel < nvoxels) {
-        auto p = parameters.get(voxel);
+    static constexpr index_t voxels_per_thread =
+            (voxel_tile_size / block_size_x) + int(voxel_tile_size % block_size_x > 0);
+    static constexpr index_t readouts_per_thread = readout_tile_size / block_size_y;
+    static constexpr index_t samples_per_thread = sample_tile_size / block_size_z;
 
-        vec<cfloat, ncoils> mHv;
-        vec<vec2<cfloat>, ncoils> dmHv;
+    auto tid_x = block_size_x > 0 ? index_t(threadIdx.x) : 0;
+    auto tid_y = block_size_y > 0 ? index_t(threadIdx.y) : 0;
+    auto tid_z = block_size_z > 0 ? index_t(threadIdx.z) : 0;
+    auto voxel_block_offset = index_t(blockIdx.x * voxel_tile_size);
 
-        for (int icoil = 0; icoil < ncoils; icoil++) {
-            mHv[icoil] = 0;
-            dmHv[icoil] = {0, 0};
+    __builtin_assume(tid_x >= 0 && tid_x < block_size_x);
+    __builtin_assume(tid_y >= 0 && tid_y < block_size_y);
+    __builtin_assume(tid_z >= 0 && tid_z < block_size_z);
+
+    __shared__ float shared_reduction[2][block_size_z][block_size_y][block_size_x];
+    __shared__ float shared_E[2][samples_per_thread][block_size_z][block_size_x];
+    __shared__ float shared_dEdT2[2][samples_per_thread][block_size_z][block_size_x];
+
+    cfloat mHv[voxels_per_thread][coils_per_thread] = {cfloat(0)};
+    vec2<cfloat> dmHv[voxels_per_thread][coils_per_thread] = {cfloat(0)};
+
+    for (index_t lv = 0; lv < voxels_per_thread; lv++) {
+        index_t v = lv * block_size_x + tid_x;
+        index_t voxel = voxel_block_offset + v;
+
+        if (voxel >= nvoxels || v >= voxel_tile_size) {
+            break;
         }
 
-        for (int readout = 0; readout < nreadouts; readout++) {
-            cfloat me = echos[readout][voxel];
-            vec2<cfloat> dme = {delta_echos_T1[readout][voxel], delta_echos_T2[readout][voxel]};
+        for (index_t sample_offset = 0; sample_offset < nsamples_per_readout; sample_offset += sample_tile_size) {
+            cfloat local_E[samples_per_thread];
+            cfloat local_dEdT2[samples_per_thread];
 
-            expand_readout_and_accumulate_mhv(mHv, dmHv, me, dme, p, trajectory, readout, vector);
-        }
+            if (use_smem) {
+                __syncthreads();
+            }
 
-        vec<cfloat, 4> result = {0.0F, 0.0F, 0.0F, 0.0F};
+#pragma unroll samples_per_thread
+            for (index_t s = 0; s < samples_per_thread; s++) {
+                auto sample = sample_offset + s * block_size_z + tid_z;
 
-#pragma unroll
-        for (int icoil = 0; icoil < ncoils; icoil++) {
-            auto c = coil_sensitivities[icoil][voxel];
-            auto rho = p.rho;
+                if (use_smem) {
+                    if (tid_y == 0) {
+                        shared_E[0][s][tid_z][tid_x] = E[sample][voxel].real();
+                        shared_E[1][s][tid_z][tid_x] = E[sample][voxel].imag();
 
-            // size = (nr_nonlinpars + 2) x nr_coils
-            auto tmp = vec4<cfloat>(
-                dmHv[icoil][0],
-                dmHv[icoil][1],
-                mHv[icoil],
-                mHv[icoil] * cfloat(0, -1));
-            auto lin_scale = vec4<cfloat>(p.T1 * c * rho, p.T2 * c * rho, c, c);
+                        shared_dEdT2[0][s][tid_z][tid_x] = dEdT2[sample][voxel].real();
+                        shared_dEdT2[1][s][tid_z][tid_x] = dEdT2[sample][voxel].imag();
+                    }
+                } else {
+                    local_E[s] = E[sample][voxel];
+                    local_dEdT2[s] = dEdT2[sample][voxel];
+                }
+            }
 
-#pragma unroll
-            for (int i = 0; i < 4; i++) {
-                result[i] += conj(lin_scale[i]) * tmp[i];
+            if (use_smem) {
+                __syncthreads();
+            }
+
+            for (index_t readout_offset = 0; readout_offset < nreadouts; readout_offset += readout_tile_size) {
+
+#pragma unroll readouts_per_thread
+                for (index_t r = 0; r < readouts_per_thread; r++) {
+                    auto readout = readout_offset + r * block_size_y + tid_y;
+                    cfloat me = echos[readout][voxel];
+                    vec2<cfloat> dme = vec2<cfloat>{delta_echos_T1[readout][voxel], delta_echos_T2[readout][voxel]};
+
+#pragma unroll samples_per_thread
+                    for (index_t s = 0; s < samples_per_thread; s++) {
+                        auto sample = sample_offset + s * block_size_z + tid_z;
+                        cfloat Es;
+                        cfloat dET2s;
+
+                        if (use_smem) {
+                            Es = cfloat {shared_E[0][s][tid_z][tid_x], shared_E[1][s][tid_z][tid_x]};
+                            dET2s = cfloat {shared_dEdT2[0][s][tid_z][tid_x], shared_dEdT2[1][s][tid_z][tid_x]};
+                        } else {
+                            Es = local_E[s];
+                            dET2s = local_dEdT2[s];
+                        }
+
+                        auto ms = Es * me;
+                        auto dms = vec2<cfloat>{dme[0] * Es, dme[1] * Es + me * dET2s};
+
+#pragma unroll coils_per_thread
+                        for (index_t icoil = 0; icoil < coils_per_thread; icoil++) {
+                            auto f = vector[icoil][readout][sample];
+
+                            // accumulate dot product in mHv
+                            mHv[lv][icoil] = add_mul_conj(mHv[lv][icoil], f, ms);
+                            dmHv[lv][icoil][0] = add_mul_conj(dmHv[lv][icoil][0], f, dms[0]);
+                            dmHv[lv][icoil][1] = add_mul_conj(dmHv[lv][icoil][1], f, dms[1]);
+                        }
+                    }
+                }
             }
         }
+    }
 
 #pragma unroll
-        for (int i = 0; i < 4; i++) {
-            JHv[i][voxel] = result[i];
+    for (index_t lv = 0; lv < voxels_per_thread; lv++) {
+        index_t v = lv * block_size_x + tid_x;
+        index_t voxel = voxel_block_offset + v;
+
+        if (voxel >= nvoxels || v >= voxel_tile_size) {
+            break;
+        }
+
+        // load coordinates, parameters, coil sensitivities and proton density for voxel
+        auto T1 = parameters[TissueParameterField::T1][voxel];
+        auto T2 = parameters[TissueParameterField::T2][voxel];
+        auto rho = cfloat{
+                parameters[TissueParameterField::RHO_X][voxel],
+                parameters[TissueParameterField::RHO_Y][voxel]};
+
+#pragma unroll
+        for (index_t i = 0; i < 4; i++) {
+            cfloat result = 0.0F;
+
+#pragma unroll
+            for (index_t icoil = 0; icoil < coils_per_thread; icoil++) {
+                auto c = coil_sensitivities[icoil][voxel];
+
+                // size = (nr_nonlinpars + 2) x nr_coils
+                auto tmp = vec4<cfloat>(
+                        dmHv[lv][icoil][0],
+                        dmHv[lv][icoil][1],
+                        mHv[lv][icoil],
+                        mHv[lv][icoil] * cfloat(0, -1));
+                auto lin_scale = vec4<cfloat>(T1 * c * rho, T2 * c * rho, c, c);
+
+                result += conj(lin_scale[i]) * tmp[i];
+            }
+
+            if (block_size_y > 0 || block_size_z > 0) {
+                __syncthreads();
+                shared_reduction[0][tid_z][tid_y][tid_x] = result.re;
+                shared_reduction[1][tid_z][tid_y][tid_x] = result.im;
+                __syncthreads();
+
+                if (tid_y == 0 && tid_z == 0) {
+#pragma unroll
+                    for (index_t y = 0; y < block_size_y; y++) {
+#pragma unroll
+                        for (index_t z = 0; z < block_size_z; z++) {
+                            if (y != 0 || z != 0) {
+                                result.re += shared_reduction[0][z][y][tid_x];
+                                result.im += shared_reduction[1][z][y][tid_x];
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (tid_y == 0 && tid_z == 0) {
+                JHv[i][voxel] = result;
+            }
         }
     }
 }

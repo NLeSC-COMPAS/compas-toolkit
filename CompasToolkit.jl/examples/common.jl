@@ -72,7 +72,7 @@ function generate_coils(N, ncoils)
     coil₃ = coil₁;
     coil₄ = coil₂;
     
-    return hcat(coil₁ |> vec, coil₂ |> vec, coil₃ |> vec, coil₄ |> vec) .|> Float32 
+    return hcat(coil₁ |> vec, coil₂ |> vec, coil₃ |> vec, coil₄ |> vec) .|> ComplexF32
 end
 
 function generate_echos(N, sequence)

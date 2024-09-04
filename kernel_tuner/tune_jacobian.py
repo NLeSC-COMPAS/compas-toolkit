@@ -44,7 +44,7 @@ def main():
     delta_echos_T1 = random_complex(nreadouts, nvoxels)
     delta_echos_T2 = random_complex(nreadouts, nvoxels)
     parameters = random_complex(10, nvoxels)
-    coil_sensitivities = random_float(ncoils, nvoxels)
+    coil_sensitivities = random_complex(ncoils, nvoxels)
     E = random_complex(nsamples_per_readout, nvoxels)
     dEdT2 = random_complex(nsamples_per_readout, nvoxels)
     v = random_complex(4, nvoxels)
