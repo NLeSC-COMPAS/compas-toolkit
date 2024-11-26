@@ -10,6 +10,7 @@ namespace kernels {
 
 // Defined in product_kernels.cuh
 __global__ void delta_to_sample_exponent(
+        kmm::NDRange subrange,
         cuda_view_mut<cfloat, 2> E,
         cuda_view_mut<cfloat, 2> dEdT2,
         CartesianTrajectoryView trajectory,
@@ -25,6 +26,18 @@ static COMPAS_DEVICE cfloat add_mul_conj(cfloat a, cfloat b, cfloat c) {
     };
 }
 
+template <typename T, typename U>
+__global__
+void convert_kernel(kmm::NDRange subrange, cuda_view_mut<T, 3> output, cuda_view<U, 3> input) {
+    auto k = index_t(blockIdx.x * blockDim.x + threadIdx.x);
+    auto j = index_t(blockIdx.y * blockDim.y + threadIdx.y);
+    auto i = index_t(blockIdx.z * blockDim.z + threadIdx.z);
+
+    if (input.in_bounds({i, j, k})) {
+        output[i][j][k] = T{input[i][j][k]};
+    }
+}
+
 template<
         int coils_per_thread = 1,
         int voxel_tile_size=1,
@@ -36,6 +49,7 @@ template<
         int blocks_per_sm=1,
         bool use_smem=true>
 __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __global__ void jacobian_hermitian_product(
+    kmm::NDRange subrange,
     int nreadouts,
     int nsamples_per_readout,
     int nvoxels,
@@ -47,7 +61,7 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
     int parameters_stride,
     const float* __restrict__ parameters_ptr,
     const cfloat* __restrict__ coil_sensitivities_ptr,
-    const cfloat* __restrict__ vector_ptr,
+    const complex_type<float>* __restrict__ vector_ptr,
     const cfloat* __restrict__ E_ptr,
     const cfloat* __restrict__ dEdT2_ptr) {
 
@@ -56,7 +70,7 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
     cuda_view<cfloat, 2> delta_echos_T1 = {delta_echos_T1_ptr, {{nreadouts, nvoxels}}};
     cuda_view<cfloat, 2> delta_echos_T2 = {delta_echos_T2_ptr, {{nreadouts, nvoxels}}};
     cuda_view<cfloat, 2> coil_sensitivities = {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
-    cuda_view<cfloat, 3> vector = {vector_ptr, {{ncoils, nreadouts, nsamples_per_readout}}};
+    cuda_view<complex_type<float>, 3> vector = {vector_ptr, {{ncoils, nreadouts, nsamples_per_readout}}};
     cuda_view<cfloat, 2> E = {E_ptr, {{nsamples_per_readout, nvoxels}}};
     cuda_view<cfloat, 2> dEdT2 = {dEdT2_ptr, {{nsamples_per_readout, nvoxels}}};
     cuda_view<float, 2> parameters = {parameters_ptr, {{TissueParameterField::NUM_FIELDS, parameters_stride}}};
@@ -147,7 +161,7 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
 
 #pragma unroll coils_per_thread
                         for (index_t icoil = 0; icoil < coils_per_thread; icoil++) {
-                            auto f = vector[icoil][readout][sample];
+                            auto f = cfloat {vector[icoil][readout][sample]};
 
                             // accumulate dot product in mHv
                             mHv[lv][icoil] = add_mul_conj(mHv[lv][icoil], f, ms);

@@ -1,3 +1,5 @@
+#pragma once
+
 #include "compas/core/complex_type.h"
 #include "compas/core/context.h"
 #include "compas/parameters/tissue.h"
@@ -19,7 +21,7 @@ namespace compas {
  * @return The result of `Jv`. Size: [ncoils, nreadouts, nsamples_per_readout].
  */
 Array<cfloat, 3> compute_jacobian(
-    const CudaContext& ctx,
+    const CompasContext& ctx,
     Array<cfloat, 2> echos,
     Array<cfloat, 2> delta_echos_T1,
     Array<cfloat, 2> delta_echos_T2,

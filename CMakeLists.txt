@@ -38,6 +38,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 set(PROJECT_CLANG_TIDY clang-tidy)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${PROJECT_CLANG_TIDY}")
+set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
 find_package(CUDAToolkit REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cudart_static)
@@ -62,6 +63,7 @@ configure_file(
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 add_subdirectory(thirdparty/Catch2)
+
 set(KMM_USE_CUDA ON)
 set(KMM_STATIC ON)
 add_subdirectory(thirdparty/kmm)

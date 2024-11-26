@@ -25,9 +25,11 @@ __device__ void reduce_within_block(float* shared_inputs, float* output) {
 
 template<int block_size>
 __global__ void calculate_elementwise_difference(
-    cuda_view<cfloat> lhs,
-    cuda_view<cfloat> rhs,
-    cuda_view_mut<cfloat> output,
+    kmm::NDRange,
+    int n,
+    const cfloat* lhs,
+    const cfloat* rhs,
+    cfloat* output,
     cuda_view_mut<float> partial_sums) {
     __shared__ float shared_partial_sums[block_size];
     auto tid = index_t(threadIdx.x);
@@ -36,7 +38,7 @@ __global__ void calculate_elementwise_difference(
 
     shared_partial_sums[tid] = 0;
 
-    for (auto i = start; i < output.size(); i += stride) {
+    for (auto i = start; i < n; i += stride) {
         auto diff = lhs[i] - rhs[i];
         output[i] = diff;
         shared_partial_sums[tid] += diff.norm();
@@ -49,7 +51,7 @@ __global__ void calculate_elementwise_difference(
 
 template<int block_size>
 __global__ void
-accumulate_partial_sums(cuda_view<float> partial_sums, cuda_view_mut<float> result_sum) {
+accumulate_partial_sums(kmm::NDRange, cuda_view<float> partial_sums, cuda_view_mut<float> result_sum) {
     __shared__ float shared_partial_sums[block_size];
     auto tid = index_t(threadIdx.x);
     shared_partial_sums[tid] = 0;

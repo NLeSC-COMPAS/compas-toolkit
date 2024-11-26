@@ -50,7 +50,7 @@ enum struct SimulateSignalMethod {
  * @return The MR signal. Size: [ncoils, nreadouts, nsamples_per_readout].
  */
 Array<cfloat, 3> magnetization_to_signal(
-    const CudaContext& context,
+    const CompasContext& context,
     Array<cfloat, 2> echos,
     TissueParameters parameters,
     const Trajectory& trajectory,

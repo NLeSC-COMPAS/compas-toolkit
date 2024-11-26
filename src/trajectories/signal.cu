@@ -10,15 +10,16 @@
 namespace compas {
 
 void magnetization_to_signal_cartesian_direct(
-    const kmm::CudaDevice& context,
-    cuda_view_mut<cfloat, 3> signal,
+    const kmm::DeviceContext& context,
+    kmm::NDRange subrange,
+    cuda_subview_mut<cfloat, 3> signal,
     cuda_view<cfloat, 2> echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
     cuda_view<cfloat, 2> coil_sensitivities,
     cuda_view_mut<cfloat, 2> exponents,
     cuda_view_mut<cfloat, 2> factors) {
-    int ncoils = coil_sensitivities.size(0);
+    int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
@@ -82,7 +83,8 @@ void magnetization_to_signal_cartesian_direct(
 }
 
 void magnetization_to_signal_cartesian_gemm(
-    const kmm::CudaDevice& context,
+    const kmm::DeviceContext& context,
+    kmm::NDRange subrange,
     cuda_view_mut<cfloat, 3> signal,
     cuda_view<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -91,7 +93,7 @@ void magnetization_to_signal_cartesian_gemm(
     cuda_view_mut<cfloat, 2> exponents,
     cuda_view_mut<cfloat, 2> factors,
     cublasComputeType_t compute_type) {
-    int ncoils = coil_sensitivities.size(0);
+    int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
@@ -160,7 +162,8 @@ void magnetization_to_signal_cartesian_gemm(
 }
 
 void magnetization_to_signal_spiral(
-    const kmm::CudaDevice& context,
+    const kmm::DeviceContext& context,
+    kmm::NDRange subrange,
     cuda_view_mut<cfloat, 3> signal,
     cuda_view<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -168,7 +171,7 @@ void magnetization_to_signal_spiral(
     cuda_view<cfloat, 2> coil_sensitivities,
     cuda_view_mut<cfloat, 2> exponents,
     cuda_view_mut<cfloat, 2> factors) {
-    int ncoils = coil_sensitivities.size(0);
+    int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
@@ -244,25 +247,28 @@ cublasComputeType_t cublas_compute_type_from_simulate_method(SimulateSignalMetho
 }
 
 Array<cfloat, 3> magnetization_to_signal(
-    const CudaContext& context,
+    const CompasContext& context,
     Array<cfloat, 2> echos,
     TissueParameters parameters,
     const Trajectory& trajectory,
     Array<cfloat, 2> coil_sensitivities,
     SimulateSignalMethod method) {
-    int ncoils = coil_sensitivities.size(0);
+    using namespace kmm::placeholders;
+
+    int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
 
-    auto signal = Array<cfloat, 3>(ncoils, nreadouts, samples_per_readout);
+    auto signal = Array<cfloat, 3> {{ncoils, nreadouts, samples_per_readout}};
 
     if (const auto* c = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
-        auto temp_exponents = Array<cfloat, 2>(samples_per_readout, nvoxels);
-        auto temp_factors = Array<cfloat, 2>(nreadouts, nvoxels);
+        auto temp_exponents = Array<cfloat, 2> {{samples_per_readout, nvoxels}};
+        auto temp_factors = Array<cfloat, 2> {{nreadouts, nvoxels}};
 
         if (method == SimulateSignalMethod::Direct) {
             context.submit_device(
+                {nvoxels, nreadouts},
                 magnetization_to_signal_cartesian_direct,
                 write(signal),
                 echos,
@@ -273,6 +279,7 @@ Array<cfloat, 3> magnetization_to_signal(
                 write(temp_factors));
         } else {
             context.submit_device(
+                {nvoxels, nreadouts},
                 magnetization_to_signal_cartesian_gemm,
                 write(signal),
                 echos,
@@ -288,6 +295,7 @@ Array<cfloat, 3> magnetization_to_signal(
         auto temp_factors = Array<cfloat, 2>(echos.sizes());
 
         context.submit_device(
+            {nvoxels, nreadouts},
             magnetization_to_signal_spiral,
             write(signal),
             echos,

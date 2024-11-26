@@ -33,7 +33,7 @@ struct TissueParameters: public Object {
 };
 
 TissueParameters make_tissue_parameters(
-    const CudaContext& ctx,
+    const CompasContext& ctx,
     int num_voxels,
     view<float> T1,
     view<float> T2,
@@ -49,25 +49,26 @@ TissueParameters make_tissue_parameters(
 
 namespace kmm {
 template<>
-struct TaskArgument<ExecutionSpace::Cuda, compas::TissueParameters> {
+struct Argument<compas::TissueParameters> {
     using type = compas::TissueParametersView;
 
-    static TaskArgument pack(TaskBuilder& builder, compas::TissueParameters p) {
+    static Argument pack(TaskBuilder& builder, compas::TissueParameters p) {
         return {
             {.parameters = {},  //
              .nvoxels = p.nvoxels,
              .has_z = p.has_z,
              .has_b0 = p.has_b0,
              .has_b1 = p.has_b1},
-            pack_argument<ExecutionSpace::Cuda>(builder, p.parameters)};
+            pack_argument(builder, p.parameters)};
     }
 
+    template<ExecutionSpace Space>
     type unpack(TaskContext& context) {
-        view.parameters = unpack_argument<ExecutionSpace::Cuda>(context, params);
+        view.parameters = unpack_argument<Space>(context, params);
         return view;
     }
 
     compas::TissueParametersView view;
-    PackedArray<const float, 2> params;
+    packed_argument_t<Array<float, 2>> params;
 };
 }  // namespace kmm

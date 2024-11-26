@@ -24,7 +24,7 @@ static std::pair<double, int> benchmark(F fun) {
     return {duration, runs};
 }
 
-static compas::TissueParameters generate_tissue_parameters(const compas::CudaContext& context, int nvoxels) {
+static compas::TissueParameters generate_tissue_parameters(const compas::CompasContext& context, int nvoxels) {
     auto T1 = std::vector<float>(nvoxels);
     auto T2 = std::vector<float>(nvoxels);
     auto B1 = std::vector<float>(nvoxels);
@@ -51,15 +51,15 @@ static compas::TissueParameters generate_tissue_parameters(const compas::CudaCon
     auto parameters = make_tissue_parameters(
         context,
         nvoxels,
-        {T1.data(), {nvoxels}},
-        {T2.data(), {nvoxels}},
-        {B1.data(), {nvoxels}},
-        {B0.data(), {nvoxels}},
-        {rho_x.data(), {nvoxels}},
-        {rho_y.data(), {nvoxels}},
-        {x.data(), {nvoxels}},
-        {y.data(), {nvoxels}},
-        {z.data(), {nvoxels}});
+        {T1.data(), {{nvoxels}}},
+        {T2.data(), {{nvoxels}}},
+        {B1.data(), {{nvoxels}}},
+        {B0.data(), {{nvoxels}}},
+        {rho_x.data(), {{nvoxels}}},
+        {rho_y.data(), {{nvoxels}}},
+        {x.data(), {{nvoxels}}},
+        {y.data(), {{nvoxels}}},
+        {z.data(), {{nvoxels}}});
 
     return parameters;
 }

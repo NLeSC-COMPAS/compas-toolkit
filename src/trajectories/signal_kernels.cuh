@@ -85,7 +85,7 @@ COMPAS_DEVICE void reduce_signal_cooperative(
     int sample_index,
     int readout_index,
     int coil_index,
-    cuda_view_mut<cfloat, 3> signal,
+    cuda_subview_mut<cfloat, 3> signal,
     int lane,
     cfloat value) {
     static_assert(is_power_of_two(threads_cooperative) && threads_cooperative <= 32);
@@ -114,7 +114,7 @@ template<
     int coil_tiling_factor,
     int blocks_per_sm = 1>
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_cartesian(
-    cuda_view_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
+    cuda_subview_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
     cuda_view<cfloat, 2> exponents,  // [num_samples num_voxels]
     cuda_view<cfloat, 2> factors,  // [num_readouts num_voxels]
     cuda_view<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]

@@ -4,7 +4,7 @@
 
 namespace compas {
 TissueParameters make_tissue_parameters(
-    const CudaContext& ctx,
+    const CompasContext& ctx,
     int num_voxels,
     host_view<float> T1,
     host_view<float> T2,
@@ -16,15 +16,16 @@ TissueParameters make_tissue_parameters(
     host_view<float> y,
     host_view<float> z) {
     auto stride = round_up_to_multiple_of(num_voxels, 32);
-    auto params = kmm::Array<float, 2> {static_cast<int>(TissueParameterField::NUM_FIELDS), stride};
+    auto params = kmm::Array<float, 2> {{TissueParameterField::NUM_FIELDS, stride}};
 
     bool has_z = !z.is_empty();
     bool has_b0 = !B0.is_empty();
     bool has_b1 = !B1.is_empty();
 
     ctx.submit_device(
-        [&](kmm::CudaDevice& device, cuda_view_mut<float, 2> params) {
-            device.fill(params, 0.0f);
+        num_voxels,
+        [&](kmm::DeviceContext& device, kmm::NDRange, cuda_view_mut<float, 2> params) {
+            device.fill(params, 0.0F);
 
             device.copy(
                 T1.data(),

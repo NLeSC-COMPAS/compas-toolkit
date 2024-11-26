@@ -31,6 +31,9 @@ trajectory = CompasToolkit.CartesianTrajectory(
     trajectory_ref.k_start_readout,
     trajectory_ref.Δk_adc[1]);
 
+nr = trajectory_ref.nreadouts
+ns = trajectory_ref.nsamplesperreadout
+
 # We use two different receive coils
 ncoils = 4
 coil_sensitivities = generate_coils(N, ncoils)

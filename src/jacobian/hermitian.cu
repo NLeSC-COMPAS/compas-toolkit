@@ -6,7 +6,7 @@
 namespace compas {
 
 Array<cfloat, 2> compute_jacobian_hermitian(
-    const CudaContext& ctx,
+    const CompasContext& ctx,
     Array<cfloat, 2> echos,
     Array<cfloat, 2> delta_echos_T1,
     Array<cfloat, 2> delta_echos_T2,
@@ -16,7 +16,7 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     Array<cfloat, 3> vector) {
     int ns = trajectory.samples_per_readout;
     int nreadouts = trajectory.nreadouts;
-    int ncoils = coil_sensitivities.size(0);
+    int ncoils = int(coil_sensitivities.size(0));
     int nvoxels = parameters.nvoxels;
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
@@ -32,9 +32,9 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     COMPAS_ASSERT(vector.size(2) == ns);
 
     // four reconstruction parameters: T1, T2, rho_x, rho_y
-    auto JHv = Array<cfloat, 2>(4, nvoxels);
-    auto E = Array<cfloat, 2>(ns, nvoxels);
-    auto dEdT2 = Array<cfloat, 2>(ns, nvoxels);
+    auto JHv = Array<cfloat, 2> {{4, nvoxels}};
+    auto E = Array<cfloat, 2> {{ns, nvoxels}};
+    auto dEdT2 = Array<cfloat, 2> {{ns, nvoxels}};
 
     dim3 block_dim = {64, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(ns), block_dim.y)};
@@ -46,6 +46,16 @@ Array<cfloat, 2> compute_jacobian_hermitian(
         write(dEdT2),
         trajectory,
         parameters);
+
+    auto vector_lo = Array<complex_type<__nv_bfloat16>, 3> {{ncoils, nreadouts, ns}};
+    grid_dim = {uint(div_ceil(ns, 16)), uint(div_ceil(nreadouts, 16)), uint(ncoils)};
+
+    ctx.submit_kernel(
+        grid_dim,
+        {16, 16},
+        kernels::convert_kernel<complex_type<__nv_bfloat16>, complex_type<float>>,
+        write(vector_lo),
+        vector);
 
 #define COMPAS_COMPUTE_JACOBIAN_IMPL(C, V, R, S, BX, BY, BZ)                \
     if (ncoils == (C) && nreadouts % (R) == 0 && ns % (S) == 0) {           \

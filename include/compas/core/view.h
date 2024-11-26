@@ -1,5 +1,5 @@
 #pragma once
-#include "kmm/utils/view.hpp"
+#include "kmm/core/view.hpp"
 
 namespace compas {
 
@@ -22,6 +22,9 @@ using cuda_view = kmm::cuda_view<T, N>;
 
 template<typename T, size_t N = 1>
 using cuda_view_mut = kmm::cuda_view_mut<T, N>;
+
+template<typename T, size_t N = 1>
+using cuda_subview_mut = kmm::cuda_subview_mut<T, N>;
 
 template<typename T, size_t N = 1>
 using cuda_strided_view = kmm::cuda_strided_view<T, N>;

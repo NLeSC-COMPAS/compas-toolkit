@@ -41,7 +41,7 @@ struct CartesianTrajectory: public Trajectory {
  * @return
  */
 inline CartesianTrajectory make_cartesian_trajectory(
-    const CudaContext& context,
+    const CompasContext& context,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
@@ -61,10 +61,10 @@ inline CartesianTrajectory make_cartesian_trajectory(
 
 namespace kmm {
 template<>
-struct TaskArgument<ExecutionSpace::Cuda, compas::CartesianTrajectory> {
+struct Argument<compas::CartesianTrajectory> {
     using type = compas::CartesianTrajectoryView;
 
-    static TaskArgument pack(TaskBuilder& builder, const compas::CartesianTrajectory& t) {
+    static Argument pack(TaskBuilder& builder, const compas::CartesianTrajectory& t) {
         return {
             {//
              .nreadouts = t.nreadouts,
@@ -72,15 +72,16 @@ struct TaskArgument<ExecutionSpace::Cuda, compas::CartesianTrajectory> {
              .delta_t = t.delta_t,
              .k_start = {},
              .delta_k = t.delta_k},
-            pack_argument<ExecutionSpace::Cuda>(builder, t.k_start)};
+            pack_argument(builder, t.k_start)};
     }
 
+    template<ExecutionSpace Space>
     type unpack(TaskContext& context) {
-        view.k_start = unpack_argument<ExecutionSpace::Cuda>(context, k_start);
+        view.k_start = unpack_argument<Space>(context, k_start);
         return view;
     }
 
     compas::CartesianTrajectoryView view;
-    PackedArray<const compas::cfloat> k_start;
+    packed_argument_t<Array<compas::cfloat>> k_start;
 };
 }  // namespace kmm

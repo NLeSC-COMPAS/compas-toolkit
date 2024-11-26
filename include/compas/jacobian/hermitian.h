@@ -19,7 +19,7 @@ namespace compas {
  * @return The result of `Jᴴv`. Size: [nfields, nvoxels]. There are 4 fields: T1, T2, and rho<sub>x</sub>/rho<sub>y</sub>.
  */
 Array<cfloat, 2> compute_jacobian_hermitian(
-    const CudaContext& ctx,
+    const CompasContext& ctx,
     Array<cfloat, 2> echos,
     Array<cfloat, 2> delta_echos_T1,
     Array<cfloat, 2> delta_echos_T2,

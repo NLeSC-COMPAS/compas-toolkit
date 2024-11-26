@@ -8,6 +8,7 @@ namespace compas {
 namespace kernels {
 
 __global__ void phase_encoding(
+    kmm::NDRange,
     cuda_view_mut<cfloat, 2> ph_en_echos,
     cuda_view<cfloat, 2> echos,
     TissueParametersView parameters,

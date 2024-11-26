@@ -11,7 +11,7 @@ using namespace compas;
 static void benchmark_method(
     std::string name,
     SimulateSignalMethod method,
-    const CudaContext& context,
+    const CompasContext& context,
     Array<cfloat, 2> echos,
     Array<cfloat, 2> coil_sensitivities,
     TissueParameters parameters,
@@ -32,7 +32,8 @@ static void benchmark_method(
         context.synchronize();
     });
 
-    auto signal_result = signal.read();
+    std::vector<cfloat> signal_result(signal.size());
+    signal.copy_to(signal_result.data(), signal_result.size());
 
     double max_abs_error = 0;
     double max_rel_error = 0;
@@ -78,8 +79,8 @@ int main() {
         std::fill_n(h_coils.data() + nvoxels * i, nvoxels, float(i + 1) / ncoils);
     }
 
-    auto echos = context.allocate(h_echos).reshape(nreadouts, nvoxels);
-    auto coil_sensitivities = context.allocate(h_coils).reshape(ncoils, nvoxels);
+    auto echos = context.allocate(h_echos.data(), nreadouts, nvoxels);
+    auto coil_sensitivities = context.allocate(h_coils.data(), ncoils, nvoxels);
 
     TissueParameters parameters = generate_tissue_parameters(context, nvoxels);
 
@@ -92,7 +93,7 @@ int main() {
         nreadouts,
         samples_per_readout,
         delta_t,
-        {k_start.data(), {nreadouts}},
+        compas::host_view<cfloat> {k_start.data(), {{nreadouts}}},
         delta_k);
 
     auto signal = compas::magnetization_to_signal(
@@ -103,7 +104,8 @@ int main() {
         coil_sensitivities,
         SimulateSignalMethod::Direct);
 
-    auto signal_ref = signal.read();
+    auto signal_ref = std::vector<cfloat>(signal.size());
+    signal.copy_to(signal_ref.data(), signal_ref.size());
 
     benchmark_method(
         "direct",

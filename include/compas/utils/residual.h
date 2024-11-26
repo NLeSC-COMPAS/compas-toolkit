@@ -18,7 +18,7 @@ namespace compas {
  * @return
  */
 Array<cfloat, 3> compute_residual(
-    CudaContext ctx,
+    CompasContext ctx,
     Array<cfloat, 3> lhs,
     Array<cfloat, 3> rhs,
     float* objective_out = nullptr);
