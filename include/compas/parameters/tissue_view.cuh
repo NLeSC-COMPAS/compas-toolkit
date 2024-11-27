@@ -39,7 +39,7 @@ struct TissueVoxel {
  * Device-side representation of `TissueParameters`
  */
 struct TissueParametersView {
-    cuda_view<float, 2> parameters;
+    gpu_view<float, 2> parameters;
     int nvoxels;
     bool has_z;
     bool has_b0;
