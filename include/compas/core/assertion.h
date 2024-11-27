@@ -8,7 +8,7 @@ namespace compas {
 [[noreturn]] __device__ __noinline__ void
 panic(const char* message, const char* file, const int line, const char* func) {
     printf(
-        "[CUDA thread (%d, %d, %d)(%d, %d, %d)] panic occured: (%s:%d:%s): %s\n",
+        "[GPU thread (%d, %d, %d)(%d, %d, %d)] panic occured: (%s:%d:%s): %s\n",
         blockIdx.x,
         blockIdx.y,
         blockIdx.z,

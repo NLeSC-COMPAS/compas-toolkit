@@ -41,7 +41,7 @@ void magnetization_to_signal_cartesian_direct(
         echos,
         parameters,
         trajectory);
-    COMPAS_CUDA_CHECK(gpuGetLastError());
+    COMPAS_GPU_CHECK(gpuGetLastError());
 
     block_dim = {256};
     grid_dim = {div_ceil(uint(nvoxels), block_dim.x)};
@@ -50,7 +50,7 @@ void magnetization_to_signal_cartesian_direct(
         exponents,
         parameters,
         trajectory);
-    COMPAS_CUDA_CHECK(gpuGetLastError());
+    COMPAS_GPU_CHECK(gpuGetLastError());
 
     const uint block_size_x = 64;
     const uint block_size_y = 1;
@@ -79,7 +79,7 @@ void magnetization_to_signal_cartesian_direct(
         factors,
         coil_sensitivities);
 
-    COMPAS_CUDA_CHECK(gpuGetLastError());
+    COMPAS_GPU_CHECK(gpuGetLastError());
 }
 
 void magnetization_to_signal_cartesian_gemm(
@@ -115,7 +115,7 @@ void magnetization_to_signal_cartesian_gemm(
         echos,
         parameters,
         trajectory);
-    COMPAS_CUDA_CHECK(gpuGetLastError());
+    COMPAS_GPU_CHECK(gpuGetLastError());
 
     for (index_t icoil = 0; icoil < ncoils; icoil++) {
         block_dim = {256};
@@ -126,17 +126,17 @@ void magnetization_to_signal_cartesian_gemm(
             coil_sensitivities.drop_axis<0>(icoil),
             parameters,
             trajectory);
-        COMPAS_CUDA_CHECK(gpuGetLastError());
+        COMPAS_GPU_CHECK(gpuGetLastError());
 
         cuComplex alpha = {1, 0};
         cuComplex beta = {0, 0};
 
-        gpuDataType_t output_type = CUDA_C_32F;
-        gpuDataType_t input_type = CUDA_C_32F;
+        gpuDataType_t output_type = GPU_C_32F;
+        gpuDataType_t input_type = GPU_C_32F;
         cublasGemmAlgo_t compute_algo = CUBLAS_GEMM_DEFAULT;
 
-        COMPAS_CUDA_CHECK(cublasSetStream(context.cublas(), nullptr));
-        COMPAS_CUDA_CHECK(cublasGemmEx(
+        COMPAS_GPU_CHECK(cublasSetStream(context.cublas(), nullptr));
+        COMPAS_GPU_CHECK(cublasGemmEx(
             context.cublas(),
             CUBLAS_OP_T,  // transa
             CUBLAS_OP_N,  // transb
@@ -158,7 +158,7 @@ void magnetization_to_signal_cartesian_gemm(
             compute_algo));
     }
 
-    COMPAS_CUDA_CHECK(gpuGetLastError());
+    COMPAS_GPU_CHECK(gpuGetLastError());
 }
 
 void magnetization_to_signal_spiral(
@@ -193,7 +193,7 @@ void magnetization_to_signal_spiral(
         echos,
         parameters,
         trajectory);
-    COMPAS_CUDA_CHECK(gpuGetLastError());
+    COMPAS_GPU_CHECK(gpuGetLastError());
 
     block_dim = {32, 4};
     grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
@@ -202,7 +202,7 @@ void magnetization_to_signal_spiral(
         exponents,
         parameters,
         trajectory);
-    COMPAS_CUDA_CHECK(gpuGetLastError());
+    COMPAS_GPU_CHECK(gpuGetLastError());
 
     const uint threads_per_block = 64;
     const uint threads_cooperative = 32;
@@ -228,7 +228,7 @@ void magnetization_to_signal_spiral(
         factors,
         coil_sensitivities);
 
-    COMPAS_CUDA_CHECK(gpuGetLastError());
+    COMPAS_GPU_CHECK(gpuGetLastError());
 }
 
 cublasComputeType_t cublas_compute_type_from_simulate_method(SimulateSignalMethod method) {

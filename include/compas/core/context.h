@@ -12,7 +12,7 @@
 #include "compas/core/view.h"
 #include "kmm/kmm.hpp"
 
-#define COMPAS_CUDA_CHECK(...) KMM_CUDA_CHECK(__VA_ARGS__)
+#define COMPAS_GPU_CHECK(...) KMM_GPU_CHECK(__VA_ARGS__)
 
 namespace compas {
 
