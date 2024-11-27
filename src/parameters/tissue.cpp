@@ -24,7 +24,7 @@ TissueParameters make_tissue_parameters(
 
     ctx.submit_device(
         num_voxels,
-        [&](kmm::DeviceContext& device, kmm::NDRange, cuda_view_mut<float, 2> params) {
+        [&](kmm::DeviceContext& device, kmm::NDRange, gpu_view_mut<float, 2> params) {
             device.fill(params, 0.0F);
 
             device.copy(

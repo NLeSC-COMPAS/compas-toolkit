@@ -13,9 +13,9 @@ void simulate_magnetization_derivative_impl(
     const kmm::DeviceContext& context,
     kmm::NDRange,
     int field,
-    cuda_view_mut<float, 2> new_parameters,
-    cuda_view_mut<cfloat, 2> delta_echos,
-    cuda_view<cfloat, 2> echos,
+    gpu_view_mut<float, 2> new_parameters,
+    gpu_view_mut<cfloat, 2> delta_echos,
+    gpu_view<cfloat, 2> echos,
     TissueParametersView tissue,
     SequenceView sequence,
     float delta) {

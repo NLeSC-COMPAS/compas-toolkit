@@ -11,8 +11,8 @@ namespace kernels {
 // Defined in product_kernels.cuh
 __global__ void delta_to_sample_exponent(
         kmm::NDRange subrange,
-        cuda_view_mut<cfloat, 2> E,
-        cuda_view_mut<cfloat, 2> dEdT2,
+        gpu_view_mut<cfloat, 2> E,
+        gpu_view_mut<cfloat, 2> dEdT2,
         CartesianTrajectoryView trajectory,
         TissueParametersView parameters);
 
@@ -28,7 +28,7 @@ static COMPAS_DEVICE cfloat add_mul_conj(cfloat a, cfloat b, cfloat c) {
 
 template <typename T, typename U>
 __global__
-void convert_kernel(kmm::NDRange subrange, cuda_view_mut<T, 3> output, cuda_view<U, 3> input) {
+void convert_kernel(kmm::NDRange subrange, gpu_view_mut<T, 3> output, gpu_view<U, 3> input) {
     auto k = index_t(blockIdx.x * blockDim.x + threadIdx.x);
     auto j = index_t(blockIdx.y * blockDim.y + threadIdx.y);
     auto i = index_t(blockIdx.z * blockDim.z + threadIdx.z);
@@ -65,15 +65,15 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
     const cfloat* __restrict__ E_ptr,
     const cfloat* __restrict__ dEdT2_ptr) {
 
-    cuda_view_mut<cfloat, 2> JHv = {JHv_ptr, {{4, nvoxels}}};
-    cuda_view<cfloat, 2> echos = {echos_ptr, {{nreadouts, nvoxels}}};
-    cuda_view<cfloat, 2> delta_echos_T1 = {delta_echos_T1_ptr, {{nreadouts, nvoxels}}};
-    cuda_view<cfloat, 2> delta_echos_T2 = {delta_echos_T2_ptr, {{nreadouts, nvoxels}}};
-    cuda_view<cfloat, 2> coil_sensitivities = {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
-    cuda_view<complex_type<float>, 3> vector = {vector_ptr, {{ncoils, nreadouts, nsamples_per_readout}}};
-    cuda_view<cfloat, 2> E = {E_ptr, {{nsamples_per_readout, nvoxels}}};
-    cuda_view<cfloat, 2> dEdT2 = {dEdT2_ptr, {{nsamples_per_readout, nvoxels}}};
-    cuda_view<float, 2> parameters = {parameters_ptr, {{TissueParameterField::NUM_FIELDS, parameters_stride}}};
+    gpu_view_mut<cfloat, 2> JHv = {JHv_ptr, {{4, nvoxels}}};
+    gpu_view<cfloat, 2> echos = {echos_ptr, {{nreadouts, nvoxels}}};
+    gpu_view<cfloat, 2> delta_echos_T1 = {delta_echos_T1_ptr, {{nreadouts, nvoxels}}};
+    gpu_view<cfloat, 2> delta_echos_T2 = {delta_echos_T2_ptr, {{nreadouts, nvoxels}}};
+    gpu_view<cfloat, 2> coil_sensitivities = {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
+    gpu_view<complex_type<float>, 3> vector = {vector_ptr, {{ncoils, nreadouts, nsamples_per_readout}}};
+    gpu_view<cfloat, 2> E = {E_ptr, {{nsamples_per_readout, nvoxels}}};
+    gpu_view<cfloat, 2> dEdT2 = {dEdT2_ptr, {{nsamples_per_readout, nvoxels}}};
+    gpu_view<float, 2> parameters = {parameters_ptr, {{TissueParameterField::NUM_FIELDS, parameters_stride}}};
 
     static constexpr index_t voxels_per_thread =
             (voxel_tile_size / block_size_x) + int(voxel_tile_size % block_size_x > 0);

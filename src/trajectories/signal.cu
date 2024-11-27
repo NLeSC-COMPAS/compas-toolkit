@@ -12,13 +12,13 @@ namespace compas {
 void magnetization_to_signal_cartesian_direct(
     const kmm::DeviceContext& context,
     kmm::NDRange subrange,
-    cuda_subview_mut<cfloat, 3> signal,
-    cuda_view<cfloat, 2> echos,
+    gpu_subview_mut<cfloat, 3> signal,
+    gpu_view<cfloat, 2> echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
-    cuda_view<cfloat, 2> coil_sensitivities,
-    cuda_view_mut<cfloat, 2> exponents,
-    cuda_view_mut<cfloat, 2> factors) {
+    gpu_view<cfloat, 2> coil_sensitivities,
+    gpu_view_mut<cfloat, 2> exponents,
+    gpu_view_mut<cfloat, 2> factors) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
@@ -41,7 +41,7 @@ void magnetization_to_signal_cartesian_direct(
         echos,
         parameters,
         trajectory);
-    COMPAS_CUDA_CHECK(cudaGetLastError());
+    COMPAS_CUDA_CHECK(gpuGetLastError());
 
     block_dim = {256};
     grid_dim = {div_ceil(uint(nvoxels), block_dim.x)};
@@ -50,7 +50,7 @@ void magnetization_to_signal_cartesian_direct(
         exponents,
         parameters,
         trajectory);
-    COMPAS_CUDA_CHECK(cudaGetLastError());
+    COMPAS_CUDA_CHECK(gpuGetLastError());
 
     const uint block_size_x = 64;
     const uint block_size_y = 1;
@@ -79,19 +79,19 @@ void magnetization_to_signal_cartesian_direct(
         factors,
         coil_sensitivities);
 
-    COMPAS_CUDA_CHECK(cudaGetLastError());
+    COMPAS_CUDA_CHECK(gpuGetLastError());
 }
 
 void magnetization_to_signal_cartesian_gemm(
     const kmm::DeviceContext& context,
     kmm::NDRange subrange,
-    cuda_view_mut<cfloat, 3> signal,
-    cuda_view<cfloat, 2> echos,
+    gpu_view_mut<cfloat, 3> signal,
+    gpu_view<cfloat, 2> echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
-    cuda_view<cfloat, 2> coil_sensitivities,
-    cuda_view_mut<cfloat, 2> exponents,
-    cuda_view_mut<cfloat, 2> factors,
+    gpu_view<cfloat, 2> coil_sensitivities,
+    gpu_view_mut<cfloat, 2> exponents,
+    gpu_view_mut<cfloat, 2> factors,
     cublasComputeType_t compute_type) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nvoxels = parameters.nvoxels;
@@ -115,7 +115,7 @@ void magnetization_to_signal_cartesian_gemm(
         echos,
         parameters,
         trajectory);
-    COMPAS_CUDA_CHECK(cudaGetLastError());
+    COMPAS_CUDA_CHECK(gpuGetLastError());
 
     for (index_t icoil = 0; icoil < ncoils; icoil++) {
         block_dim = {256};
@@ -126,13 +126,13 @@ void magnetization_to_signal_cartesian_gemm(
             coil_sensitivities.drop_axis<0>(icoil),
             parameters,
             trajectory);
-        COMPAS_CUDA_CHECK(cudaGetLastError());
+        COMPAS_CUDA_CHECK(gpuGetLastError());
 
         cuComplex alpha = {1, 0};
         cuComplex beta = {0, 0};
 
-        cudaDataType_t output_type = CUDA_C_32F;
-        cudaDataType_t input_type = CUDA_C_32F;
+        gpuDataType_t output_type = CUDA_C_32F;
+        gpuDataType_t input_type = CUDA_C_32F;
         cublasGemmAlgo_t compute_algo = CUBLAS_GEMM_DEFAULT;
 
         COMPAS_CUDA_CHECK(cublasSetStream(context.cublas(), nullptr));
@@ -158,19 +158,19 @@ void magnetization_to_signal_cartesian_gemm(
             compute_algo));
     }
 
-    COMPAS_CUDA_CHECK(cudaGetLastError());
+    COMPAS_CUDA_CHECK(gpuGetLastError());
 }
 
 void magnetization_to_signal_spiral(
     const kmm::DeviceContext& context,
     kmm::NDRange subrange,
-    cuda_view_mut<cfloat, 3> signal,
-    cuda_view<cfloat, 2> echos,
+    gpu_view_mut<cfloat, 3> signal,
+    gpu_view<cfloat, 2> echos,
     TissueParametersView parameters,
     SpiralTrajectoryView trajectory,
-    cuda_view<cfloat, 2> coil_sensitivities,
-    cuda_view_mut<cfloat, 2> exponents,
-    cuda_view_mut<cfloat, 2> factors) {
+    gpu_view<cfloat, 2> coil_sensitivities,
+    gpu_view_mut<cfloat, 2> exponents,
+    gpu_view_mut<cfloat, 2> factors) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
@@ -193,7 +193,7 @@ void magnetization_to_signal_spiral(
         echos,
         parameters,
         trajectory);
-    COMPAS_CUDA_CHECK(cudaGetLastError());
+    COMPAS_CUDA_CHECK(gpuGetLastError());
 
     block_dim = {32, 4};
     grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
@@ -202,7 +202,7 @@ void magnetization_to_signal_spiral(
         exponents,
         parameters,
         trajectory);
-    COMPAS_CUDA_CHECK(cudaGetLastError());
+    COMPAS_CUDA_CHECK(gpuGetLastError());
 
     const uint threads_per_block = 64;
     const uint threads_cooperative = 32;
@@ -228,7 +228,7 @@ void magnetization_to_signal_spiral(
         factors,
         coil_sensitivities);
 
-    COMPAS_CUDA_CHECK(cudaGetLastError());
+    COMPAS_CUDA_CHECK(gpuGetLastError());
 }
 
 cublasComputeType_t cublas_compute_type_from_simulate_method(SimulateSignalMethod method) {

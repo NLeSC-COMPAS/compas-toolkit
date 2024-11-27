@@ -9,8 +9,8 @@ namespace kernels {
 
 template<typename TrajectoryView>
 __global__ void prepare_signal_factors(
-    cuda_view_mut<cfloat, 2> factors,
-    cuda_view<cfloat, 2> echos,
+    gpu_view_mut<cfloat, 2> factors,
+    gpu_view<cfloat, 2> echos,
     TissueParametersView parameters,
     TrajectoryView trajectory) {
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
@@ -28,7 +28,7 @@ __global__ void prepare_signal_factors(
 }
 
 __global__ void prepare_signal_cartesian(
-    cuda_view_mut<cfloat, 2> exponents,
+    gpu_view_mut<cfloat, 2> exponents,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
@@ -46,8 +46,8 @@ __global__ void prepare_signal_cartesian(
 }
 
 __global__ void prepare_signal_cartesian_with_coil(
-    cuda_view_mut<cfloat, 2> exponents,
-    cuda_view<cfloat> coil_sensitivities,
+    gpu_view_mut<cfloat, 2> exponents,
+    gpu_view<cfloat> coil_sensitivities,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
@@ -66,7 +66,7 @@ __global__ void prepare_signal_cartesian_with_coil(
 }
 
 __global__ void prepare_signal_spiral(
-    cuda_view_mut<cfloat, 2> exponents,
+    gpu_view_mut<cfloat, 2> exponents,
     TissueParametersView parameters,
     SpiralTrajectoryView trajectory) {
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
@@ -85,7 +85,7 @@ COMPAS_DEVICE void reduce_signal_cooperative(
     int sample_index,
     int readout_index,
     int coil_index,
-    cuda_subview_mut<cfloat, 3> signal,
+    gpu_subview_mut<cfloat, 3> signal,
     int lane,
     cfloat value) {
     static_assert(is_power_of_two(threads_cooperative) && threads_cooperative <= 32);
@@ -114,10 +114,10 @@ template<
     int coil_tiling_factor,
     int blocks_per_sm = 1>
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_cartesian(
-    cuda_subview_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
-    cuda_view<cfloat, 2> exponents,  // [num_samples num_voxels]
-    cuda_view<cfloat, 2> factors,  // [num_readouts num_voxels]
-    cuda_view<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
+    gpu_subview_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
+    gpu_view<cfloat, 2> exponents,  // [num_samples num_voxels]
+    gpu_view<cfloat, 2> factors,  // [num_readouts num_voxels]
+    gpu_view<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
 ) {
     static_assert(threads_per_block % threads_cooperative == 0);
 
@@ -206,10 +206,10 @@ template<
     int coil_tiling_factor,
     int blocks_per_sm = 1>
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_spiral(
-    cuda_view_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
-    cuda_view<cfloat, 2> exponents,  // [num_readouts num_voxels]
-    cuda_view<cfloat, 2> factors,  // [num_readouts num_voxels]
-    cuda_view<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
+    gpu_view_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
+    gpu_view<cfloat, 2> exponents,  // [num_readouts num_voxels]
+    gpu_view<cfloat, 2> factors,  // [num_readouts num_voxels]
+    gpu_view<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
 ) {
     static_assert(threads_per_block % threads_cooperative == 0);
 

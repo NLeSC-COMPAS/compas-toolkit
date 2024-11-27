@@ -6,8 +6,8 @@ namespace kernels {
 
 static __global__ void delta_to_sample_exponent(
     kmm::NDRange range,
-    cuda_view_mut<cfloat, 2> E,
-    cuda_view_mut<cfloat, 2> dEdT2,
+    gpu_view_mut<cfloat, 2> E,
+    gpu_view_mut<cfloat, 2> dEdT2,
     CartesianTrajectoryView trajectory,
     TissueParametersView parameters) {
     index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
@@ -61,21 +61,21 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_pro
     const cfloat* E_ptr,
     const cfloat* dEdT2_ptr,
     const cfloat* v_ptr) {
-    auto echos = cuda_view<cfloat, 2> {echos_ptr, {{nreadouts, nvoxels}}};
-    auto delta_echos_T1 = cuda_view<cfloat, 2> {delta_echos_T1_ptr, {{nreadouts, nvoxels}}};
-    auto delta_echos_T2 = cuda_view<cfloat, 2> {delta_echos_T2_ptr, {{nreadouts, nvoxels}}};
+    auto echos = gpu_view<cfloat, 2> {echos_ptr, {{nreadouts, nvoxels}}};
+    auto delta_echos_T1 = gpu_view<cfloat, 2> {delta_echos_T1_ptr, {{nreadouts, nvoxels}}};
+    auto delta_echos_T2 = gpu_view<cfloat, 2> {delta_echos_T2_ptr, {{nreadouts, nvoxels}}};
 
-    auto coil_sensitivities = cuda_view<cfloat, 2> {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
+    auto coil_sensitivities = gpu_view<cfloat, 2> {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
 
-    auto E = cuda_view<cfloat, 2> {E_ptr, {{samples_per_readout, nvoxels}}};
-    auto dEdT2 = cuda_view<cfloat, 2> {dEdT2_ptr, {{samples_per_readout, nvoxels}}};
+    auto E = gpu_view<cfloat, 2> {E_ptr, {{samples_per_readout, nvoxels}}};
+    auto dEdT2 = gpu_view<cfloat, 2> {dEdT2_ptr, {{samples_per_readout, nvoxels}}};
 
-    auto Jv = cuda_view_mut<cfloat, 3> {Jv_ptr, {{ncoils, nreadouts, samples_per_readout}}};
-    auto v = cuda_view<cfloat, 2> {
+    auto Jv = gpu_view_mut<cfloat, 3> {Jv_ptr, {{ncoils, nreadouts, samples_per_readout}}};
+    auto v = gpu_view<cfloat, 2> {
         v_ptr,
         {{4, nvoxels}}};  // four reconstruction parameters: T1, T2, rho_x, rho_y
 
-    auto parameters = cuda_view<float, 2> {
+    auto parameters = gpu_view<float, 2> {
         parameters_ptr,
         {{TissueParameterField::NUM_FIELDS, parameters_stride}}};
 

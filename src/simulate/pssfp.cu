@@ -8,7 +8,7 @@ template<int batch_size>
 int simulate_pssfp_sequence_batch(
     const kmm::DeviceContext& context,
     int iz,
-    const cuda_view_mut<cfloat, 2>& echos,
+    const gpu_view_mut<cfloat, 2>& echos,
     const TissueParametersView& parameters,
     const pSSFPSequenceView& sequence) {
     int nreadouts = sequence.nTR;
@@ -22,7 +22,7 @@ int simulate_pssfp_sequence_batch(
     dim3 grid_size = div_ceil(uint(nvoxels * batch_size), block_size.x);
 
     while (iz + batch_size <= nz) {
-        auto z_subslices = cuda_view<float> {sequence.z.data() + iz, {{batch_size}}};
+        auto z_subslices = gpu_view<float> {sequence.z.data() + iz, {{batch_size}}};
 
         kernels::simulate_pssfp<batch_size><<<grid_size, block_size, 0, context.stream()>>>(  //
             echos,
@@ -39,7 +39,7 @@ int simulate_pssfp_sequence_batch(
 void simulate_magnetization_kernel(
     const kmm::DeviceContext& context,
     kmm::NDRange,
-    cuda_view_mut<cfloat, 2> echos,
+    gpu_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     pSSFPSequenceView sequence) {
     // Initialize echos to zero
@@ -71,7 +71,7 @@ Array<cfloat, 2> simulate_magnetization(
     void (*fun)(
         const kmm::DeviceContext&,
         kmm::NDRange,
-        cuda_view_mut<cfloat, 2>,
+        gpu_view_mut<cfloat, 2>,
         TissueParametersView,
         pSSFPSequenceView) = simulate_magnetization_kernel;
 
