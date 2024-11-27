@@ -42,7 +42,7 @@ struct CompasContext {
 
     template<typename F, typename... Args>
     void submit_device(kmm::NDRange index_space, F fun, Args... args) const {
-        m_runtime.submit(index_space, m_device, kmm::Cuda(fun), args...);
+        m_runtime.submit(index_space, m_device, kmm::GPU(fun), args...);
     }
 
     template<typename F, typename... Args>
@@ -50,7 +50,7 @@ struct CompasContext {
         m_runtime.submit(
             kmm::NDRange(grid_dim.x, grid_dim.y, grid_dim.z),
             m_device,
-            kmm::CudaKernel(kernel, block_dim, dim3()),
+            kmm::GPUKernel(kernel, block_dim, dim3()),
             args...);
     }
 
