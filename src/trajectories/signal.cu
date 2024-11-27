@@ -131,11 +131,11 @@ void magnetization_to_signal_cartesian_gemm(
         cuComplex alpha = {1, 0};
         cuComplex beta = {0, 0};
 
-        cudaDataType_t output_type = GPU_C_32F;
-        cudaDataType_t input_type = GPU_C_32F;
+        cudaDataType_t output_type = CUDA_C_32F;
+        cudaDataType_t input_type = CUDA_C_32F;
         cublasGemmAlgo_t compute_algo = CUBLAS_GEMM_DEFAULT;
 
-        COMPAS_GPU_CHECK(cublasSetStream(context.cublas(), nullptr));
+        COMPAS_GPU_CHECK(cublasSetStream(context.blas(), nullptr));
         COMPAS_GPU_CHECK(cublasGemmEx(
             context.blas(),
             CUBLAS_OP_T,  // transa
