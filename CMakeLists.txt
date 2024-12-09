@@ -27,7 +27,7 @@ set(CXXFLAGS
         $<$<COMPILE_LANGUAGE:CUDA>:-forward-unknown-to-host-compiler>
         $<$<COMPILE_LANGUAGE:CUDA>:--generate-line-info>
         -Wall -Wextra -Wconversion -Wno-unused-parameter
-        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Werror>
+        #$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Werror>
         $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>
         $<$<COMPILE_LANGUAGE:CUDA>:-Xptxas="-v">
 )

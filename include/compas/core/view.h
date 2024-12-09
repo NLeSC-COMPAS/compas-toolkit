@@ -3,7 +3,7 @@
 
 namespace compas {
 
-using index_t = kmm::default_index_type;
+using index_t = int;
 
 template<typename T, size_t N = 1>
 using view = kmm::view<T, N>;

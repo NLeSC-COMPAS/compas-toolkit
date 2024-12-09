@@ -26,12 +26,12 @@ struct CompasContext {
 
     template<typename T, size_t N>
     Array<std::decay_t<T>, N> allocate(host_view<T, N> content) const {
-        return m_runtime.allocate(content.data(), kmm::Dim<N>(content.sizes()));
+        return m_runtime.allocate(content.data(), kmm::Size<N>(content.sizes()));
     }
 
     template<typename T, typename... Sizes>
     Array<std::decay_t<T>, sizeof...(Sizes)> allocate(const T* content_ptr, Sizes... sizes) const {
-        kmm::Dim<sizeof...(Sizes)> sizes_array = {kmm::checked_cast<index_t>(sizes)...};
+        kmm::Size<sizeof...(Sizes)> sizes_array = {kmm::checked_cast<index_t>(sizes)...};
         return m_runtime.allocate(content_ptr, sizes_array);
     }
 
