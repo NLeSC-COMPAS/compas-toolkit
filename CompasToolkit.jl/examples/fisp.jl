@@ -1,10 +1,5 @@
-using BlochSimulators
 using CompasToolkit
 using ImagePhantoms
-using ComputationalResources
-using LinearAlgebra
-using StaticArrays
-
 include("common.jl")
 
 context = CompasToolkit.init_context(0)
@@ -25,13 +20,13 @@ Y = [y for x ∈ 1:N, y ∈ LinRange(-FOVʸ/2, FOVʸ/2, N)] .|> Float32 |> vec;
 nvoxels = N*N
 
 # Finally we assemble the phantom as an array of `T₁T₂B₀ρˣρʸxy` values
-parameters_ref = map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)
+parameters_ref = map(T₁T₂B₀ρˣρʸ, T₁, T₂, B₀, real.(ρ), imag.(ρ))
 parameters = CompasToolkit.TissueParameters(nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
 
 nTR = N; # nr of TRs used in the simulation
 RF_train = LinRange(1,90,nTR) |> collect .|> complex; # flip angle train
 TR,TE,TI = 0.010, 0.005, 0.100; # repetition time, echo time, inversion delay
-max_state = 25; # maximum number of configuration states to keep track of
+max_state = 32; # maximum number of configuration states to keep track of
 nz = 35
 sliceprofiles = complex.(ones(nTR, nz))
 

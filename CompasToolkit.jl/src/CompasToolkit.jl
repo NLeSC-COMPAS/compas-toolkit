@@ -1,6 +1,11 @@
 module CompasToolkit
 include("Constants.jl")
 
+function version()::String
+    ptr = @ccall LIBRARY.compas_version()::Cstring
+    return unsafe_string(ptr)
+end
+
 function check_version()
     expected_version = VERSION
     gotten_version = version()
@@ -12,11 +17,6 @@ function check_version()
             ),
         )
     end
-end
-
-function version()::String
-    ptr = @ccall LIBRARY.compas_version()::Cstring
-    return unsafe_string(ptr)
 end
 
 function unsafe_destroy_object!(obj)

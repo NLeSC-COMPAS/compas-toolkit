@@ -1,9 +1,6 @@
-using BlochSimulators
 using CompasToolkit
-using ImagePhantoms
-using ComputationalResources
-using LinearAlgebra
-using StaticArrays
+using StructArrays
+
 
 include("common.jl")
 
@@ -13,7 +10,7 @@ context = CompasToolkit.init_context(0)
 N = 256
 nvoxels = N * N
 T₁, T₂, B₁, B₀, ρ, X, Y = generate_parameters(N)
-parameters_ref = gpu(f32(map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)))
+parameters_ref = gpu(StructArray(f32(map(T₁T₂B₀ρˣρʸ, T₁, T₂, B₀, real.(ρ), imag.(ρ)))))
 parameters = CompasToolkit.TissueParameters(nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
 
 # Next, we assemble a balanced sequence with constant flip angle of 60 degrees,
@@ -34,12 +31,13 @@ trajectory = CompasToolkit.CartesianTrajectory(
 # We use two different receive coils
 ncoils = 4
 coil_sensitivities = generate_coils(N, ncoils)
-coil_sensitivities_ref = map(SVector{ncoils}, eachrow(coil_sensitivities)) 
 
+echos_ref = gpu(transpose(echos))
 trajectory_ref  = gpu(f32(trajectory_ref))
-coil_sensitivities_ref  = gpu(f32(coil_sensitivities_ref))
-signal_ref = simulate_signal(CUDALibs(), gpu(pssfp_ref), gpu(parameters_ref), trajectory_ref, coil_sensitivities_ref)
-signal_ref = reshape(collect(signal_ref), ns, nr)
+coil_sensitivities_ref  = gpu(f32(coil_sensitivities))
+coordinates_ref = gpu(StructArray(Coordinates(x, y, zero(x)) for (x, y) in zip(X, Y)))
+signal_ref = magnetization_to_signal(CUDALibs(), echos_ref, gpu(parameters_ref), trajectory_ref, coordinates_ref, coil_sensitivities_ref)
+signal_ref = collect(signal_ref)
 
 signal = CompasToolkit.magnetization_to_signal(
     echos,
@@ -49,7 +47,7 @@ signal = CompasToolkit.magnetization_to_signal(
 signal = collect(signal)
 
 for c in 1:ncoils
-    expected = map(x -> x[c], signal_ref)
+    expected = signal_ref[:,:,c]
     answer = signal[:,:,c]
     print_equals_check(expected, answer)
 end
