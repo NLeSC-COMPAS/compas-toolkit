@@ -43,7 +43,7 @@ void simulate_magnetization_derivative_impl(
         .has_b1 = tissue.has_b1,
     };
 
-    simulate_magnetization_kernel(context, delta_echos, new_tissue, sequence);
+    simulate_magnetization_kernel(context, kmm::NDRange {}, delta_echos, new_tissue, sequence);
 
     num_blocks = {div_ceil(uint(nvoxels), block_size.x), div_ceil(uint(nreadouts), block_size.y)};
 
