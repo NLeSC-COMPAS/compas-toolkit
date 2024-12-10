@@ -499,7 +499,7 @@ function magnetization_to_signal(
     nvoxels::Int64 = parameters.nvoxels
 
     echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
-    coils = convert_array(coils, Float32, nvoxels, ncoils)
+    coils = convert_array(coils, ComplexF32, nvoxels, ncoils)
 
     signal_ptr = @ccall LIBRARY.compas_magnetization_to_signal_cartesian(
         pointer(context)::Ptr{Cvoid},
@@ -530,7 +530,7 @@ function magnetization_to_signal(
     nvoxels::Int64 = parameters.nvoxels
 
     echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
-    coils = convert_array(coils, Float32, nvoxels, ncoils)
+    coils = convert_array(coils, ComplexF32, nvoxels, ncoils)
 
     signal_ptr = @ccall LIBRARY.compas_magnetization_to_signal_spiral(
         pointer(context)::Ptr{Cvoid},
@@ -565,7 +565,7 @@ function compute_jacobian(
     echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
     𝜕echos_T1 = convert_array(𝜕echos.T1, ComplexF32, nvoxels, nreadouts)
     𝜕echos_T2 = convert_array(𝜕echos.T2, ComplexF32, nvoxels, nreadouts)
-    coils = convert_array(coils, Float32, nvoxels, ncoils)
+    coils = convert_array(coils, ComplexF32, nvoxels, ncoils)
     v = convert_array(v, ComplexF32, nvoxels, 4)
 
     Jv_ptr = @ccall LIBRARY.compas_compute_jacobian(
@@ -604,7 +604,7 @@ function compute_jacobian_hermitian(
     echos = convert_array(echos, ComplexF32, nvoxels, nreadouts)
     𝜕echos_T1 = convert_array(𝜕echos.T1, ComplexF32, nvoxels, nreadouts)
     𝜕echos_T2 = convert_array(𝜕echos.T2, ComplexF32, nvoxels, nreadouts)
-    coils = convert_array(coils, Float32, nvoxels, ncoils)
+    coils = convert_array(coils, ComplexF32, nvoxels, ncoils)
     v = convert_array(v, ComplexF32, samples_per_readout, nreadouts, ncoils)
 
     Jᴴv_ptr = @ccall LIBRARY.compas_compute_jacobian_hermitian(

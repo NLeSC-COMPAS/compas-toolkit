@@ -17,7 +17,7 @@ namespace compas {
  * @return The phase encoded magnetization at echo times.
  */
 Array<cfloat, 2> phase_encoding(
-    const CudaContext& ctx,
+    const CompasContext& ctx,
     const Array<cfloat, 2>& echos,
     const TissueParameters& parameters,
     const CartesianTrajectory& trajectory);

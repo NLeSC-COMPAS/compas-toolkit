@@ -14,7 +14,7 @@ template<int warp_size>
 COMPAS_DEVICE void simulate_pssfp_for_voxel(
     const pSSFPSequenceView& sequence,
     float z,
-    cuda_strided_view_mut<cfloat> echos,
+    gpu_strided_view_mut<cfloat> echos,
     TissueVoxel p) {
     auto group =
         cooperative_groups::tiled_partition<warp_size>(cooperative_groups::this_thread_block());
@@ -108,8 +108,8 @@ COMPAS_DEVICE void simulate_pssfp_for_voxel(
 
 template<int warp_size>
 __global__ void simulate_pssfp(
-    cuda_view_mut<cfloat, 2> echos,
-    cuda_view<float> z,
+    gpu_view_mut<cfloat, 2> echos,
+    gpu_view<float> z,
     TissueParametersView parameters,
     pSSFPSequenceView sequence) {
     index_t lane = threadIdx.x % warp_size;

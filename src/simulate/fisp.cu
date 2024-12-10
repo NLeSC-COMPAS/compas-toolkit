@@ -6,15 +6,15 @@ namespace compas {
 
 template<int max_N, int warp_size = max_N>
 void simulate_fisp_sequence_for_size(
-    const kmm::CudaDevice& context,
-    cuda_view_mut<cfloat, 2> echos,
+    const kmm::DeviceContext& context,
+    gpu_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
     COMPAS_ASSERT(sequence.max_state <= max_N);
     COMPAS_ASSERT(is_power_of_two(warp_size) && warp_size <= 32);
 
     int nvoxels = parameters.nvoxels;
-    int nreadouts = sequence.RF_train.size();
+    int nreadouts = int(sequence.RF_train.size());
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
@@ -25,7 +25,7 @@ void simulate_fisp_sequence_for_size(
         dim3 block_size = 256;
         dim3 grid_size = div_ceil(uint(nvoxels * warp_size), block_size.x);
 
-        kernels::simulate_fisp<max_N, warp_size><<<grid_size, block_size, 0, context.stream()>>>(
+        kernels::simulate_fisp<max_N, warp_size><<<grid_size, block_size, 0, context>>>(
             echos,
             sequence.sliceprofiles.drop_axis<0>(i),
             parameters,
@@ -34,8 +34,9 @@ void simulate_fisp_sequence_for_size(
 }
 
 void simulate_magnetization_kernel(
-    const kmm::CudaDevice& context,
-    cuda_view_mut<cfloat, 2> echos,
+    const kmm::DeviceContext& context,
+    kmm::NDRange,
+    gpu_view_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
     if (sequence.max_state <= 4) {
@@ -58,21 +59,21 @@ void simulate_magnetization_kernel(
 }
 
 Array<cfloat, 2> simulate_magnetization(
-    const CudaContext& context,
+    const CompasContext& context,
     TissueParameters parameters,
     FISPSequence sequence) {
-    int nreadouts = sequence.RF_train.size();
+    int nreadouts = int(sequence.RF_train.size());
     int nvoxels = parameters.nvoxels;
-    auto echos = Array<cfloat, 2> {nreadouts, nvoxels};
+    auto echos = Array<cfloat, 2> {{nreadouts, nvoxels}};
 
     void (*fun)(
-        const kmm::CudaDevice&,
-        cuda_view_mut<cfloat, 2>,
+        const kmm::DeviceContext&,
+        kmm::NDRange,
+        gpu_view_mut<cfloat, 2>,
         TissueParametersView,
         FISPSequenceView) = simulate_magnetization_kernel;
 
-    context.submit_device(fun, write(echos), parameters, sequence);
-
+    context.submit_device(nvoxels, fun, write(echos), parameters, sequence);
     return echos;
 }
 

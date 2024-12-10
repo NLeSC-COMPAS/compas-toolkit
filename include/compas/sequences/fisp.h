@@ -30,7 +30,7 @@ struct FISPSequence {
 };
 
 inline FISPSequence make_fisp_sequence(
-    const CudaContext& context,
+    const CompasContext& context,
     host_view<cfloat> RF_train,
     host_view<cfloat, 2> sliceprofiles,
     float TR,
@@ -46,10 +46,10 @@ inline FISPSequence make_fisp_sequence(
 namespace kmm {
 
 template<>
-struct TaskArgument<ExecutionSpace::Cuda, compas::FISPSequence> {
+struct Argument<compas::FISPSequence> {
     using type = compas::FISPSequenceView;
 
-    static TaskArgument pack(TaskBuilder& builder, compas::FISPSequence p) {
+    static Argument pack(TaskBuilder& builder, compas::FISPSequence p) {
         return {
             {.RF_train = {},
              .sliceprofiles = {},
@@ -57,19 +57,20 @@ struct TaskArgument<ExecutionSpace::Cuda, compas::FISPSequence> {
              .TE = p.TE,
              .max_state = p.max_state,
              .TI = p.TI},
-            pack_argument<ExecutionSpace::Cuda>(builder, p.RF_train),
-            pack_argument<ExecutionSpace::Cuda>(builder, p.sliceprofiles)};
+            pack_argument(builder, p.RF_train),
+            pack_argument(builder, p.sliceprofiles)};
     }
 
+    template<ExecutionSpace space>
     type unpack(TaskContext& context) {
-        view.RF_train = unpack_argument<ExecutionSpace::Cuda>(context, RF_train);
-        view.sliceprofiles = unpack_argument<ExecutionSpace::Cuda>(context, sliceprofiles);
+        view.RF_train = unpack_argument<space>(context, RF_train);
+        view.sliceprofiles = unpack_argument<space>(context, sliceprofiles);
         return view;
     }
 
     type view;
-    PackedArray<const compas::cfloat> RF_train;
-    PackedArray<const compas::cfloat, 2> sliceprofiles;
+    packed_argument_t<Array<compas::cfloat>> RF_train;
+    packed_argument_t<Array<compas::cfloat, 2>> sliceprofiles;
 };
 
 };  // namespace kmm
