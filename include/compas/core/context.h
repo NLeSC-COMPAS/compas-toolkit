@@ -41,6 +41,27 @@ struct CompasContext {
     }
 
     template<typename F, typename... Args>
+    void
+    parallel_device(kmm::NDRange index_space, kmm::NDSize chunk_size, F fun, Args... args) const {
+        m_runtime
+            .parallel_submit(index_space, kmm::TaskPartitioner(chunk_size), kmm::GPU(fun), args...);
+    }
+
+    template<typename F, typename... Args>
+    void parallel_kernel(
+        kmm::NDRange index_space,
+        kmm::NDSize chunk_size,
+        dim3 block_dim,
+        F kernel,
+        Args... args) const {
+        m_runtime.parallel_submit(
+            index_space,
+            kmm::TaskPartitioner(chunk_size),
+            kmm::GPUKernel(kernel, block_dim),
+            args...);
+    }
+
+    template<typename F, typename... Args>
     void submit_device(kmm::NDRange index_space, F fun, Args... args) const {
         m_runtime.submit(index_space, m_device, kmm::GPU(fun), args...);
     }
@@ -56,6 +77,10 @@ struct CompasContext {
 
     void synchronize() const {
         m_runtime.synchronize();
+    }
+
+    const kmm::Runtime& runtime() const {
+        return m_runtime;
     }
 
   private:

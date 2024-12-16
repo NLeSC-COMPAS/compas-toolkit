@@ -68,8 +68,8 @@ Array<cfloat, 3> compute_jacobian(
             echos,                                                                     \
             delta_echos_T1,                                                            \
             delta_echos_T2,                                                            \
-            parameters.parameters.size(1),                                             \
-            parameters.parameters,                                                     \
+            parameters.data.size(1),                                                   \
+            parameters.data,                                                           \
             coil_sensitivities,                                                        \
             E,                                                                         \
             dEdT2,                                                                     \

@@ -10,7 +10,7 @@ template<int max_N, int warp_size>
 COMPAS_DEVICE void simulate_fisp_for_voxel(
     const FISPSequenceView& sequence,
     gpu_view<cfloat> slice_profile,
-    gpu_strided_view_mut<cfloat> echos,
+    gpu_strided_subview_mut<cfloat> echos,
     TissueVoxel p) {
     auto off_resonance_rotation = [](float delta_t, float B0 = 0.0f) -> cfloat {
         if (B0 == 0.0f) {
@@ -69,14 +69,14 @@ COMPAS_DEVICE void simulate_fisp_for_voxel(
 
 template<int max_N, int warp_size>
 __global__ void simulate_fisp(
-    gpu_view_mut<cfloat, 2> echos,
+    kmm::Range<1, index_t> range,
+    gpu_subview_mut<cfloat, 2> echos,
     gpu_view<cfloat> slice_profile,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
-    index_t voxel = index_t(blockDim.x * blockIdx.x + threadIdx.x) / warp_size;
-    index_t nvoxels = parameters.nvoxels;
+    index_t voxel = index_t(blockDim.x * blockIdx.x + threadIdx.x) / warp_size + range.begin();
 
-    if (voxel >= nvoxels) {
+    if (voxel >= range.end()) {
         return;
     }
 

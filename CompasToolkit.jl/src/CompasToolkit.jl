@@ -58,6 +58,14 @@ function get_context()::Context
 end
 
 """
+Waits until all asynchronous operations of Compas have finished.
+"""
+function synchronize()
+    context = get_context()
+    @ccall LIBRARY.compas_synchronize(pointer(context)::Ptr{Cvoid})::Cvoid
+end
+
+"""
 Object representing an array of size `N` and type `T`.
 """
 mutable struct CompasArray{T, N} <: AbstractArray{T, N}

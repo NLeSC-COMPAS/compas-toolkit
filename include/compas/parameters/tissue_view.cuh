@@ -39,11 +39,12 @@ struct TissueVoxel {
  * Device-side representation of `TissueParameters`
  */
 struct TissueParametersView {
-    gpu_view<float, 2> parameters;
-    int nvoxels;
-    bool has_z;
-    bool has_b0;
-    bool has_b1;
+    TissueParametersView(gpu_subview<float, 2> parameters = {}) : parameters(parameters) {}
+
+    gpu_subview<float, 2> parameters;
+    bool has_z = true;
+    bool has_b0 = true;
+    bool has_b1 = true;
 
     /**
      * Returns the parameters for the voxel at location `i`.

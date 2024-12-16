@@ -12,6 +12,7 @@ template<typename SequenceView>
 void simulate_magnetization_derivative_impl(
     const kmm::DeviceContext& context,
     kmm::NDRange,
+    int nvoxels,
     int field,
     gpu_view_mut<float, 2> new_parameters,
     gpu_view_mut<cfloat, 2> delta_echos,
@@ -19,7 +20,6 @@ void simulate_magnetization_derivative_impl(
     TissueParametersView tissue,
     SequenceView sequence,
     float delta) {
-    auto nvoxels = tissue.nvoxels;
     auto nreadouts = kmm::checked_cast<int>(sequence.RF_train.size());
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
@@ -35,13 +35,8 @@ void simulate_magnetization_derivative_impl(
         field,
         delta);
 
-    auto new_tissue = TissueParametersView {
-        .parameters = new_parameters,
-        .nvoxels = nvoxels,
-        .has_z = tissue.has_z,
-        .has_b0 = tissue.has_b0,
-        .has_b1 = tissue.has_b1,
-    };
+    auto new_tissue = TissueParametersView {tissue};
+    new_tissue.parameters = new_parameters;
 
     simulate_magnetization_kernel(context, kmm::NDRange {}, delta_echos, new_tissue, sequence);
 
@@ -68,12 +63,13 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
 
-    auto new_parameters = Array<float, 2> {parameters.parameters.sizes()};
+    auto new_parameters = Array<float, 2> {parameters.data.sizes()};
     auto delta_echos = Array<cfloat, 2> {echos.sizes()};
 
     context.submit_device(
         {nreadouts, nvoxels},
         simulate_magnetization_derivative_impl<pSSFPSequenceView>,
+        nvoxels,
         field,
         write(new_parameters),
         write(delta_echos),
@@ -98,12 +94,13 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
 
-    auto new_parameters = Array<float, 2> {parameters.parameters.sizes()};
+    auto new_parameters = Array<float, 2> {parameters.data.sizes()};
     auto delta_echos = Array<cfloat, 2> {echos.sizes()};
 
     context.submit_device(
         {nreadouts, nvoxels},
         simulate_magnetization_derivative_impl<FISPSequenceView>,
+        nvoxels,
         field,
         write(new_parameters),
         write(delta_echos),

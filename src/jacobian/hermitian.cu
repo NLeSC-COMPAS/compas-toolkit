@@ -74,8 +74,8 @@ Array<cfloat, 2> compute_jacobian_hermitian(
             echos,                                                          \
             delta_echos_T1,                                                 \
             delta_echos_T2,                                                 \
-            parameters.parameters.size(1),                                  \
-            parameters.parameters,                                          \
+            parameters.data.size(1),                                        \
+            parameters.data,                                                \
             coil_sensitivities,                                             \
             vector,                                                         \
             E,                                                              \

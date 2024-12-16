@@ -12,6 +12,7 @@ namespace compas {
 void magnetization_to_signal_cartesian_direct(
     const kmm::DeviceContext& context,
     kmm::NDRange subrange,
+    int nvoxels,
     gpu_subview_mut<cfloat, 3> signal,
     gpu_view<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -20,7 +21,6 @@ void magnetization_to_signal_cartesian_direct(
     gpu_view_mut<cfloat, 2> exponents,
     gpu_view_mut<cfloat, 2> factors) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
-    int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
 
@@ -85,6 +85,7 @@ void magnetization_to_signal_cartesian_direct(
 void magnetization_to_signal_cartesian_gemm(
     const kmm::DeviceContext& context,
     kmm::NDRange subrange,
+    int nvoxels,
     gpu_view_mut<cfloat, 3> signal,
     gpu_view<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -94,7 +95,6 @@ void magnetization_to_signal_cartesian_gemm(
     gpu_view_mut<cfloat, 2> factors,
     cublasComputeType_t compute_type) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
-    int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
 
@@ -164,6 +164,7 @@ void magnetization_to_signal_cartesian_gemm(
 void magnetization_to_signal_spiral(
     const kmm::DeviceContext& context,
     kmm::NDRange subrange,
+    int nvoxels,
     gpu_view_mut<cfloat, 3> signal,
     gpu_view<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -172,7 +173,6 @@ void magnetization_to_signal_spiral(
     gpu_view_mut<cfloat, 2> exponents,
     gpu_view_mut<cfloat, 2> factors) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
-    int nvoxels = parameters.nvoxels;
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
 
@@ -270,6 +270,7 @@ Array<cfloat, 3> magnetization_to_signal(
             context.submit_device(
                 {nvoxels, nreadouts},
                 magnetization_to_signal_cartesian_direct,
+                nvoxels,
                 write(signal),
                 echos,
                 parameters,
@@ -281,6 +282,7 @@ Array<cfloat, 3> magnetization_to_signal(
             context.submit_device(
                 {nvoxels, nreadouts},
                 magnetization_to_signal_cartesian_gemm,
+                nvoxels,
                 write(signal),
                 echos,
                 parameters,
@@ -297,6 +299,7 @@ Array<cfloat, 3> magnetization_to_signal(
         context.submit_device(
             {nvoxels, nreadouts},
             magnetization_to_signal_spiral,
+            nvoxels,
             write(signal),
             echos,
             parameters,

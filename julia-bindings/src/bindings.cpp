@@ -54,6 +54,10 @@ extern "C" void compas_destroy_context(const compas::CompasContext* ctx) {
     return catch_exceptions([&] { delete ctx; });
 }
 
+extern "C" void compas_synchronize(const compas::CompasContext* ctx) {
+    return catch_exceptions([&] { ctx->synchronize(); });
+}
+
 extern "C" const kmm::ArrayBase* compas_make_array_float(
     const compas::CompasContext* context,
     const float* data_ptr,
@@ -130,10 +134,14 @@ extern "C" const compas::TissueParameters* compas_make_tissue_parameters(
     const float* x,
     const float* y,
     const float* z) {
+    int num_devices = int(context->runtime().info().num_devices());
+    int chunk_size = kmm::round_up_to_multiple(kmm::div_ceil(nvoxels, num_devices), 32);
+
     return catch_exceptions([&] {
         auto params = compas::make_tissue_parameters(
             *context,
             nvoxels,
+            chunk_size,
             make_view(T1, nvoxels),
             make_view(T2, nvoxels),
             make_view(B1, nvoxels),

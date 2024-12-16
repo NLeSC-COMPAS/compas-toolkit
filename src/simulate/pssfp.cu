@@ -7,12 +7,12 @@ namespace compas {
 template<int batch_size>
 int simulate_pssfp_sequence_batch(
     const kmm::DeviceContext& context,
+    int nvoxels,
     int iz,
-    const gpu_view_mut<cfloat, 2>& echos,
+    const gpu_subview_mut<cfloat, 2>& echos,
     const TissueParametersView& parameters,
     const pSSFPSequenceView& sequence) {
     int nreadouts = sequence.nTR;
-    int nvoxels = parameters.nvoxels;
     int nz = kmm::checked_cast<int>(sequence.z.size());
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
@@ -25,6 +25,7 @@ int simulate_pssfp_sequence_batch(
         auto z_subslices = gpu_view<float> {sequence.z.data() + iz, {{batch_size}}};
 
         kernels::simulate_pssfp<batch_size><<<grid_size, block_size, 0, context.stream()>>>(  //
+            nvoxels,
             echos,
             z_subslices,
             parameters,
@@ -39,23 +40,30 @@ int simulate_pssfp_sequence_batch(
 void simulate_magnetization_kernel(
     const kmm::DeviceContext& context,
     kmm::NDRange,
-    gpu_view_mut<cfloat, 2> echos,
+    int nvoxels,
+    gpu_subview_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     pSSFPSequenceView sequence) {
     // Initialize echos to zero
-    context.fill(echos, cfloat(0));
+    context.fill(echos.data(), echos.size(), cfloat(0));
 
     // We process the z-slices in batches. The first batches process 32 slices at once, the next batches process 16
     // slices at once, the next 8 slices, etc. Since the reduction is performed using warp-shuffles, these batch sizes
     // must powers of two and cannot exceed 32.  The offset keeps track of how many slices have already been processed
     // and is incremented by each call to `simulate_pssfp_sequence_batch`.
     int offset = 0;
-    offset = simulate_pssfp_sequence_batch<32>(context, offset, echos, parameters, sequence);
-    offset = simulate_pssfp_sequence_batch<16>(context, offset, echos, parameters, sequence);
-    offset = simulate_pssfp_sequence_batch<8>(context, offset, echos, parameters, sequence);
-    offset = simulate_pssfp_sequence_batch<4>(context, offset, echos, parameters, sequence);
-    offset = simulate_pssfp_sequence_batch<2>(context, offset, echos, parameters, sequence);
-    offset = simulate_pssfp_sequence_batch<1>(context, offset, echos, parameters, sequence);
+    offset =
+        simulate_pssfp_sequence_batch<32>(context, nvoxels, offset, echos, parameters, sequence);
+    offset =
+        simulate_pssfp_sequence_batch<16>(context, nvoxels, offset, echos, parameters, sequence);
+    offset =
+        simulate_pssfp_sequence_batch<8>(context, nvoxels, offset, echos, parameters, sequence);
+    offset =
+        simulate_pssfp_sequence_batch<4>(context, nvoxels, offset, echos, parameters, sequence);
+    offset =
+        simulate_pssfp_sequence_batch<2>(context, nvoxels, offset, echos, parameters, sequence);
+    offset =
+        simulate_pssfp_sequence_batch<1>(context, nvoxels, offset, echos, parameters, sequence);
 
     COMPAS_ASSERT(offset == sequence.z.size());
 }
@@ -71,11 +79,12 @@ Array<cfloat, 2> simulate_magnetization(
     void (*fun)(
         const kmm::DeviceContext&,
         kmm::NDRange,
-        gpu_view_mut<cfloat, 2>,
+        int,
+        gpu_subview_mut<cfloat, 2>,
         TissueParametersView,
         pSSFPSequenceView) = simulate_magnetization_kernel;
 
-    context.submit_device(nvoxels, fun, write(echos), parameters, sequence);
+    context.submit_device(nvoxels, fun, nvoxels, write(echos), parameters, sequence);
     return echos;
 }
 }  // namespace compas

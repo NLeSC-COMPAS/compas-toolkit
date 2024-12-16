@@ -5,8 +5,8 @@ namespace compas {
 namespace kernels {
 __global__ void add_difference_to_parameters(
     int nvoxels,
-    gpu_view_mut<float, 2> new_parameters,
-    gpu_view<float, 2> old_parameters,
+    gpu_subview_mut<float, 2> new_parameters,
+    gpu_subview<float, 2> old_parameters,
     int target_field,
     float delta) {
     auto v = index_t(blockIdx.x * blockDim.x + threadIdx.x);
@@ -23,8 +23,8 @@ __global__ void add_difference_to_parameters(
 __global__ void calculate_finite_difference(
     int nreadouts,
     int nvoxels,
-    gpu_view_mut<cfloat, 2> delta_echos,
-    gpu_view<cfloat, 2> echos,
+    gpu_subview_mut<cfloat, 2> delta_echos,
+    gpu_subview<cfloat, 2> echos,
     float inv_delta) {
     auto v = index_t(blockIdx.x * blockDim.x + threadIdx.x);
     auto r = index_t(blockIdx.y * blockDim.y + threadIdx.y);
