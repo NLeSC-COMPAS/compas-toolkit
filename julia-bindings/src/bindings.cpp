@@ -31,7 +31,8 @@ auto catch_exceptions(F fun) -> decltype(fun()) {
 
 template<typename T, typename... Ns>
 compas::host_view_mut<T, sizeof...(Ns)> make_view(T* ptr, Ns... sizes) {
-    return {ptr, kmm::fixed_array<kmm::index_t, sizeof...(Ns)> {sizes...}};
+    using index_type = typename compas::host_view_mut<T, sizeof...(Ns)>::index_type;
+    return {ptr, {{kmm::checked_cast<index_type>(sizes)...}}};
 }
 
 extern "C" const char* compas_version() {
@@ -42,19 +43,23 @@ extern "C" void compas_destroy(const compas::Object* obj) {
     return catch_exceptions([&] { delete obj; });
 }
 
-extern "C" const compas::CudaContext* compas_make_context(int device) {
+extern "C" const compas::CompasContext* compas_make_context(int device) {
     return catch_exceptions([&] {
         auto ctx = compas::make_context(device);
-        return new compas::CudaContext(ctx);
+        return new compas::CompasContext(ctx);
     });
 }
 
-extern "C" void compas_destroy_context(const compas::CudaContext* ctx) {
+extern "C" void compas_destroy_context(const compas::CompasContext* ctx) {
     return catch_exceptions([&] { delete ctx; });
 }
 
+extern "C" void compas_synchronize(const compas::CompasContext* ctx) {
+    return catch_exceptions([&] { ctx->synchronize(); });
+}
+
 extern "C" const kmm::ArrayBase* compas_make_array_float(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     const float* data_ptr,
     int rank,
     int64_t* sizes) {
@@ -73,18 +78,18 @@ extern "C" const kmm::ArrayBase* compas_make_array_float(
 }
 
 extern "C" void compas_read_array_float(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     const kmm::ArrayBase* input_array,
     float* dest_ptr,
     int64_t length) {
     catch_exceptions([&]() {
         size_t num_bytes = kmm::checked_mul(kmm::checked_cast<size_t>(length), sizeof(float));
-        input_array->read_bytes(dest_ptr, num_bytes);
+        input_array->copy_bytes_to(dest_ptr, num_bytes);
     });
 }
 
 extern "C" const kmm::ArrayBase* compas_make_array_complex(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     const cfloat* data_ptr,
     int rank,
     int64_t* sizes) {
@@ -103,13 +108,13 @@ extern "C" const kmm::ArrayBase* compas_make_array_complex(
 }
 
 extern "C" void compas_read_array_complex(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     const kmm::ArrayBase* input_array,
     cfloat* dest_ptr,
     int64_t length) {
     catch_exceptions([&]() {
         size_t num_bytes = kmm::checked_mul(kmm::checked_cast<size_t>(length), 2 * sizeof(float));
-        input_array->read_bytes(dest_ptr, num_bytes);
+        input_array->copy_bytes_to(dest_ptr, num_bytes);
     });
 }
 
@@ -118,7 +123,7 @@ extern "C" void compas_destroy_array(const kmm::ArrayBase* array) {
 }
 
 extern "C" const compas::TissueParameters* compas_make_tissue_parameters(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     int nvoxels,
     const float* T1,
     const float* T2,
@@ -129,10 +134,14 @@ extern "C" const compas::TissueParameters* compas_make_tissue_parameters(
     const float* x,
     const float* y,
     const float* z) {
+    int num_devices = int(context->runtime().info().num_devices());
+    int chunk_size = kmm::round_up_to_multiple(kmm::div_ceil(nvoxels, num_devices), 32);
+
     return catch_exceptions([&] {
         auto params = compas::make_tissue_parameters(
             *context,
             nvoxels,
+            chunk_size,
             make_view(T1, nvoxels),
             make_view(T2, nvoxels),
             make_view(B1, nvoxels),
@@ -148,7 +157,7 @@ extern "C" const compas::TissueParameters* compas_make_tissue_parameters(
 }
 
 extern "C" kmm::ArrayBase* compas_simulate_magnetization_fisp(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     const compas::TissueParameters* parameters,
     compas::Array<cfloat>* RF_train,
     compas::Array<cfloat, 2>* sliceprofiles,
@@ -166,7 +175,7 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_fisp(
 }
 
 extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     const compas::TissueParameters* parameters,
     const compas::Array<cfloat>* RF_train,
     float TR,
@@ -194,11 +203,11 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
 }
 
 extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     int ncoils,
     const compas::Array<cfloat, 2>* echos,
     const compas::TissueParameters* parameters,
-    const compas::Array<float, 2>* coils,
+    const compas::Array<cfloat, 2>* coils,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
@@ -219,11 +228,11 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
 }
 
 extern "C" kmm::ArrayBase* compas_magnetization_to_signal_spiral(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     int ncoils,
     const compas::Array<cfloat, 2>* echos,
     const compas::TissueParameters* parameters,
-    const compas::Array<float, 2>* coils,
+    const compas::Array<cfloat, 2>* coils,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
@@ -240,13 +249,13 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_spiral(
 }
 
 extern "C" compas::Array<cfloat, 3>* compas_compute_jacobian(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     int ncoils,
     const compas::Array<cfloat, 2>* echos,
     const compas::Array<cfloat, 2>* delta_echos_T1,
     const compas::Array<cfloat, 2>* delta_echos_T2,
     const compas::TissueParameters* parameters,
-    const compas::Array<float, 2>* coils,
+    const compas::Array<cfloat, 2>* coils,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
@@ -276,13 +285,13 @@ extern "C" compas::Array<cfloat, 3>* compas_compute_jacobian(
 }
 
 extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     int ncoils,
     const compas::Array<cfloat, 2>* echos,
     const compas::Array<cfloat, 2>* delta_echos_T1,
     const compas::Array<cfloat, 2>* delta_echos_T2,
     const compas::TissueParameters* parameters,
-    const compas::Array<float, 2>* coils,
+    const compas::Array<cfloat, 2>* coils,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
@@ -312,7 +321,7 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
 }
 
 extern "C" compas::Array<cfloat, 2>* phase_encoding(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     const compas::Array<cfloat, 2>* echos,
     const compas::TissueParameters* parameters,
     int nreadouts,
@@ -335,7 +344,7 @@ extern "C" compas::Array<cfloat, 2>* phase_encoding(
 }
 
 extern "C" compas::Array<cfloat, 3>* compas_compute_residual(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     const compas::Array<cfloat, 3>* lhs,
     const compas::Array<cfloat, 3>* rhs,
     float* sum) {
@@ -347,7 +356,7 @@ extern "C" compas::Array<cfloat, 3>* compas_compute_residual(
 }
 
 extern "C" compas::Array<cfloat, 2>* compas_simulate_magnetization_derivative_pssfp(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     int field,
     const compas::Array<cfloat, 2>* echos,
     const compas::TissueParameters* parameters,
@@ -384,7 +393,7 @@ extern "C" compas::Array<cfloat, 2>* compas_simulate_magnetization_derivative_ps
 }
 
 extern "C" compas::Array<cfloat, 2>* compas_simulate_magnetization_derivative_fisp(
-    const compas::CudaContext* context,
+    const compas::CompasContext* context,
     int field,
     const compas::Array<cfloat, 2>* echos,
     const compas::TissueParameters* parameters,

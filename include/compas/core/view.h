@@ -1,32 +1,32 @@
 #pragma once
-#include "kmm/utils/view.hpp"
+#include "kmm/core/view.hpp"
 
 namespace compas {
 
-using index_t = kmm::default_index_type;
+using index_t = int;
 
-template<typename T, size_t N = 1>
-using view = kmm::view<T, N>;
+using kmm::strided_subview;
+using kmm::strided_subview_mut;
+using kmm::strided_view;
+using kmm::strided_view_mut;
+using kmm::subview;
+using kmm::subview_mut;
+using kmm::view;
+using kmm::view_mut;
 
-template<typename T, size_t N = 1>
-using view_mut = kmm::view_mut<T, N>;
+using kmm::gpu_strided_subview;
+using kmm::gpu_strided_subview_mut;
+using kmm::gpu_strided_view;
+using kmm::gpu_strided_view_mut;
+using kmm::gpu_subview;
+using kmm::gpu_subview_mut;
+using kmm::gpu_view;
+using kmm::gpu_view_mut;
 
 template<typename T, size_t N = 1>
 using host_view = kmm::view<T, N>;
 
 template<typename T, size_t N = 1>
 using host_view_mut = kmm::view_mut<T, N>;
-
-template<typename T, size_t N = 1>
-using cuda_view = kmm::cuda_view<T, N>;
-
-template<typename T, size_t N = 1>
-using cuda_view_mut = kmm::cuda_view_mut<T, N>;
-
-template<typename T, size_t N = 1>
-using cuda_strided_view = kmm::cuda_strided_view<T, N>;
-
-template<typename T, size_t N = 1>
-using cuda_strided_view_mut = kmm::cuda_strided_view_mut<T, N>;
 
 }  // namespace compas

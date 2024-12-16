@@ -77,7 +77,7 @@ function generate_coils(N, ncoils)
     coil₃ = coil₁;
     coil₄ = coil₂;
     
-    return hcat(coil₁ |> vec, coil₂ |> vec, coil₃ |> vec, coil₄ |> vec) .|> Float32 
+    return hcat(coil₁ |> vec, coil₂ |> vec, coil₃ |> vec, coil₄ |> vec) .|> ComplexF32
 end
 
 function generate_echos(N, sequence)
@@ -113,8 +113,7 @@ function generate_delta_echos(N, sequence)
     )
 end
 
-function print_equals_check(expected, answer)
-    atol = 1e-9
+function print_equals_check(expected, answer; atol = 1e-9)
     answer = collect(answer)
 
     for rtol in [0.001, 0.005, 0.01, 0.05, 0.1]
@@ -124,9 +123,9 @@ function print_equals_check(expected, answer)
 
     err = abs.(answer - expected)
     index = argmax(err)
-    println("maximum abs error ($(index)): ", err[index], "($(answer[index]) vs $(expected[index]))")
+    println("maximum abs error ($(index)): ", err[index], " ($(answer[index]) vs $(expected[index]))")
 
     rel_err = err ./ max.(abs.(expected), atol)
     index = argmax(rel_err)
-    println("maximum rel error ($(index)): ", rel_err[index], "($(answer[index]) vs $(expected[index]))")
+    println("maximum rel error ($(index)): ", rel_err[index], " ($(answer[index]) vs $(expected[index]))")
 end

@@ -8,72 +8,92 @@
 #include <string>
 #include <vector>
 
+#include "compas/core/complex_type.h"
 #include "compas/core/view.h"
-#include "kmm/array.hpp"
-#include "kmm/cuda/cuda.hpp"
-#include "kmm/host/host.hpp"
-#include "kmm/runtime_handle.hpp"
+#include "kmm/kmm.hpp"
 
-#define COMPAS_CUDA_CHECK(...) KMM_CUDA_CHECK(__VA_ARGS__)
+#define COMPAS_GPU_CHECK(...) KMM_GPU_CHECK(__VA_ARGS__)
 
 namespace compas {
 
 template<typename T, size_t N = 1>
 using Array = kmm::Array<T, N>;
 
-struct CudaContext {
-    CudaContext(kmm::RuntimeHandle runtime, kmm::Cuda device) :
+struct CompasContext {
+    CompasContext(kmm::Runtime runtime, kmm::DeviceId device) :
         m_runtime(runtime),
         m_device(device) {}
 
     template<typename T, size_t N>
-    Array<std::decay_t<T>, N> allocate(view_mut<T, N> content) const {
-        std::array<index_t, N> sizes;
-        for (size_t i = 0; i < N; i++) {
-            sizes[i] = content.size(i);
-        }
-
-        return m_runtime.allocate_array(content.data(), sizes);
+    Array<std::decay_t<T>, N> allocate(host_view<T, N> content) const {
+        return m_runtime.allocate(content.data(), kmm::Size<N>(content.sizes()));
     }
 
     template<typename T, typename... Sizes>
     Array<std::decay_t<T>, sizeof...(Sizes)> allocate(const T* content_ptr, Sizes... sizes) const {
-        std::array<index_t, sizeof...(Sizes)> sizes_array = {kmm::checked_cast<index_t>(sizes)...};
-        return m_runtime.allocate_array(content_ptr, sizes_array);
+        kmm::Size<sizeof...(Sizes)> sizes_array = {kmm::checked_cast<index_t>(sizes)...};
+        return m_runtime.allocate(content_ptr, sizes_array);
     }
 
     template<typename T>
     Array<std::decay_t<T>> allocate(const std::vector<T>& content) const {
-        std::array<index_t, 1> sizes_array = {kmm::checked_cast<index_t>(content.size())};
-        return m_runtime.allocate_array(content.data(), sizes_array);
+        return m_runtime.allocate(content.data(), content.size());
     }
 
-    template<typename... Args>
-    void submit_host(Args... args) const {
-        m_runtime.submit(kmm::Host(), args...);
+    template<typename F, typename... Args>
+    void
+    parallel_device(kmm::NDRange index_space, kmm::NDSize chunk_size, F fun, Args... args) const {
+        m_runtime
+            .parallel_submit(index_space, kmm::TaskPartitioner(chunk_size), kmm::GPU(fun), args...);
     }
 
-    template<typename... Args>
-    void submit_device(Args... args) const {
-        m_runtime.submit(m_device, args...);
+    template<typename F, typename... Args>
+    void parallel_kernel(
+        kmm::NDRange index_space,
+        kmm::NDSize chunk_size,
+        dim3 block_dim,
+        F kernel,
+        Args... args) const {
+        m_runtime.parallel_submit(
+            index_space,
+            kmm::TaskPartitioner(chunk_size),
+            kmm::GPUKernel(kernel, block_dim),
+            args...);
+    }
+
+    template<typename F, typename... Args>
+    void submit_device(kmm::NDRange index_space, F fun, Args... args) const {
+        m_runtime.submit(index_space, m_device, kmm::GPU(fun), args...);
     }
 
     template<typename F, typename... Args>
     void submit_kernel(dim3 grid_dim, dim3 block_dim, F kernel, Args... args) const {
-        m_runtime.submit(kmm::CudaKernel(grid_dim, block_dim, m_device), kernel, args...);
+        m_runtime.submit(
+            kmm::NDRange(grid_dim.x, grid_dim.y, grid_dim.z),
+            m_device,
+            kmm::GPUKernel(kernel, block_dim, dim3()),
+            args...);
     }
 
     void synchronize() const {
         m_runtime.synchronize();
     }
 
+    const kmm::Runtime& runtime() const {
+        return m_runtime;
+    }
+
   private:
-    kmm::RuntimeHandle m_runtime;
-    kmm::Cuda m_device;
+    kmm::Runtime m_runtime;
+    kmm::DeviceId m_device;
 };
 
-inline CudaContext make_context(int device = 0) {
-    return {kmm::build_runtime(), kmm::Cuda(device)};
+inline CompasContext make_context(int device = 0) {
+    spdlog::set_level(spdlog::level::trace);
+    return {kmm::make_runtime(), kmm::DeviceId(device)};
 }
 
 }  // namespace compas
+
+template<typename T>
+struct kmm::DataTypeMap<compas::complex_type<T>>: kmm::DataTypeMap<::std::complex<T>> {};

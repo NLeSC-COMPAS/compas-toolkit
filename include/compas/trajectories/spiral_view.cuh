@@ -11,8 +11,8 @@ struct SpiralTrajectoryView {
     int nreadouts;
     int samples_per_readout;
     float delta_t;
-    cuda_view<cfloat> k_start;
-    cuda_view<cfloat> delta_k;
+    gpu_view<cfloat> k_start;
+    gpu_view<cfloat> delta_k;
 
     COMPAS_DEVICE
     cfloat to_sample_point_factor(index_t readout_idx, cfloat m, TissueVoxel p) const {

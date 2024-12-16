@@ -39,7 +39,7 @@ struct SpiralTrajectory: public Trajectory {
  * @return
  */
 inline SpiralTrajectory make_spiral_trajectory(
-    const CudaContext& context,
+    const CompasContext& context,
     int nreadouts,
     int samples_per_readout,
     float delta_t,
@@ -60,10 +60,10 @@ inline SpiralTrajectory make_spiral_trajectory(
 
 namespace kmm {
 template<>
-struct TaskArgument<ExecutionSpace::Cuda, compas::SpiralTrajectory> {
+struct Argument<compas::SpiralTrajectory> {
     using type = compas::SpiralTrajectoryView;
 
-    static TaskArgument pack(TaskBuilder& builder, const compas::SpiralTrajectory& t) {
+    static Argument pack(TaskBuilder& builder, const compas::SpiralTrajectory& t) {
         return {
             {//
              .nreadouts = t.nreadouts,
@@ -71,18 +71,19 @@ struct TaskArgument<ExecutionSpace::Cuda, compas::SpiralTrajectory> {
              .delta_t = t.delta_t,
              .k_start = {},
              .delta_k = {}},
-            pack_argument<ExecutionSpace::Cuda>(builder, t.k_start),
-            pack_argument<ExecutionSpace::Cuda>(builder, t.delta_k)};
+            pack_argument(builder, t.k_start),
+            pack_argument(builder, t.delta_k)};
     }
 
+    template<ExecutionSpace space>
     type unpack(TaskContext& context) {
-        view.k_start = unpack_argument<ExecutionSpace::Cuda>(context, k_start);
-        view.delta_k = unpack_argument<ExecutionSpace::Cuda>(context, delta_k);
+        view.k_start = unpack_argument<space>(context, k_start);
+        view.delta_k = unpack_argument<space>(context, delta_k);
         return view;
     }
 
     compas::SpiralTrajectoryView view;
-    PackedArray<const compas::cfloat> k_start;
-    PackedArray<const compas::cfloat> delta_k;
+    packed_argument_t<Array<compas::cfloat>> k_start;
+    packed_argument_t<Array<compas::cfloat>> delta_k;
 };
 }  // namespace kmm

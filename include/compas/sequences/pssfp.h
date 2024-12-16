@@ -42,17 +42,17 @@ struct pSSFPSequence {
         Array<float> z) :
         RF_train(RF_train),
         TR(TR),
-        nRF(gamma_dt_RF.size()),
-        nTR(RF_train.size()),
+        nRF(kmm::checked_cast<int>(gamma_dt_RF.size())),
+        nTR(kmm::checked_cast<int>(RF_train.size())),
         gamma_dt_RF(gamma_dt_RF),
         dt(dt),
         gamma_dt_GRz(gamma_dt_GRz),
-        nz(z.size()),
+        nz(kmm::checked_cast<int>(z.size())),
         z(z) {}
 };
 
 inline pSSFPSequence make_pssfp_sequence(
-    const CudaContext& context,
+    const CompasContext& context,
     host_view<cfloat> RF_train,
     float TR,
     host_view<cfloat> gamma_dt_RF,
@@ -75,10 +75,10 @@ inline pSSFPSequence make_pssfp_sequence(
 
 namespace kmm {
 template<>
-struct TaskArgument<ExecutionSpace::Cuda, compas::pSSFPSequence> {
+struct Argument<compas::pSSFPSequence> {
     using type = compas::pSSFPSequenceView;
 
-    static TaskArgument pack(TaskBuilder& builder, compas::pSSFPSequence p) {
+    static Argument pack(TaskBuilder& builder, compas::pSSFPSequence p) {
         return {
             {.nTR = p.nTR,
              .RF_train = {},
@@ -87,23 +87,24 @@ struct TaskArgument<ExecutionSpace::Cuda, compas::pSSFPSequence> {
              .dt = p.dt,
              .gamma_dt_GRz = p.gamma_dt_GRz,
              .z = {}},
-            pack_argument<ExecutionSpace::Cuda>(builder, p.RF_train),
-            pack_argument<ExecutionSpace::Cuda>(builder, p.gamma_dt_RF),
-            pack_argument<ExecutionSpace::Cuda>(builder, p.z),
+            pack_argument(builder, p.RF_train),
+            pack_argument(builder, p.gamma_dt_RF),
+            pack_argument(builder, p.z),
         };
     }
 
+    template<ExecutionSpace space>
     type unpack(TaskContext& context) {
-        view.RF_train = unpack_argument<ExecutionSpace::Cuda>(context, RF_train);
-        view.gamma_dt_RF = unpack_argument<ExecutionSpace::Cuda>(context, gamma_dt_RF);
-        view.z = unpack_argument<ExecutionSpace::Cuda>(context, z);
+        view.RF_train = unpack_argument<space>(context, RF_train);
+        view.gamma_dt_RF = unpack_argument<space>(context, gamma_dt_RF);
+        view.z = unpack_argument<space>(context, z);
         return view;
     }
 
     compas::pSSFPSequenceView view;
-    PackedArray<const compas::cfloat> RF_train;
-    PackedArray<const compas::cfloat> gamma_dt_RF;
-    PackedArray<const float> z;
+    packed_argument_t<Array<compas::cfloat>> RF_train;
+    packed_argument_t<Array<compas::cfloat>> gamma_dt_RF;
+    packed_argument_t<Array<float>> z;
 };
 
 };  // namespace kmm
