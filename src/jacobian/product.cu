@@ -5,6 +5,19 @@
 
 namespace compas {
 
+static void launch_jacobian_product(
+    kmm::DeviceContext& ctx,
+    kmm::NDRange range,
+    gpu_subview_mut<cfloat, 3> Jv,
+    gpu_subview<cfloat, 2> echos,
+    gpu_subview<cfloat, 2> delta_echos_T1,
+    gpu_subview<cfloat, 2> delta_echos_T2,
+    TissueParametersView parameters,
+    gpu_subview<cfloat, 2> coil_sensitivities,
+    gpu_subview<cfloat, 2> E,
+    gpu_subview<cfloat, 2> dEdT2,
+    gpu_subview<cfloat, 2> v);
+
 Array<cfloat, 3> compute_jacobian(
     const CompasContext& ctx,
     Array<cfloat, 2> echos,
@@ -14,14 +27,12 @@ Array<cfloat, 3> compute_jacobian(
     CartesianTrajectory trajectory,
     Array<cfloat, 2> coil_sensitivities,
     Array<cfloat, 2> vector) {
-    static constexpr int threads_per_sample = 16;
-    static constexpr dim3 block_dim = {64, 4};
-    static constexpr uint threads_per_block = block_dim.x * block_dim.y * block_dim.z;
-
+    using namespace kmm::placeholders;
     int ns = trajectory.samples_per_readout;
     int nreadouts = trajectory.nreadouts;
     int nvoxels = parameters.nvoxels;
     int ncoils = int(coil_sensitivities.size(0));
+    int chunk_size = parameters.chunk_size;
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
@@ -38,57 +49,121 @@ Array<cfloat, 3> compute_jacobian(
     auto E = Array<cfloat, 2> {{ns, nvoxels}};
     auto dEdT2 = Array<cfloat, 2> {{ns, nvoxels}};
 
-    dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(ns), block_dim.y)};
-    ctx.submit_kernel(
-        grid_dim,
-        block_dim,
-        kernels::delta_to_sample_exponent,
-        write(E),
-        write(dEdT2),
-        trajectory,
-        parameters);
+    auto _voxel = kmm::Axis(0);
+    auto _sample = kmm::Axis(1);
+    auto _readout = kmm::Axis(2);
 
-    // Repeat for each coil
-#define COMPAS_COMPUTE_JACOBIAN_IMPL(S, R, C)                                          \
-    if (ncoils % (C) == 0 && ns % (S) == 0 && nreadouts % (R) == 0) {                  \
-        grid_dim = {                                                                   \
-            div_ceil(uint(ns / S * threads_per_sample), block_dim.x),                  \
-            div_ceil(uint(nreadouts / R), block_dim.y),                                \
-            div_ceil(uint(ncoils / C), block_dim.z)};                                  \
-                                                                                       \
-        ctx.submit_kernel(                                                             \
-            grid_dim,                                                                  \
-            block_dim,                                                                 \
-            kernels::jacobian_product<threads_per_sample, S, R, C, threads_per_block>, \
-            nvoxels,                                                                   \
-            nreadouts,                                                                 \
-            ns,                                                                        \
-            ncoils,                                                                    \
-            write(Jv),                                                                 \
-            echos,                                                                     \
-            delta_echos_T1,                                                            \
-            delta_echos_T2,                                                            \
-            parameters.data.size(1),                                                   \
-            parameters.data,                                                           \
-            coil_sensitivities,                                                        \
-            E,                                                                         \
-            dEdT2,                                                                     \
-            vector);                                                                   \
-        return Jv;                                                                     \
+    ctx.parallel_kernel(
+        {nvoxels, ns},
+        {chunk_size, ns},
+        {32, 8},
+        kernels::delta_to_sample_exponent,
+        write(E(_, _voxel)),
+        write(dEdT2(_, _voxel)),
+        trajectory,
+        read(parameters, _voxel));
+
+    ctx.parallel_submit(
+        {nvoxels, ns, nreadouts},
+        {chunk_size, ns, nreadouts},
+        kmm::GPU(launch_jacobian_product),
+        reduce(kmm::Reduction::Sum, Jv(_, _readout, _sample)),
+        echos(_, _voxel),
+        delta_echos_T1(_, _voxel),
+        delta_echos_T2(_, _voxel),
+        read(parameters, _voxel),
+        coil_sensitivities(_, _voxel),
+        E(_, _voxel),
+        dEdT2(_, _voxel),
+        vector(_, _voxel));
+
+    return Jv;
+}
+
+template<
+    int threads_per_item,
+    int samples_per_thread,
+    int readouts_per_thread,
+    int coils_per_thread,
+    int threads_per_block,
+    int blocks_per_sm,
+    typename... Args>
+static void
+launch_jacobian_product_impl(kmm::DeviceContext& ctx, kmm::NDRange range, Args... args) {
+    auto nsamples = range.sizes().y;
+    auto nreadouts = range.sizes().z;
+
+    if (nsamples % samples_per_thread != 0) {
+        auto remainder = range;
+        remainder.begin.z = range.end.z - nreadouts % readouts_per_thread;
+
+        launch_jacobian_product_impl<
+            threads_per_item,
+            1,
+            readouts_per_thread,
+            coils_per_thread,
+            threads_per_block,
+            blocks_per_sm>(ctx, remainder, args...);
+
+        nsamples -= nsamples % samples_per_thread;
+        range.end.z = range.begin.z + nsamples;
     }
 
-#define COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(C) \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(4, 4, C)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(2, 2, C)         \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(1, 1, C)
+    if (nreadouts % readouts_per_thread != 0) {
+        auto remainder = range;
+        remainder.begin.z = range.end.z - nreadouts % readouts_per_thread;
 
-    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(5)
-    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(4)
-    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(3)
-    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(2)
-    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(1)
+        launch_jacobian_product_impl<
+            threads_per_item,
+            samples_per_thread,
+            1,
+            coils_per_thread,
+            threads_per_block,
+            blocks_per_sm>(ctx, remainder, args...);
 
-    throw std::runtime_error("cannot support more than 5 coils");
+        nreadouts -= nreadouts % readouts_per_thread;
+        range.end.z = range.begin.z + nreadouts;
+    }
+
+    dim3 block_size = {threads_per_item, threads_per_block / (threads_per_item * 4), 4};
+    dim3 grid_size = {
+        1,
+        div_ceil(uint(nsamples), block_size.y * samples_per_thread),
+        div_ceil(uint(nreadouts), block_size.z * readouts_per_thread)};
+
+    kernels::jacobian_product<
+        threads_per_item,
+        samples_per_thread,
+        readouts_per_thread,
+        coils_per_thread,
+        threads_per_block,
+        blocks_per_sm><<<grid_size, block_size, 0, ctx>>>(range, args...);
+}
+
+static void launch_jacobian_product(
+    kmm::DeviceContext& ctx,
+    kmm::NDRange range,
+    gpu_subview_mut<cfloat, 3> Jv,
+    gpu_subview<cfloat, 2> echos,
+    gpu_subview<cfloat, 2> delta_echos_T1,
+    gpu_subview<cfloat, 2> delta_echos_T2,
+    TissueParametersView parameters,
+    gpu_subview<cfloat, 2> coil_sensitivities,
+    gpu_subview<cfloat, 2> E,
+    gpu_subview<cfloat, 2> dEdT2,
+    gpu_subview<cfloat, 2> v) {
+    launch_jacobian_product_impl<16, 4, 4, 4, 256, 16>(
+        ctx,
+        range,
+        Jv,
+        echos,
+        delta_echos_T1,
+        delta_echos_T2,
+        parameters,
+        coil_sensitivities,
+        E,
+        dEdT2,
+        v);
 }
 
 }  // namespace compas

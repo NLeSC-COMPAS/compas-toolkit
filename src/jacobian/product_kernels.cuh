@@ -6,12 +6,16 @@ namespace kernels {
 
 static __global__ void delta_to_sample_exponent(
     kmm::NDRange range,
-    gpu_view_mut<cfloat, 2> E,
-    gpu_view_mut<cfloat, 2> dEdT2,
+    gpu_subview_mut<cfloat, 2> E,
+    gpu_subview_mut<cfloat, 2> dEdT2,
     CartesianTrajectoryView trajectory,
     TissueParametersView parameters) {
-    index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
-    index_t sample = index_t(blockIdx.y * blockDim.y + threadIdx.y);
+    index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.begin.x);
+    index_t sample = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.begin.y);
+
+    if (!range.contains(voxel, sample)) {
+        return;
+    }
 
     TissueVoxel p = parameters.get(voxel);
 
@@ -46,48 +50,27 @@ template<
     int threads_per_block = 256,
     int blocks_per_sm = 16>
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_product(
-    kmm::NDRange chunk,
-    int nvoxels,
-    int nreadouts,
-    int samples_per_readout,
-    int ncoils,
-    cfloat* Jv_ptr,
-    const cfloat* echos_ptr,
-    const cfloat* delta_echos_T1_ptr,
-    const cfloat* delta_echos_T2_ptr,
-    int parameters_stride,
-    const float* parameters_ptr,
-    const cfloat* coil_sensitivities_ptr,
-    const cfloat* E_ptr,
-    const cfloat* dEdT2_ptr,
-    const cfloat* v_ptr) {
-    auto echos = gpu_view<cfloat, 2> {echos_ptr, {{nreadouts, nvoxels}}};
-    auto delta_echos_T1 = gpu_view<cfloat, 2> {delta_echos_T1_ptr, {{nreadouts, nvoxels}}};
-    auto delta_echos_T2 = gpu_view<cfloat, 2> {delta_echos_T2_ptr, {{nreadouts, nvoxels}}};
+    kmm::NDRange subrange,
+    gpu_subview_mut<cfloat, 3> Jv,
+    gpu_subview<cfloat, 2> echos,
+    gpu_subview<cfloat, 2> delta_echos_T1,
+    gpu_subview<cfloat, 2> delta_echos_T2,
+    TissueParametersView parameters,
+    gpu_subview<cfloat, 2> coil_sensitivities,
+    gpu_subview<cfloat, 2> E,
+    gpu_subview<cfloat, 2> dEdT2,
+    gpu_subview<cfloat, 2> v) {
 
-    auto coil_sensitivities = gpu_view<cfloat, 2> {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
+    index_t voxel_begin = index_t(subrange.begin.x);
+    index_t voxel_end = index_t(subrange.end.x);
+    index_t sample_offset = index_t(blockIdx.y * blockDim.y + threadIdx.y) * samples_per_thread + subrange.begin.y;
+    index_t readout_offset = index_t(blockIdx.z * blockDim.z + threadIdx.z) * readouts_per_thread + subrange.begin.z;
+    index_t coil_offset = 0;
+    index_t lane_id = index_t(threadIdx.x);
 
-    auto E = gpu_view<cfloat, 2> {E_ptr, {{samples_per_readout, nvoxels}}};
-    auto dEdT2 = gpu_view<cfloat, 2> {dEdT2_ptr, {{samples_per_readout, nvoxels}}};
-
-    auto Jv = gpu_view_mut<cfloat, 3> {Jv_ptr, {{ncoils, nreadouts, samples_per_readout}}};
-    auto v = gpu_view<cfloat, 2> {
-        v_ptr,
-        {{4, nvoxels}}};  // four reconstruction parameters: T1, T2, rho_x, rho_y
-
-    auto parameters = gpu_view<float, 2> {
-        parameters_ptr,
-        {{TissueParameterField::NUM_FIELDS, parameters_stride}}};
-
-    index_t sample_offset =
-        index_t(blockIdx.x * blockDim.x + threadIdx.x) / threads_per_item * samples_per_thread;
-    index_t readout_offset = index_t(blockIdx.y * blockDim.y + threadIdx.y) * readouts_per_thread;
-    index_t coil_offset = index_t(blockIdx.z * blockDim.z + threadIdx.z) * coils_per_thread;
-    index_t lane_id = threadIdx.x % threads_per_item;
-
-    if (sample_offset >= samples_per_readout || readout_offset >= nreadouts
-        || coil_offset >= ncoils)
+    if (sample_offset >= subrange.end.y || readout_offset >= subrange.end.z) {
         return;
+    }
 
     cfloat partial_result[samples_per_thread][readouts_per_thread][coils_per_thread];
 
@@ -100,13 +83,12 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_pro
         }
     }
 
-    for (index_t voxel = lane_id; voxel < nvoxels; voxel += threads_per_item) {
+    for (index_t voxel = voxel_begin + lane_id; voxel < voxel_end; voxel += threads_per_item) {
         // load coordinates, parameters, coil sensitivities and proton density for voxel
-        auto T1 = parameters[TissueParameterField::T1][voxel];
-        auto T2 = parameters[TissueParameterField::T2][voxel];
-        auto rho = cfloat {
-            parameters[TissueParameterField::RHO_X][voxel],
-            parameters[TissueParameterField::RHO_Y][voxel]};
+        auto p = parameters.get(voxel);
+        auto T1 = p.T1;
+        auto T2 = p.T2;
+        auto rho = p.rho;
 
 #pragma unroll
         for (int i = 0; i < samples_per_thread; i++) {
