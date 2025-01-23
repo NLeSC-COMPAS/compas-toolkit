@@ -8,7 +8,7 @@
 namespace compas {
 
 /**
- * Stores the tissue parameters for each voxel. Note that, instead of having seperate 1D arrays for each field, data
+ * Stores the tissue parameters for each voxel. Note that, instead of having separate 1D arrays for each field, data
  * is instead stored in a single 2D matrix where each row is different field (see `TissueParameterField`) and each
  * column is a voxel.
  */
@@ -46,17 +46,20 @@ TissueParameters make_tissue_parameters(
 }  // namespace compas
 
 namespace kmm {
-template<>
-struct Argument<compas::TissueParameters> {
+
+template<typename M>
+struct Argument<Access<const compas::TissueParameters, Read<M>>> {
     using type = compas::TissueParametersView;
 
-    static Argument pack(TaskBuilder& builder, compas::TissueParameters p) {
+    static Argument
+    pack(TaskInstance& task, Access<const compas::TissueParameters, Read<M>> access) {
+        const compas::TissueParameters& params = access.argument;
         compas::TissueParametersView view;
-        view.has_z = p.has_z;
-        view.has_b0 = p.has_b0;
-        view.has_b1 = p.has_b1;
+        view.has_z = params.has_z;
+        view.has_b0 = params.has_b0;
+        view.has_b1 = params.has_b1;
 
-        return {view, pack_argument(builder, p.data)};
+        return {view, pack_argument(task, params.data(All(), access.mode.access_mapper))};
     }
 
     template<ExecutionSpace Space>
@@ -66,6 +69,11 @@ struct Argument<compas::TissueParameters> {
     }
 
     compas::TissueParametersView view;
-    packed_argument_t<Array<float, 2>> params;
+    packed_argument_t<Access<Array<float, 2>, Read<IdentityMap>>> params;
 };
+
+template<>
+struct ArgumentHandlerDispatch<compas::TissueParameters>: //
+        ArgumentHandlerDispatch<Access<const compas::TissueParameters, Read<All>>>{};
+
 }  // namespace kmm

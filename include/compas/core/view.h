@@ -1,5 +1,5 @@
 #pragma once
-#include "kmm/core/view.hpp"
+#include "kmm/utils/view.hpp"
 
 namespace compas {
 

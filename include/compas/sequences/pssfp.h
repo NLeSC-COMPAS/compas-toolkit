@@ -78,7 +78,7 @@ template<>
 struct Argument<compas::pSSFPSequence> {
     using type = compas::pSSFPSequenceView;
 
-    static Argument pack(TaskBuilder& builder, compas::pSSFPSequence p) {
+    static Argument pack(TaskInstance& task, compas::pSSFPSequence p) {
         return {
             {.nTR = p.nTR,
              .RF_train = {},
@@ -87,9 +87,9 @@ struct Argument<compas::pSSFPSequence> {
              .dt = p.dt,
              .gamma_dt_GRz = p.gamma_dt_GRz,
              .z = {}},
-            pack_argument(builder, p.RF_train),
-            pack_argument(builder, p.gamma_dt_RF),
-            pack_argument(builder, p.z),
+            pack_argument(task, p.RF_train),
+            pack_argument(task, p.gamma_dt_RF),
+            pack_argument(task, p.z),
         };
     }
 

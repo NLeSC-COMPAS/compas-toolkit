@@ -63,7 +63,7 @@ template<>
 struct Argument<compas::SpiralTrajectory> {
     using type = compas::SpiralTrajectoryView;
 
-    static Argument pack(TaskBuilder& builder, const compas::SpiralTrajectory& t) {
+    static Argument pack(TaskInstance& task, const compas::SpiralTrajectory& t) {
         return {
             {//
              .nreadouts = t.nreadouts,
@@ -71,8 +71,8 @@ struct Argument<compas::SpiralTrajectory> {
              .delta_t = t.delta_t,
              .k_start = {},
              .delta_k = {}},
-            pack_argument(builder, t.k_start),
-            pack_argument(builder, t.delta_k)};
+            pack_argument(task, t.k_start),
+            pack_argument(task, t.delta_k)};
     }
 
     template<ExecutionSpace space>

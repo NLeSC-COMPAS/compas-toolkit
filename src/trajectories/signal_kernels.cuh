@@ -9,14 +9,15 @@ namespace kernels {
 
 template<typename TrajectoryView>
 __global__ void prepare_signal_factors(
-    gpu_view_mut<cfloat, 2> factors,
-    gpu_view<cfloat, 2> echos,
+    kmm::NDRange subrange,
+    gpu_subview_mut<cfloat, 2> factors,
+    gpu_subview<cfloat, 2> echos,
     TissueParametersView parameters,
     TrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
-    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + subrange.begin.x);
+    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + subrange.begin.y);
 
-    if (readout < factors.size(0) && voxel < factors.size(1)) {
+    if (voxel < subrange.end.x && readout < subrange.end.y) {
         auto m = echos[readout][voxel];
 
         auto p = parameters.get(voxel);
@@ -28,14 +29,14 @@ __global__ void prepare_signal_factors(
 }
 
 __global__ void prepare_signal_cartesian(
-    gpu_view_mut<cfloat, 2> exponents,
+    kmm::NDRange subrange,
+    int num_samples,
+    gpu_subview_mut<cfloat, 2> exponents,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
-    auto num_samples = exponents.size(0);
-    auto num_voxels = exponents.size(1);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + subrange.begin.x);
 
-    if (voxel < num_voxels) {
+    if (voxel < subrange.end.x) {
         auto p = parameters.get(voxel);
         auto exponent = trajectory.to_sample_point_exponent(p);
 
@@ -114,18 +115,20 @@ template<
     int coil_tiling_factor,
     int blocks_per_sm = 1>
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_cartesian(
-    gpu_subview_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
-    gpu_view<cfloat, 2> exponents,  // [num_samples num_voxels]
-    gpu_view<cfloat, 2> factors,  // [num_readouts num_voxels]
-    gpu_view<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
+    kmm::NDRange subrange,
+    gpu_view_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
+    gpu_subview<cfloat, 2> exponents,  // [num_samples num_voxels]
+    gpu_subview<cfloat, 2> factors,  // [num_readouts num_voxels]
+    gpu_subview<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
 ) {
     static_assert(threads_per_block % threads_cooperative == 0);
 
-    auto num_voxels = coil_sensitivities.size(1);
     auto num_coils = signal.size(0);
     auto num_readouts = signal.size(1);
 
     auto lane = index_t(threadIdx.x % threads_cooperative);
+    auto voxel_start = index_t(subrange.begin.x);
+    auto voxel_end = index_t(subrange.end.x);
     auto sample_start = index_t((blockIdx.x * blockDim.x + threadIdx.x) / threads_cooperative)
         * sample_tiling_factor;
     auto readout_start = index_t(blockIdx.y * blockDim.y + threadIdx.y) * readout_tiling_factor;
@@ -148,7 +151,7 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
         }
     }
 
-    for (index_t voxel = lane; voxel < num_voxels; voxel += threads_cooperative) {
+    for (index_t voxel = voxel_start + lane; voxel < voxel_end; voxel += threads_cooperative) {
         cfloat local_coils[coil_tiling_factor] = {0};
 
 #pragma unroll

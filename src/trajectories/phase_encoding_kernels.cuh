@@ -13,29 +13,14 @@ __global__ void phase_encoding(
     gpu_subview<cfloat, 2> echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.begin(0));
-    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.begin(1));
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.begin.x);
+    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.begin.y);
 
-    if (voxel < range.end(0) && readout < range.end(1)) {
+    if (voxel < range.end.x && readout < range.end.y) {
         auto k_y = trajectory.k_start[readout].imag();
         auto y = parameters.get(voxel).y;
 
         ph_en_echos[readout][voxel] = echos[readout][voxel] * exp(cfloat(0.0F, y * k_y));
-
-        if (voxel+1 == 25414 && readout+1 == 782) {
-            printf("%d %d] %p %p | %f %f -> %f %f | %f %f\n",
-                   voxel,
-                   readout,
-                   echos.data(),
-                   ph_en_echos.data(),
-                   echos[readout][voxel].real(),
-                   echos[readout][voxel].imag(),
-                   ph_en_echos[readout][voxel].real(),
-                   ph_en_echos[readout][voxel].imag(),
-                   k_y,
-                   y
-                   );
-        }
     }
 }
 

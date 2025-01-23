@@ -64,7 +64,7 @@ template<>
 struct Argument<compas::CartesianTrajectory> {
     using type = compas::CartesianTrajectoryView;
 
-    static Argument pack(TaskBuilder& builder, const compas::CartesianTrajectory& t) {
+    static Argument pack(TaskInstance& task, const compas::CartesianTrajectory& t) {
         return {
             {//
              .nreadouts = t.nreadouts,
@@ -72,7 +72,7 @@ struct Argument<compas::CartesianTrajectory> {
              .delta_t = t.delta_t,
              .k_start = {},
              .delta_k = t.delta_k},
-            pack_argument(builder, t.k_start)};
+            pack_argument(task, t.k_start)};
     }
 
     template<ExecutionSpace Space>

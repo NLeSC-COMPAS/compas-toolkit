@@ -44,6 +44,9 @@ coil_sensitivities_ref  = gpu(f32(coil_sensitivities_ref))
 signal_ref = simulate_signal(CUDALibs(), gpu(pssfp_ref), gpu(parameters_ref), trajectory_ref, coil_sensitivities_ref)
 signal_ref = reshape(collect(signal_ref), ns, nr)
 
+echos = gpu(transpose(echos))
+phase_encoding!(echos, trajectory_ref, parameters_ref)
+echos = collect(transpose(echos))
 signal = CompasToolkit.magnetization_to_signal(
     echos,
     parameters,

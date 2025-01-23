@@ -77,7 +77,7 @@ TissueParameters make_tissue_parameters(
                 device.fill(params.data_at(TissueParameterField::B1, offset), length, 1.0F);
             }
         },
-        write(params, access(_, _x)));
+        write(params(_, _x)));
 
     params.synchronize();
 

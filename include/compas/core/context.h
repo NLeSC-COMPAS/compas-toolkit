@@ -40,11 +40,24 @@ struct CompasContext {
         return m_runtime.allocate(content.data(), content.size());
     }
 
+    template<typename L, typename... Args>
+    void parallel_submit(kmm::NDRange index_space, kmm::NDSize chunk_size, L launcher, Args... args)
+        const {
+        m_runtime.parallel_submit(  //
+            index_space,
+            kmm::ChunkPartitioner(chunk_size),
+            launcher,
+            args...);
+    }
+
     template<typename F, typename... Args>
     void
     parallel_device(kmm::NDRange index_space, kmm::NDSize chunk_size, F fun, Args... args) const {
-        m_runtime
-            .parallel_submit(index_space, kmm::TaskPartitioner(chunk_size), kmm::GPU(fun), args...);
+        m_runtime.parallel_submit(  //
+            index_space,
+            kmm::ChunkPartitioner(chunk_size),
+            kmm::GPU(fun),
+            args...);
     }
 
     template<typename F, typename... Args>
@@ -56,7 +69,7 @@ struct CompasContext {
         Args... args) const {
         m_runtime.parallel_submit(
             index_space,
-            kmm::TaskPartitioner(chunk_size),
+            kmm::ChunkPartitioner(chunk_size),
             kmm::GPUKernel(kernel, block_dim),
             args...);
     }
@@ -96,4 +109,4 @@ inline CompasContext make_context(int device = 0) {
 }  // namespace compas
 
 template<typename T>
-struct kmm::DataTypeMap<compas::complex_type<T>>: kmm::DataTypeMap<::std::complex<T>> {};
+struct kmm::DataTypeOf<compas::complex_type<T>>: kmm::DataTypeOf<::std::complex<T>> {};

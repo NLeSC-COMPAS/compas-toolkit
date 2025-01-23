@@ -23,9 +23,9 @@ Array<cfloat, 2> phase_encoding(
         {chunk_size, nreadouts},
         block_dim,
         kernels::phase_encoding,
-        write(ph_en_echos, access(_y, _x)),
-        read(echos, access(_y, _x)),
-        read(parameters.data, access(_y, _x)),
+        write(ph_en_echos(_y, _x)),
+        echos(_y, _x),
+        parameters.data(_y, _x),
         trajectory);
 
     return ph_en_echos;

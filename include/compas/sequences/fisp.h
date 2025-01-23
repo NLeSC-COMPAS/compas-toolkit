@@ -49,7 +49,7 @@ template<>
 struct Argument<compas::FISPSequence> {
     using type = compas::FISPSequenceView;
 
-    static Argument pack(TaskBuilder& builder, compas::FISPSequence p) {
+    static Argument pack(TaskInstance& task, compas::FISPSequence p) {
         return {
             {.RF_train = {},
              .sliceprofiles = {},
@@ -57,8 +57,8 @@ struct Argument<compas::FISPSequence> {
              .TE = p.TE,
              .max_state = p.max_state,
              .TI = p.TI},
-            pack_argument(builder, p.RF_train),
-            pack_argument(builder, p.sliceprofiles)};
+            pack_argument(task, p.RF_train),
+            pack_argument(task, p.sliceprofiles)};
     }
 
     template<ExecutionSpace space>

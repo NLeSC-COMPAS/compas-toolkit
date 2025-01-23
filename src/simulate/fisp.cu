@@ -84,9 +84,10 @@ Array<cfloat, 2> simulate_magnetization(
         nvoxels,
         chunk_size,
         fun,
-        write(echos, access(_, _x)),
-        read(parameters.data, access(_, _x)),
+        write(echos(_, _x)),
+        parameters.data(_, _x),
         sequence);
+
     return echos;
 }
 
