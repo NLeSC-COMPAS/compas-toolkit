@@ -19,8 +19,8 @@ void magnetization_to_signal_cartesian_direct(
     gpu_subview<cfloat, 2> coil_sensitivities,
     gpu_subview_mut<cfloat, 2> exponents,
     gpu_subview_mut<cfloat, 2> factors) {
-    int voxel_begin = int(subrange.begin.x);
-    int voxel_end = int(subrange.end.x);
+    int voxel_begin = int(subrange.x.begin);
+    int voxel_end = int(subrange.x.end);
     int nvoxels = int(voxel_end - voxel_begin);
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;

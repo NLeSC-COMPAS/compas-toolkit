@@ -1,5 +1,4 @@
 #include "compas/parameters/tissue.h"
-
 #include "compas/core/utils.h"
 
 namespace compas {
@@ -29,8 +28,8 @@ TissueParameters make_tissue_parameters(
         [&](kmm::DeviceContext& device, kmm::NDRange range, gpu_subview_mut<float, 2> params) {
             KMM_ASSERT(params.is_contiguous());
             device.fill(params.data(), params.size(), 0.0F);
-            auto offset = range.begin();
-            auto length = range.size();
+            auto offset = range[0].begin;
+            auto length = range[0].size();
 
             device.copy(
                 T1.data_at(offset),
@@ -77,7 +76,7 @@ TissueParameters make_tissue_parameters(
                 device.fill(params.data_at(TissueParameterField::B1, offset), length, 1.0F);
             }
         },
-        write(params(_, _x)));
+        write(params(_, _i)));
 
     params.synchronize();
 

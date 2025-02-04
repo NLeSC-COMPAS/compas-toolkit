@@ -14,10 +14,10 @@ __global__ void prepare_signal_factors(
     gpu_subview<cfloat, 2> echos,
     TissueParametersView parameters,
     TrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + subrange.begin.x);
-    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + subrange.begin.y);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + subrange.x.begin);
+    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + subrange.y.begin);
 
-    if (voxel < subrange.end.x && readout < subrange.end.y) {
+    if (voxel < subrange.x.end && readout < subrange.y.end) {
         auto m = echos[readout][voxel];
 
         auto p = parameters.get(voxel);
@@ -34,9 +34,9 @@ __global__ void prepare_signal_cartesian(
     gpu_subview_mut<cfloat, 2> exponents,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + subrange.begin.x);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + subrange.x.begin);
 
-    if (voxel < subrange.end.x) {
+    if (voxel < subrange.x.end) {
         auto p = parameters.get(voxel);
         auto exponent = trajectory.to_sample_point_exponent(p);
 
@@ -127,8 +127,8 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
     auto num_readouts = signal.size(1);
 
     auto lane = index_t(threadIdx.x % threads_cooperative);
-    auto voxel_start = index_t(subrange.begin.x);
-    auto voxel_end = index_t(subrange.end.x);
+    auto voxel_start = index_t(subrange.x.begin);
+    auto voxel_end = index_t(subrange.x.end);
     auto sample_start = index_t((blockIdx.x * blockDim.x + threadIdx.x) / threads_cooperative)
         * sample_tiling_factor;
     auto readout_start = index_t(blockIdx.y * blockDim.y + threadIdx.y) * readout_tiling_factor;

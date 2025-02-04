@@ -11,8 +11,8 @@ namespace kernels {
 // Defined in product_kernels.cuh
 __global__ void delta_to_sample_exponent(
         kmm::NDRange subrange,
-        gpu_view_mut<cfloat, 2> E,
-        gpu_view_mut<cfloat, 2> dEdT2,
+        gpu_subview_mut<cfloat, 2> E,
+        gpu_subview_mut<cfloat, 2> dEdT2,
         CartesianTrajectoryView trajectory,
         TissueParametersView parameters);
 
@@ -39,10 +39,10 @@ void convert_kernel(kmm::NDRange subrange, gpu_view_mut<T, 3> output, gpu_view<U
 }
 
 template<
-        int coils_per_thread = 1,
         int voxel_tile_size=1,
         int readout_tile_size=1,
         int sample_tile_size=1,
+        int coils_per_thread = 1,
         int block_size_x=64,
         int block_size_y=1,
         int block_size_z=1,
@@ -50,30 +50,15 @@ template<
         bool use_smem=true>
 __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __global__ void jacobian_hermitian_product(
     kmm::NDRange subrange,
-    int nreadouts,
-    int nsamples_per_readout,
-    int nvoxels,
-    int ncoils,
-    cfloat* __restrict__ JHv_ptr,
-    const cfloat* __restrict__ echos_ptr,
-    const cfloat* __restrict__ delta_echos_T1_ptr,
-    const cfloat* __restrict__ delta_echos_T2_ptr,
-    int parameters_stride,
-    const float* __restrict__ parameters_ptr,
-    const cfloat* __restrict__ coil_sensitivities_ptr,
-    const complex_type<float>* __restrict__ vector_ptr,
-    const cfloat* __restrict__ E_ptr,
-    const cfloat* __restrict__ dEdT2_ptr) {
-
-    gpu_view_mut<cfloat, 2> JHv = {JHv_ptr, {{4, nvoxels}}};
-    gpu_view<cfloat, 2> echos = {echos_ptr, {{nreadouts, nvoxels}}};
-    gpu_view<cfloat, 2> delta_echos_T1 = {delta_echos_T1_ptr, {{nreadouts, nvoxels}}};
-    gpu_view<cfloat, 2> delta_echos_T2 = {delta_echos_T2_ptr, {{nreadouts, nvoxels}}};
-    gpu_view<cfloat, 2> coil_sensitivities = {coil_sensitivities_ptr, {{ncoils, nvoxels}}};
-    gpu_view<complex_type<float>, 3> vector = {vector_ptr, {{ncoils, nreadouts, nsamples_per_readout}}};
-    gpu_view<cfloat, 2> E = {E_ptr, {{nsamples_per_readout, nvoxels}}};
-    gpu_view<cfloat, 2> dEdT2 = {dEdT2_ptr, {{nsamples_per_readout, nvoxels}}};
-    gpu_view<float, 2> parameters = {parameters_ptr, {{TissueParameterField::NUM_FIELDS, parameters_stride}}};
+    gpu_subview_mut<cfloat, 2> JHv,
+    gpu_subview<cfloat, 2> echos,
+    gpu_subview<cfloat, 2> delta_echos_T1,
+    gpu_subview<cfloat, 2> delta_echos_T2,
+    TissueParametersView parameters,
+    gpu_subview<cfloat, 2> coil_sensitivities,
+    gpu_subview<cfloat, 3> vector,
+    gpu_subview<cfloat, 2> E,
+    gpu_subview<cfloat, 2> dEdT2) {
 
     static constexpr index_t voxels_per_thread =
             (voxel_tile_size / block_size_x) + int(voxel_tile_size % block_size_x > 0);
@@ -83,7 +68,9 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
     auto tid_x = block_size_x > 0 ? index_t(threadIdx.x) : 0;
     auto tid_y = block_size_y > 0 ? index_t(threadIdx.y) : 0;
     auto tid_z = block_size_z > 0 ? index_t(threadIdx.z) : 0;
-    auto voxel_block_offset = index_t(blockIdx.x * voxel_tile_size);
+
+    auto voxel_block_begin = index_t(blockIdx.x * voxel_tile_size + subrange.x.begin);
+    auto voxel_block_end = min(index_t(voxel_block_begin + voxel_tile_size), index_t(subrange.x.end));
 
     __builtin_assume(tid_x >= 0 && tid_x < block_size_x);
     __builtin_assume(tid_y >= 0 && tid_y < block_size_y);
@@ -97,14 +84,13 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
     vec2<cfloat> dmHv[voxels_per_thread][coils_per_thread] = {cfloat(0)};
 
     for (index_t lv = 0; lv < voxels_per_thread; lv++) {
-        index_t v = lv * block_size_x + tid_x;
-        index_t voxel = voxel_block_offset + v;
+        index_t voxel = voxel_block_begin + lv * block_size_x + tid_x;
 
-        if (voxel >= nvoxels || v >= voxel_tile_size) {
+        if (voxel >= voxel_block_end) {
             break;
         }
 
-        for (index_t sample_offset = 0; sample_offset < nsamples_per_readout; sample_offset += sample_tile_size) {
+        for (index_t sample_offset = subrange.y.end; sample_offset < subrange.y.end; sample_offset += sample_tile_size) {
             cfloat local_E[samples_per_thread];
             cfloat local_dEdT2[samples_per_thread];
 
@@ -134,7 +120,7 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
                 __syncthreads();
             }
 
-            for (index_t readout_offset = 0; readout_offset < nreadouts; readout_offset += readout_tile_size) {
+            for (index_t readout_offset = subrange.z.begin; readout_offset < subrange.z.end; readout_offset += readout_tile_size) {
 
 #pragma unroll readouts_per_thread
                 for (index_t r = 0; r < readouts_per_thread; r++) {
@@ -176,19 +162,17 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
 
 #pragma unroll
     for (index_t lv = 0; lv < voxels_per_thread; lv++) {
-        index_t v = lv * block_size_x + tid_x;
-        index_t voxel = voxel_block_offset + v;
+        index_t voxel = voxel_block_begin + lv * block_size_x + tid_x;
 
-        if (voxel >= nvoxels || v >= voxel_tile_size) {
+        if (voxel >= voxel_block_end) {
             break;
         }
 
         // load coordinates, parameters, coil sensitivities and proton density for voxel
-        auto T1 = parameters[TissueParameterField::T1][voxel];
-        auto T2 = parameters[TissueParameterField::T2][voxel];
-        auto rho = cfloat{
-                parameters[TissueParameterField::RHO_X][voxel],
-                parameters[TissueParameterField::RHO_Y][voxel]};
+        auto p = parameters.get(voxel);
+        auto T1 = p.T1;
+        auto T2 = p.T2;
+        auto rho = p.rho;
 
 #pragma unroll
         for (index_t i = 0; i < 4; i++) {

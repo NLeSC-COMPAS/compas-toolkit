@@ -95,7 +95,7 @@ launch_jacobian_product_impl(kmm::DeviceContext& ctx, kmm::NDRange range, Args..
 
     if (nsamples % samples_per_thread != 0) {
         auto remainder = range;
-        remainder.begin.z = range.end.z - nreadouts % readouts_per_thread;
+        remainder.y.begin = range.y.end - nsamples % samples_per_thread;
 
         launch_jacobian_product_impl<
             threads_per_item,
@@ -106,12 +106,12 @@ launch_jacobian_product_impl(kmm::DeviceContext& ctx, kmm::NDRange range, Args..
             blocks_per_sm>(ctx, remainder, args...);
 
         nsamples -= nsamples % samples_per_thread;
-        range.end.z = range.begin.z + nsamples;
+        range.y.end = range.y.begin + nsamples;
     }
 
     if (nreadouts % readouts_per_thread != 0) {
         auto remainder = range;
-        remainder.begin.z = range.end.z - nreadouts % readouts_per_thread;
+        remainder.z.begin = range.z.end - nreadouts % readouts_per_thread;
 
         launch_jacobian_product_impl<
             threads_per_item,
@@ -122,7 +122,7 @@ launch_jacobian_product_impl(kmm::DeviceContext& ctx, kmm::NDRange range, Args..
             blocks_per_sm>(ctx, remainder, args...);
 
         nreadouts -= nreadouts % readouts_per_thread;
-        range.end.z = range.begin.z + nreadouts;
+        range.z.end = range.z.begin + nreadouts;
     }
 
     dim3 block_size = {threads_per_item, threads_per_block / (threads_per_item * 4), 4};
@@ -152,18 +152,30 @@ static void launch_jacobian_product(
     gpu_subview<cfloat, 2> E,
     gpu_subview<cfloat, 2> dEdT2,
     gpu_subview<cfloat, 2> v) {
-    launch_jacobian_product_impl<16, 4, 4, 4, 256, 16>(
-        ctx,
-        range,
-        Jv,
-        echos,
-        delta_echos_T1,
-        delta_echos_T2,
-        parameters,
-        coil_sensitivities,
-        E,
-        dEdT2,
-        v);
+    int coil_offset = 0;
+    int ncoils = coil_sensitivities.size(0);
+
+#define COMPAS_COMPUTE_JACOBIAN_IMPL(N)                     \
+    for (; coil_offset + N <= ncoils; coil_offset += N) {   \
+        launch_jacobian_product_impl<16, 4, 4, N, 256, 16>( \
+            ctx,                                            \
+            range,                                          \
+            coil_offset,                                    \
+            Jv,                                             \
+            echos,                                          \
+            delta_echos_T1,                                 \
+            delta_echos_T2,                                 \
+            parameters,                                     \
+            coil_sensitivities,                             \
+            E,                                              \
+            dEdT2,                                          \
+            v);                                             \
+    }
+
+    COMPAS_COMPUTE_JACOBIAN_IMPL(4)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(3)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(2)
+    COMPAS_COMPUTE_JACOBIAN_IMPL(1)
 }
 
 }  // namespace compas

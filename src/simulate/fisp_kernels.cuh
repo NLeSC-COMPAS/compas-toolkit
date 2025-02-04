@@ -69,14 +69,14 @@ COMPAS_DEVICE void simulate_fisp_for_voxel(
 
 template<int max_N, int warp_size>
 __global__ void simulate_fisp(
-    kmm::Range<1, index_t> range,
+    kmm::Range<index_t> range,
     gpu_subview_mut<cfloat, 2> echos,
     gpu_view<cfloat> slice_profile,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
-    index_t voxel = index_t(blockDim.x * blockIdx.x + threadIdx.x) / warp_size + range.begin();
+    index_t voxel = index_t(blockDim.x * blockIdx.x + threadIdx.x) / warp_size + range.begin;
 
-    if (voxel >= range.end()) {
+    if (voxel >= range.end) {
         return;
     }
 

@@ -72,8 +72,12 @@ struct Argument<Access<const compas::TissueParameters, Read<M>>> {
     packed_argument_t<Access<Array<float, 2>, Read<IdentityMap>>> params;
 };
 
+// Forward compas::TissueParameters& to Access<const compas::TissueParameters, Read<>>
 template<>
-struct ArgumentHandlerDispatch<compas::TissueParameters>: //
-        ArgumentHandlerDispatch<Access<const compas::TissueParameters, Read<All>>>{};
+struct ArgumentHandler<const compas::TissueParameters&>: //
+        ArgumentHandler<Access<const compas::TissueParameters, Read<>>>{
+    ArgumentHandler(const compas::TissueParameters& p) :
+        ArgumentHandler<Access<const compas::TissueParameters, Read<>>>(p) {}
+};
 
 }  // namespace kmm

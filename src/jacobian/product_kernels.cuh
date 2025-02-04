@@ -10,8 +10,8 @@ static __global__ void delta_to_sample_exponent(
     gpu_subview_mut<cfloat, 2> dEdT2,
     CartesianTrajectoryView trajectory,
     TissueParametersView parameters) {
-    index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.begin.x);
-    index_t sample = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.begin.y);
+    index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
+    index_t sample = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.y.begin);
 
     if (!range.contains(voxel, sample)) {
         return;
@@ -51,6 +51,7 @@ template<
     int blocks_per_sm = 16>
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_product(
     kmm::NDRange subrange,
+    index_t coil_offset,
     gpu_subview_mut<cfloat, 3> Jv,
     gpu_subview<cfloat, 2> echos,
     gpu_subview<cfloat, 2> delta_echos_T1,
@@ -61,14 +62,13 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_pro
     gpu_subview<cfloat, 2> dEdT2,
     gpu_subview<cfloat, 2> v) {
 
-    index_t voxel_begin = index_t(subrange.begin.x);
-    index_t voxel_end = index_t(subrange.end.x);
-    index_t sample_offset = index_t(blockIdx.y * blockDim.y + threadIdx.y) * samples_per_thread + subrange.begin.y;
-    index_t readout_offset = index_t(blockIdx.z * blockDim.z + threadIdx.z) * readouts_per_thread + subrange.begin.z;
-    index_t coil_offset = 0;
+    index_t voxel_begin = index_t(subrange.x.begin);
+    index_t voxel_end = index_t(subrange.x.end);
+    index_t sample_offset = index_t(blockIdx.y * blockDim.y + threadIdx.y) * samples_per_thread + subrange.y.begin;
+    index_t readout_offset = index_t(blockIdx.z * blockDim.z + threadIdx.z) * readouts_per_thread + subrange.z.begin;
     index_t lane_id = index_t(threadIdx.x);
 
-    if (sample_offset >= subrange.end.y || readout_offset >= subrange.end.z) {
+    if (sample_offset >= subrange.y.end || readout_offset >= subrange.z.end) {
         return;
     }
 

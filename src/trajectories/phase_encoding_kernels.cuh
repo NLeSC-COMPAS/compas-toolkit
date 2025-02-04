@@ -13,10 +13,10 @@ __global__ void phase_encoding(
     gpu_subview<cfloat, 2> echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.begin.x);
-    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.begin.y);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
+    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.y.begin);
 
-    if (voxel < range.end.x && readout < range.end.y) {
+    if (voxel < range.x.end && readout < range.y.end) {
         auto k_y = trajectory.k_start[readout].imag();
         auto y = parameters.get(voxel).y;
 

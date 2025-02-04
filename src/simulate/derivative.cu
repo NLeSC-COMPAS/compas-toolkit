@@ -11,25 +11,26 @@ namespace compas {
 template<typename SequenceView>
 void simulate_magnetization_derivative_impl(
     const kmm::DeviceContext& context,
-    kmm::NDRange,
-    int nvoxels,
+    kmm::NDRange range,
     int field,
-    gpu_view_mut<float, 2> new_parameters,
-    gpu_view_mut<cfloat, 2> delta_echos,
-    gpu_view<cfloat, 2> echos,
+    gpu_subview_mut<float, 2> new_parameters,
+    gpu_subview_mut<cfloat, 2> delta_echos,
+    gpu_subview<cfloat, 2> echos,
     TissueParametersView tissue,
     SequenceView sequence,
     float delta) {
+    auto nvoxels = range.sizes().x;
     auto nreadouts = kmm::checked_cast<int>(sequence.RF_train.size());
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.size(1) == nvoxels);
+    COMPAS_ASSERT(echos.begin(1) == range.x.begin);
+    COMPAS_ASSERT(echos.end(1) == range.x.end);
     COMPAS_ASSERT(field >= 0 && field < TissueParameterField::NUM_FIELDS);
 
     dim3 block_size = 256;
     dim3 num_blocks = div_ceil(uint(nvoxels), block_size.x);
     compas::kernels::add_difference_to_parameters<<<num_blocks, block_size, 0, context.stream()>>>(
-        nvoxels,
+        range,
         new_parameters,
         tissue.parameters,
         field,
@@ -38,13 +39,11 @@ void simulate_magnetization_derivative_impl(
     auto new_tissue = TissueParametersView {tissue};
     new_tissue.parameters = new_parameters;
 
-    simulate_magnetization_kernel(context, kmm::NDRange {}, delta_echos, new_tissue, sequence);
+    simulate_magnetization_kernel(context, range, delta_echos, new_tissue, sequence);
 
     num_blocks = {div_ceil(uint(nvoxels), block_size.x), div_ceil(uint(nreadouts), block_size.y)};
-
     compas::kernels::calculate_finite_difference<<<num_blocks, block_size, 0, context.stream()>>>(
-        nreadouts,
-        nvoxels,
+        range,
         delta_echos,
         echos,
         1.0F / delta);
@@ -57,8 +56,10 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     TissueParameters parameters,
     pSSFPSequence sequence,
     float delta) {
+    using namespace kmm::placeholders;
     auto nvoxels = parameters.nvoxels;
     auto nreadouts = sequence.RF_train.size();
+    auto chunk_size = parameters.chunk_size;
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
@@ -66,15 +67,15 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     auto new_parameters = Array<float, 2> {parameters.data.sizes()};
     auto delta_echos = Array<cfloat, 2> {echos.sizes()};
 
-    context.submit_device(
-        {nreadouts, nvoxels},
+    context.parallel_device(
+        {nvoxels, nreadouts},
+        {chunk_size, nreadouts},
         simulate_magnetization_derivative_impl<pSSFPSequenceView>,
-        nvoxels,
         field,
-        write(new_parameters),
-        write(delta_echos),
-        echos,
-        parameters,
+        write(new_parameters(_, _x)),
+        write(delta_echos(_, _x)),
+        echos(_, _x),
+        read(parameters, _x),
         sequence,
         delta);
 
@@ -88,8 +89,10 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     TissueParameters parameters,
     FISPSequence sequence,
     float delta) {
+    using namespace kmm::placeholders;
     auto nvoxels = parameters.nvoxels;
     auto nreadouts = sequence.RF_train.size();
+    auto chunk_size = parameters.chunk_size;
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
@@ -97,15 +100,15 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     auto new_parameters = Array<float, 2> {parameters.data.sizes()};
     auto delta_echos = Array<cfloat, 2> {echos.sizes()};
 
-    context.submit_device(
-        {nreadouts, nvoxels},
+    context.parallel_device(
+        {nvoxels},
+        {chunk_size},
         simulate_magnetization_derivative_impl<FISPSequenceView>,
-        nvoxels,
         field,
-        write(new_parameters),
-        write(delta_echos),
-        echos,
-        parameters,
+        write(new_parameters(_, _x)),
+        write(delta_echos(_, _x)),
+        echos(_, _x),
+        read(parameters, _x),
         sequence,
         delta);
 

@@ -7,7 +7,7 @@ namespace compas {
 template<int max_N, int warp_size = max_N>
 void simulate_fisp_sequence_for_size(
     const kmm::DeviceContext& context,
-    kmm::Range<1, index_t> range,
+    kmm::Range<index_t> voxels,
     gpu_subview_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
@@ -17,17 +17,17 @@ void simulate_fisp_sequence_for_size(
     int nreadouts = int(sequence.RF_train.size());
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.begin(1) == range.begin());
-    COMPAS_ASSERT(echos.end(1) == range.end());
+    COMPAS_ASSERT(echos.begin(1) == voxels.begin);
+    COMPAS_ASSERT(echos.end(1) == voxels.end);
 
     context.fill(echos.data(), echos.size(), cfloat(0));
 
     for (index_t i = 0; i < sequence.sliceprofiles.size(0); i++) {
         dim3 block_size = 256;
-        dim3 grid_size = div_ceil(uint(range.size() * warp_size), block_size.x);
+        dim3 grid_size = div_ceil(uint(voxels.size() * warp_size), block_size.x);
 
         kernels::simulate_fisp<max_N, warp_size><<<grid_size, block_size, 0, context>>>(
-            range,
+            voxels,
             echos,
             sequence.sliceprofiles.drop_axis(i),
             parameters,
@@ -37,12 +37,11 @@ void simulate_fisp_sequence_for_size(
 
 void simulate_magnetization_kernel(
     const kmm::DeviceContext& context,
-    kmm::NDRange nd_range,
+    kmm::NDRange ndrange,
     gpu_subview_mut<cfloat, 2> echos,
-    gpu_subview<float, 2> data,
+    TissueParametersView parameters,
     FISPSequenceView sequence) {
-    auto parameters = TissueParametersView {data};
-    auto range = kmm::Range<1, index_t> {index_t(nd_range.begin()), index_t(nd_range.size())};
+    auto range = kmm::Range<index_t> {ndrange[0]};
 
     if (sequence.max_state <= 4) {
         simulate_fisp_sequence_for_size<4, 2>(context, range, echos, parameters, sequence);
@@ -77,7 +76,7 @@ Array<cfloat, 2> simulate_magnetization(
         const kmm::DeviceContext&,
         kmm::NDRange,
         gpu_subview_mut<cfloat, 2>,
-        gpu_subview<float, 2>,
+        TissueParametersView,
         FISPSequenceView) = simulate_magnetization_kernel;
 
     context.parallel_device(

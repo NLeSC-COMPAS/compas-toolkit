@@ -4,6 +4,18 @@
 #include "hermitian_kernels.cuh"
 
 namespace compas {
+void launch_jacobian_hermitian_kernel(
+    kmm::DeviceContext& ctx,
+    kmm::NDRange range,
+    gpu_subview_mut<cfloat, 2> JHv,
+    gpu_subview<cfloat, 2> echos,
+    gpu_subview<cfloat, 2> delta_echos_T1,
+    gpu_subview<cfloat, 2> delta_echos_T2,
+    TissueParametersView parameters,
+    gpu_subview<cfloat, 2> coil_sensitivities,
+    gpu_subview<cfloat, 3> vector,
+    gpu_subview<cfloat, 2> E,
+    gpu_subview<cfloat, 2> dEdT2);
 
 Array<cfloat, 2> compute_jacobian_hermitian(
     const CompasContext& ctx,
@@ -14,10 +26,13 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     CartesianTrajectory trajectory,
     Array<cfloat, 2> coil_sensitivities,
     Array<cfloat, 3> vector) {
+    using namespace kmm::placeholders;
+
     int ns = trajectory.samples_per_readout;
     int nreadouts = trajectory.nreadouts;
     int ncoils = int(coil_sensitivities.size(0));
     int nvoxels = parameters.nvoxels;
+    int chunk_size = parameters.chunk_size;
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
@@ -35,52 +50,73 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     auto JHv = Array<cfloat, 2> {{4, nvoxels}};
     auto E = Array<cfloat, 2> {{ns, nvoxels}};
     auto dEdT2 = Array<cfloat, 2> {{ns, nvoxels}};
+    auto _voxel = kmm::Axis(0);
 
     dim3 block_dim = {64, 4};
-    dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(ns), block_dim.y)};
-    ctx.submit_kernel(
-        grid_dim,
-        block_dim,
-        kernels::delta_to_sample_exponent,
-        write(E),
-        write(dEdT2),
+    ctx.parallel_submit(
+        {nvoxels, ns},
+        {chunk_size, ns},
+        kmm::GPUKernel(kernels::delta_to_sample_exponent, block_dim),
+        write(E(_, _voxel)),
+        write(dEdT2(_, _voxel)),
         trajectory,
-        parameters);
+        read(parameters, _voxel));
 
-    auto vector_lo = Array<complex_type<__nv_bfloat16>, 3> {{ncoils, nreadouts, ns}};
-    grid_dim = {uint(div_ceil(ns, 16)), uint(div_ceil(nreadouts, 16)), uint(ncoils)};
+    ctx.parallel_submit(
+        {nvoxels, ns, nreadouts},
+        {chunk_size, ns, nreadouts},
+        kmm::GPU(launch_jacobian_hermitian_kernel),
+        write(JHv(_, _voxel)),
+        echos(_, _voxel),
+        delta_echos_T1(_, _voxel),
+        delta_echos_T2(_, _voxel),
+        read(parameters, _voxel),
+        coil_sensitivities(_, _voxel),
+        vector(_, _, _),
+        E(_, _voxel),
+        dEdT2(_, _voxel));
 
-    ctx.submit_kernel(
-        grid_dim,
-        {16, 16},
-        kernels::convert_kernel<complex_type<__nv_bfloat16>, complex_type<float>>,
-        write(vector_lo),
-        vector);
+    return JHv;
+}
 
-#define COMPAS_COMPUTE_JACOBIAN_IMPL(C, V, R, S, BX, BY, BZ)                \
-    if (ncoils == (C) && nreadouts % (R) == 0 && ns % (S) == 0) {           \
-        block_dim = {BX, BY, BZ};                                           \
-        grid_dim = div_ceil(uint(nvoxels), uint(V));                        \
-                                                                            \
-        ctx.submit_kernel(                                                  \
-            grid_dim,                                                       \
-            block_dim,                                                      \
-            kernels::jacobian_hermitian_product<C, V, R, S, BX, BY, BZ, 1>, \
-            nreadouts,                                                      \
-            ns,                                                             \
-            nvoxels,                                                        \
-            ncoils,                                                         \
-            write(JHv),                                                     \
-            echos,                                                          \
-            delta_echos_T1,                                                 \
-            delta_echos_T2,                                                 \
-            parameters.data.size(1),                                        \
-            parameters.data,                                                \
-            coil_sensitivities,                                             \
-            vector,                                                         \
-            E,                                                              \
-            dEdT2);                                                         \
-        return JHv;                                                         \
+void launch_jacobian_hermitian_kernel(
+    kmm::DeviceContext& ctx,
+    kmm::NDRange range,
+    gpu_subview_mut<cfloat, 2> JHv,
+    gpu_subview<cfloat, 2> echos,
+    gpu_subview<cfloat, 2> delta_echos_T1,
+    gpu_subview<cfloat, 2> delta_echos_T2,
+    TissueParametersView parameters,
+    gpu_subview<cfloat, 2> coil_sensitivities,
+    gpu_subview<cfloat, 3> vector,
+    gpu_subview<cfloat, 2> E,
+    gpu_subview<cfloat, 2> dEdT2) {
+    uint ncoils = coil_sensitivities.size(0);
+    uint nvoxels = range.x.size();
+    uint nreadouts = range.y.size();
+    uint ns = range.z.size();
+
+#define COMPAS_COMPUTE_JACOBIAN_IMPL(C, V, R, S, BX, BY, BZ)           \
+    if (ncoils == (C) && nreadouts % (R) == 0 && ns % (S) == 0) {      \
+        dim3 block_size = {BX, BY, BZ};                                \
+        dim3 grid_size = {                                             \
+            div_ceil(nvoxels, uint(V)),                                \
+            div_ceil(nreadouts, uint(R)),                              \
+            div_ceil(ns, uint(S))};                                    \
+                                                                       \
+        kernels::jacobian_hermitian_product<V, R, S, C, BX, BY, BZ, 1> \
+            <<<grid_size, block_size, 0, ctx>>>(                       \
+                range,                                                 \
+                JHv,                                                   \
+                echos,                                                 \
+                delta_echos_T1,                                        \
+                delta_echos_T2,                                        \
+                parameters,                                            \
+                coil_sensitivities,                                    \
+                vector,                                                \
+                E,                                                     \
+                dEdT2);                                                \
+        return;                                                        \
     }
 
 #define COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(C)        \

@@ -21,8 +21,8 @@ Array<cfloat, 2> simulate_magnetization(
 
 void simulate_magnetization_kernel(
     const kmm::DeviceContext& context,
-    kmm::NDRange,
-    gpu_view_mut<cfloat, 2> echos,
+    kmm::NDRange voxels,
+    gpu_subview_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     FISPSequenceView sequence);
 
