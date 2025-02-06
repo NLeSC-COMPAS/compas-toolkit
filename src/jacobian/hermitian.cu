@@ -4,9 +4,10 @@
 #include "hermitian_kernels.cuh"
 
 namespace compas {
+
 void launch_jacobian_hermitian_kernel(
     kmm::DeviceContext& ctx,
-    kmm::NDRange range,
+    kmm::NDRange subrange,
     gpu_subview_mut<cfloat, 2> JHv,
     gpu_subview<cfloat, 2> echos,
     gpu_subview<cfloat, 2> delta_echos_T1,
@@ -15,7 +16,47 @@ void launch_jacobian_hermitian_kernel(
     gpu_subview<cfloat, 2> coil_sensitivities,
     gpu_subview<cfloat, 3> vector,
     gpu_subview<cfloat, 2> E,
-    gpu_subview<cfloat, 2> dEdT2);
+    gpu_subview<cfloat, 2> dEdT2) {
+    uint ncoils = coil_sensitivities.size(0);
+    uint nvoxels = subrange.x.size();
+    uint ns = subrange.y.size();
+    uint nreadouts = subrange.z.size();
+
+#define COMPAS_COMPUTE_JACOBIAN_IMPL(C, V, R, S, BX, BY, BZ)        \
+    if (ncoils == (C) && nreadouts % (R) == 0 && ns % (S) == 0) {   \
+        dim3 block_size = {BX, BY, BZ};                             \
+        dim3 grid_size = {div_ceil(nvoxels, uint(V))};              \
+                                                                    \
+        kernels::jacobian_hermitian_product<V, R, S, C, BX, BY, BZ> \
+            <<<grid_size, block_size, 0, ctx>>>(                    \
+                subrange,                                           \
+                JHv,                                                \
+                echos,                                              \
+                delta_echos_T1,                                     \
+                delta_echos_T2,                                     \
+                parameters,                                         \
+                coil_sensitivities,                                 \
+                vector,                                             \
+                E,                                                  \
+                dEdT2);                                             \
+        return;                                                     \
+    }
+
+#define COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(C)        \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 2, 32, 32, 2, 2) \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 2, 16, 32, 2, 2) \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 8, 8, 32, 2, 1)  \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 4, 4, 32, 2, 1)  \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 2, 2, 32, 2, 1)  \
+    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 128, 1, 1, 128, 1, 1)
+
+    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(1)
+    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(2)
+    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(3)
+    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(4)
+
+    throw std::runtime_error("cannot support more than 4 coils");
+}
 
 Array<cfloat, 2> compute_jacobian_hermitian(
     const CompasContext& ctx,
@@ -77,62 +118,6 @@ Array<cfloat, 2> compute_jacobian_hermitian(
         dEdT2(_, _voxel));
 
     return JHv;
-}
-
-void launch_jacobian_hermitian_kernel(
-    kmm::DeviceContext& ctx,
-    kmm::NDRange range,
-    gpu_subview_mut<cfloat, 2> JHv,
-    gpu_subview<cfloat, 2> echos,
-    gpu_subview<cfloat, 2> delta_echos_T1,
-    gpu_subview<cfloat, 2> delta_echos_T2,
-    TissueParametersView parameters,
-    gpu_subview<cfloat, 2> coil_sensitivities,
-    gpu_subview<cfloat, 3> vector,
-    gpu_subview<cfloat, 2> E,
-    gpu_subview<cfloat, 2> dEdT2) {
-    uint ncoils = coil_sensitivities.size(0);
-    uint nvoxels = range.x.size();
-    uint nreadouts = range.y.size();
-    uint ns = range.z.size();
-
-#define COMPAS_COMPUTE_JACOBIAN_IMPL(C, V, R, S, BX, BY, BZ)           \
-    if (ncoils == (C) && nreadouts % (R) == 0 && ns % (S) == 0) {      \
-        dim3 block_size = {BX, BY, BZ};                                \
-        dim3 grid_size = {                                             \
-            div_ceil(nvoxels, uint(V)),                                \
-            div_ceil(nreadouts, uint(R)),                              \
-            div_ceil(ns, uint(S))};                                    \
-                                                                       \
-        kernels::jacobian_hermitian_product<V, R, S, C, BX, BY, BZ, 1> \
-            <<<grid_size, block_size, 0, ctx>>>(                       \
-                range,                                                 \
-                JHv,                                                   \
-                echos,                                                 \
-                delta_echos_T1,                                        \
-                delta_echos_T2,                                        \
-                parameters,                                            \
-                coil_sensitivities,                                    \
-                vector,                                                \
-                E,                                                     \
-                dEdT2);                                                \
-        return;                                                        \
-    }
-
-#define COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(C)        \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 2, 32, 32, 2, 2) \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 2, 16, 32, 2, 2) \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 8, 8, 32, 2, 1)  \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 4, 4, 32, 2, 1)  \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 32, 2, 2, 32, 2, 1)  \
-    COMPAS_COMPUTE_JACOBIAN_IMPL(C, 128, 1, 1, 128, 1, 1)
-
-    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(1)
-    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(2)
-    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(3)
-    COMPAS_COMPUTE_JACOBIAN_PER_COILS_IMPL(4)
-
-    throw std::runtime_error("cannot support more than 4 coils");
 }
 
 }  // namespace compas

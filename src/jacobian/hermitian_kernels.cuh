@@ -90,7 +90,7 @@ __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __globa
             break;
         }
 
-        for (index_t sample_offset = subrange.y.end; sample_offset < subrange.y.end; sample_offset += sample_tile_size) {
+        for (index_t sample_offset = subrange.y.begin; sample_offset < subrange.y.end; sample_offset += sample_tile_size) {
             cfloat local_E[samples_per_thread];
             cfloat local_dEdT2[samples_per_thread];
 

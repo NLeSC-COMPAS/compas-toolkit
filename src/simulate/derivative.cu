@@ -19,10 +19,11 @@ void simulate_magnetization_derivative_impl(
     TissueParametersView tissue,
     SequenceView sequence,
     float delta) {
-    auto nvoxels = range.sizes().x;
-    auto nreadouts = kmm::checked_cast<int>(sequence.RF_train.size());
+    auto nvoxels = range.x.size();
+    auto nreadouts = range.y.size();
 
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
+    COMPAS_ASSERT(echos.begin(0) == range.y.begin);
+    COMPAS_ASSERT(echos.end(0) == range.y.end);
     COMPAS_ASSERT(echos.begin(1) == range.x.begin);
     COMPAS_ASSERT(echos.end(1) == range.x.end);
     COMPAS_ASSERT(field >= 0 && field < TissueParameterField::NUM_FIELDS);
@@ -101,8 +102,8 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     auto delta_echos = Array<cfloat, 2> {echos.sizes()};
 
     context.parallel_device(
-        {nvoxels},
-        {chunk_size},
+        {nvoxels, nreadouts},
+        {chunk_size, nreadouts},
         simulate_magnetization_derivative_impl<FISPSequenceView>,
         field,
         write(new_parameters(_, _x)),
