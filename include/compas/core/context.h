@@ -103,7 +103,6 @@ struct CompasContext {
 };
 
 inline CompasContext make_context(int device = 0) {
-    spdlog::set_level(spdlog::level::trace);
     return {kmm::make_runtime(), kmm::DeviceId(device)};
 }
 
