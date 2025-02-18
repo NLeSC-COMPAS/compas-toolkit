@@ -7,7 +7,7 @@ namespace compas {
 
 static void launch_jacobian_product(
     kmm::DeviceContext& ctx,
-    kmm::NDRange range,
+    kmm::Bounds<3> range,
     gpu_subview_mut<cfloat, 3> Jv,
     gpu_subview<cfloat, 2> echos,
     gpu_subview<cfloat, 2> delta_echos_T1,
@@ -58,6 +58,7 @@ Array<cfloat, 3> compute_jacobian(
         {chunk_size, ns},
         {32, 8},
         kernels::delta_to_sample_exponent,
+        _xy,
         write(E(_, _voxel)),
         write(dEdT2(_, _voxel)),
         trajectory,
@@ -67,6 +68,7 @@ Array<cfloat, 3> compute_jacobian(
         {nvoxels, ns, nreadouts},
         {chunk_size, ns, nreadouts},
         kmm::GPU(launch_jacobian_product),
+        _xyz,
         reduce(kmm::Reduction::Sum, Jv(_, _readout, _sample)),
         echos(_, _voxel),
         delta_echos_T1(_, _voxel),
@@ -89,7 +91,7 @@ template<
     int blocks_per_sm,
     typename... Args>
 static void
-launch_jacobian_product_impl(kmm::DeviceContext& ctx, kmm::NDRange range, Args... args) {
+launch_jacobian_product_impl(kmm::DeviceContext& ctx, kmm::Bounds<3> range, Args... args) {
     auto nsamples = range.sizes().y;
     auto nreadouts = range.sizes().z;
 
@@ -142,7 +144,7 @@ launch_jacobian_product_impl(kmm::DeviceContext& ctx, kmm::NDRange range, Args..
 
 static void launch_jacobian_product(
     kmm::DeviceContext& ctx,
-    kmm::NDRange range,
+    kmm::Bounds<3> range,
     gpu_subview_mut<cfloat, 3> Jv,
     gpu_subview<cfloat, 2> echos,
     gpu_subview<cfloat, 2> delta_echos_T1,

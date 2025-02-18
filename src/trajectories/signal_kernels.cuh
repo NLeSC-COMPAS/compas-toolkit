@@ -9,15 +9,16 @@ namespace kernels {
 
 template<typename TrajectoryView>
 __global__ void prepare_signal_factors(
-    kmm::NDRange subrange,
+    kmm::Range<index_t> voxels,
+    kmm::Range<index_t> readouts,
     gpu_subview_mut<cfloat, 2> factors,
     gpu_subview<cfloat, 2> echos,
     TissueParametersView parameters,
     TrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + subrange.x.begin);
-    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + subrange.y.begin);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + voxels.begin);
+    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + readouts.begin);
 
-    if (voxel < subrange.x.end && readout < subrange.y.end) {
+    if (voxel < voxels.end && readout < readouts.end) {
         auto m = echos[readout][voxel];
 
         auto p = parameters.get(voxel);
@@ -29,14 +30,14 @@ __global__ void prepare_signal_factors(
 }
 
 __global__ void prepare_signal_cartesian(
-    kmm::NDRange subrange,
+    kmm::Range<index_t> voxels,
     int num_samples,
     gpu_subview_mut<cfloat, 2> exponents,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + subrange.x.begin);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + voxels.begin);
 
-    if (voxel < subrange.x.end) {
+    if (voxel < voxels.end) {
         auto p = parameters.get(voxel);
         auto exponent = trajectory.to_sample_point_exponent(p);
 
@@ -115,7 +116,7 @@ template<
     int coil_tiling_factor,
     int blocks_per_sm = 1>
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_cartesian(
-    kmm::NDRange subrange,
+    kmm::Range<index_t> voxels,
     gpu_view_mut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
     gpu_subview<cfloat, 2> exponents,  // [num_samples num_voxels]
     gpu_subview<cfloat, 2> factors,  // [num_readouts num_voxels]
@@ -127,8 +128,6 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
     auto num_readouts = signal.size(1);
 
     auto lane = index_t(threadIdx.x % threads_cooperative);
-    auto voxel_start = index_t(subrange.x.begin);
-    auto voxel_end = index_t(subrange.x.end);
     auto sample_start = index_t((blockIdx.x * blockDim.x + threadIdx.x) / threads_cooperative)
         * sample_tiling_factor;
     auto readout_start = index_t(blockIdx.y * blockDim.y + threadIdx.y) * readout_tiling_factor;
@@ -151,7 +150,7 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
         }
     }
 
-    for (index_t voxel = voxel_start + lane; voxel < voxel_end; voxel += threads_cooperative) {
+    for (index_t voxel = voxels.begin + lane; voxel < voxels.end; voxel += threads_cooperative) {
         cfloat local_coils[coil_tiling_factor] = {0};
 
 #pragma unroll

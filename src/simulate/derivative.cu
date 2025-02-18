@@ -11,7 +11,7 @@ namespace compas {
 template<typename SequenceView>
 void simulate_magnetization_derivative_impl(
     const kmm::DeviceContext& context,
-    kmm::NDRange range,
+    kmm::Bounds<2> range,
     int field,
     gpu_subview_mut<float, 2> new_parameters,
     gpu_subview_mut<cfloat, 2> delta_echos,
@@ -31,7 +31,7 @@ void simulate_magnetization_derivative_impl(
     dim3 block_size = 256;
     dim3 num_blocks = div_ceil(uint(nvoxels), block_size.x);
     compas::kernels::add_difference_to_parameters<<<num_blocks, block_size, 0, context.stream()>>>(
-        range,
+        range.x,
         new_parameters,
         tissue.parameters,
         field,
@@ -40,7 +40,7 @@ void simulate_magnetization_derivative_impl(
     auto new_tissue = TissueParametersView {tissue};
     new_tissue.parameters = new_parameters;
 
-    simulate_magnetization_kernel(context, range, delta_echos, new_tissue, sequence);
+    simulate_magnetization_kernel(context, range[0], delta_echos, new_tissue, sequence);
 
     num_blocks = {div_ceil(uint(nvoxels), block_size.x), div_ceil(uint(nreadouts), block_size.y)};
     compas::kernels::calculate_finite_difference<<<num_blocks, block_size, 0, context.stream()>>>(
@@ -72,6 +72,7 @@ Array<cfloat, 2> simulate_magnetization_derivative(
         {nvoxels, nreadouts},
         {chunk_size, nreadouts},
         simulate_magnetization_derivative_impl<pSSFPSequenceView>,
+        _xy,
         field,
         write(new_parameters(_, _x)),
         write(delta_echos(_, _x)),
@@ -105,6 +106,7 @@ Array<cfloat, 2> simulate_magnetization_derivative(
         {nvoxels, nreadouts},
         {chunk_size, nreadouts},
         simulate_magnetization_derivative_impl<FISPSequenceView>,
+        _xy,
         field,
         write(new_parameters(_, _x)),
         write(delta_echos(_, _x)),

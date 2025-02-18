@@ -23,6 +23,7 @@ Array<cfloat, 2> phase_encoding(
         {chunk_size, nreadouts},
         block_dim,
         kernels::phase_encoding,
+        _xy,
         write(ph_en_echos(_y, _x)),
         echos(_y, _x),
         parameters.data(_y, _x),

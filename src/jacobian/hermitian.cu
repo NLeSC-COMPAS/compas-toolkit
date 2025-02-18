@@ -7,7 +7,7 @@ namespace compas {
 
 void launch_jacobian_hermitian_kernel(
     kmm::DeviceContext& ctx,
-    kmm::NDRange subrange,
+    kmm::Bounds<3> subrange,
     gpu_subview_mut<cfloat, 2> JHv,
     gpu_subview<cfloat, 2> echos,
     gpu_subview<cfloat, 2> delta_echos_T1,
@@ -98,6 +98,7 @@ Array<cfloat, 2> compute_jacobian_hermitian(
         {nvoxels, ns},
         {chunk_size, ns},
         kmm::GPUKernel(kernels::delta_to_sample_exponent, block_dim),
+        _xy,
         write(E(_, _voxel)),
         write(dEdT2(_, _voxel)),
         trajectory,
@@ -107,6 +108,7 @@ Array<cfloat, 2> compute_jacobian_hermitian(
         {nvoxels, ns, nreadouts},
         {chunk_size, ns, nreadouts},
         kmm::GPU(launch_jacobian_hermitian_kernel),
+        _xyz,
         write(JHv(_, _voxel)),
         echos(_, _voxel),
         delta_echos_T1(_, _voxel),

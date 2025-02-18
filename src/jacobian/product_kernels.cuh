@@ -5,7 +5,7 @@ namespace compas {
 namespace kernels {
 
 static __global__ void delta_to_sample_exponent(
-    kmm::NDRange range,
+    kmm::Bounds<2, int> range,
     gpu_subview_mut<cfloat, 2> E,
     gpu_subview_mut<cfloat, 2> dEdT2,
     CartesianTrajectoryView trajectory,
@@ -50,7 +50,7 @@ template<
     int threads_per_block = 256,
     int blocks_per_sm = 16>
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_product(
-    kmm::NDRange subrange,
+    kmm::Bounds<3, index_t> subrange,
     index_t coil_offset,
     gpu_subview_mut<cfloat, 3> Jv,
     gpu_subview<cfloat, 2> echos,

@@ -4,14 +4,14 @@
 namespace compas {
 namespace kernels {
 __global__ void add_difference_to_parameters(
-    kmm::NDRange range,
+    kmm::Range<index_t> voxels,
     gpu_subview_mut<float, 2> new_parameters,
     gpu_subview<float, 2> old_parameters,
     int target_field,
     float delta) {
-    auto v = index_t(blockIdx.x * blockDim.x + threadIdx.x) + range.x.begin;
+    auto v = index_t(blockIdx.x * blockDim.x + threadIdx.x) + voxels.begin;
 
-    if (v < range.x.end) {
+    if (v < voxels.end) {
         for (auto field = 0; field < TissueParameterField::NUM_FIELDS; field++) {
             new_parameters[field][v] = old_parameters[field][v];
         }
@@ -21,7 +21,7 @@ __global__ void add_difference_to_parameters(
 }
 
 __global__ void calculate_finite_difference(
-    kmm::NDRange range,
+    kmm::Bounds<2, index_t> range,
     gpu_subview_mut<cfloat, 2> delta_echos,
     gpu_subview<cfloat, 2> echos,
     float inv_delta) {

@@ -9,8 +9,8 @@ namespace compas {
 namespace kernels {
 
 // Defined in product_kernels.cuh
-__global__ void delta_to_sample_exponent(
-        kmm::NDRange subrange,
+static __global__ void delta_to_sample_exponent(
+        kmm::Bounds<2, int> range,
         gpu_subview_mut<cfloat, 2> E,
         gpu_subview_mut<cfloat, 2> dEdT2,
         CartesianTrajectoryView trajectory,
@@ -28,7 +28,7 @@ static COMPAS_DEVICE cfloat add_mul_conj(cfloat a, cfloat b, cfloat c) {
 
 template <typename T, typename U>
 __global__
-void convert_kernel(kmm::NDRange subrange, gpu_view_mut<T, 3> output, gpu_view<U, 3> input) {
+void convert_kernel(kmm::Bounds<3, int> subrange, gpu_view_mut<T, 3> output, gpu_view<U, 3> input) {
     auto k = index_t(blockIdx.x * blockDim.x + threadIdx.x);
     auto j = index_t(blockIdx.y * blockDim.y + threadIdx.y);
     auto i = index_t(blockIdx.z * blockDim.z + threadIdx.z);
@@ -49,7 +49,7 @@ template<
         int blocks_per_sm=1,
         bool use_smem=true>
 __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __global__ void jacobian_hermitian_product(
-    kmm::NDRange subrange,
+    kmm::Bounds<3, int> subrange,
     gpu_subview_mut<cfloat, 2> JHv,
     gpu_subview<cfloat, 2> echos,
     gpu_subview<cfloat, 2> delta_echos_T1,

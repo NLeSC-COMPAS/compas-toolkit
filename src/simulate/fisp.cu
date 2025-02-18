@@ -37,26 +37,24 @@ void simulate_fisp_sequence_for_size(
 
 void simulate_magnetization_kernel(
     const kmm::DeviceContext& context,
-    kmm::NDRange ndrange,
+    kmm::Range<index_t> voxels,
     gpu_subview_mut<cfloat, 2> echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
-    auto range = kmm::Range<index_t> {ndrange[0]};
-
     if (sequence.max_state <= 4) {
-        simulate_fisp_sequence_for_size<4, 2>(context, range, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<4, 2>(context, voxels, echos, parameters, sequence);
     } else if (sequence.max_state <= 8) {
-        simulate_fisp_sequence_for_size<8, 4>(context, range, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<8, 4>(context, voxels, echos, parameters, sequence);
     } else if (sequence.max_state <= 16) {
-        simulate_fisp_sequence_for_size<16, 8>(context, range, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<16, 8>(context, voxels, echos, parameters, sequence);
     } else if (sequence.max_state <= 32) {
-        simulate_fisp_sequence_for_size<32, 16>(context, range, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<32, 16>(context, voxels, echos, parameters, sequence);
     } else if (sequence.max_state <= 64) {
-        simulate_fisp_sequence_for_size<64, 32>(context, range, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<64, 32>(context, voxels, echos, parameters, sequence);
     } else if (sequence.max_state <= 96) {
-        simulate_fisp_sequence_for_size<96, 32>(context, range, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<96, 32>(context, voxels, echos, parameters, sequence);
     } else if (sequence.max_state <= 128) {
-        simulate_fisp_sequence_for_size<128, 32>(context, range, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<128, 32>(context, voxels, echos, parameters, sequence);
     } else {
         COMPAS_PANIC("max_state cannot exceed 128");
     }
@@ -74,7 +72,7 @@ Array<cfloat, 2> simulate_magnetization(
 
     void (*fun)(
         const kmm::DeviceContext&,
-        kmm::NDRange,
+        kmm::Range<index_t>,
         gpu_subview_mut<cfloat, 2>,
         TissueParametersView,
         FISPSequenceView) = simulate_magnetization_kernel;
@@ -83,6 +81,7 @@ Array<cfloat, 2> simulate_magnetization(
         nvoxels,
         chunk_size,
         fun,
+        _x,
         write(echos(_, _x)),
         parameters.data(_, _x),
         sequence);

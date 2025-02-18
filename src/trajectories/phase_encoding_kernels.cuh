@@ -8,7 +8,7 @@ namespace compas {
 namespace kernels {
 
 __global__ void phase_encoding(
-    kmm::NDRange range,
+    kmm::Bounds<2, index_t> range,
     gpu_subview_mut<cfloat, 2> ph_en_echos,
     gpu_subview<cfloat, 2> echos,
     TissueParametersView parameters,

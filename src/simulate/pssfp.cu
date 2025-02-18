@@ -39,7 +39,7 @@ int simulate_pssfp_sequence_batch(
 
 void simulate_magnetization_kernel(
     const kmm::DeviceContext& context,
-    kmm::NDRange,
+    kmm::Range<index_t>,
     int nvoxels,
     gpu_subview_mut<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -72,19 +72,21 @@ Array<cfloat, 2> simulate_magnetization(
     const CompasContext& context,
     TissueParameters parameters,
     pSSFPSequence sequence) {
+    using namespace kmm::placeholders;
+
     int nreadouts = kmm::checked_cast<int>(sequence.RF_train.size());
     int nvoxels = parameters.nvoxels;
     auto echos = Array<cfloat, 2> {{nreadouts, nvoxels}};
 
     void (*fun)(
         const kmm::DeviceContext&,
-        kmm::NDRange,
+        kmm::Range<index_t>,
         int,
         gpu_subview_mut<cfloat, 2>,
         TissueParametersView,
         pSSFPSequenceView) = simulate_magnetization_kernel;
 
-    context.submit_device(nvoxels, fun, nvoxels, write(echos), parameters, sequence);
+    context.submit_device(nvoxels, fun, _x, nvoxels, write(echos), parameters, sequence);
     return echos;
 }
 }  // namespace compas

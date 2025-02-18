@@ -11,7 +11,7 @@ namespace compas {
 
 void magnetization_to_signal_cartesian_direct(
     const kmm::DeviceContext& context,
-    kmm::NDRange subrange,
+    kmm::Range<index_t> voxels,
     gpu_view_mut<cfloat, 3> signal,
     gpu_subview<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -19,8 +19,8 @@ void magnetization_to_signal_cartesian_direct(
     gpu_subview<cfloat, 2> coil_sensitivities,
     gpu_subview_mut<cfloat, 2> exponents,
     gpu_subview_mut<cfloat, 2> factors) {
-    int voxel_begin = int(subrange.x.begin);
-    int voxel_end = int(subrange.x.end);
+    int voxel_begin = int(voxels.begin);
+    int voxel_end = int(voxels.end);
     int nvoxels = int(voxel_end - voxel_begin);
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;
@@ -41,7 +41,8 @@ void magnetization_to_signal_cartesian_direct(
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
     kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context.stream()>>>(
-        subrange,
+        voxels,
+        nreadouts,
         factors,
         echos,
         parameters,
@@ -52,7 +53,7 @@ void magnetization_to_signal_cartesian_direct(
     grid_dim = {div_ceil(uint(nvoxels), block_dim.x)};
 
     kernels::prepare_signal_cartesian<<<grid_dim, block_dim, 0, context.stream()>>>(
-        subrange,
+        voxels,
         samples_per_readout,
         exponents,
         parameters,
@@ -88,7 +89,7 @@ void magnetization_to_signal_cartesian_direct(
         samples_per_thread,
         readouts_per_thread,
         coils_per_thread><<<grid_dim, block_dim, 0, context.stream()>>>(
-        subrange,
+        voxels,
         signal,
         exponents,
         factors,
@@ -99,8 +100,7 @@ void magnetization_to_signal_cartesian_direct(
 
 void magnetization_to_signal_cartesian_gemm(
     const kmm::DeviceContext& context,
-    kmm::NDRange subrange,
-    int nvoxels,
+    kmm::Range<index_t> voxels,
     gpu_view_mut<cfloat, 3> signal,
     gpu_view<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -111,9 +111,10 @@ void magnetization_to_signal_cartesian_gemm(
     cublasComputeType_t compute_type) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;
+    int nvoxels = voxels.size();
     int samples_per_readout = trajectory.samples_per_readout;
 
-    COMPAS_ASSERT(coil_sensitivities.size(1) == nvoxels);
+    COMPAS_ASSERT(coil_sensitivities.size(1) == voxels.size());
 
     COMPAS_ASSERT(signal.size(0) == ncoils);
     COMPAS_ASSERT(signal.size(1) == nreadouts);
@@ -126,7 +127,8 @@ void magnetization_to_signal_cartesian_gemm(
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
     kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context.stream()>>>(
-        subrange,
+        voxels,
+        nreadouts,
         factors,
         echos,
         parameters,
@@ -179,8 +181,7 @@ void magnetization_to_signal_cartesian_gemm(
 
 void magnetization_to_signal_spiral(
     const kmm::DeviceContext& context,
-    kmm::NDRange subrange,
-    int nvoxels,
+    kmm::Range<index_t> voxels,
     gpu_view_mut<cfloat, 3> signal,
     gpu_view<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -192,20 +193,23 @@ void magnetization_to_signal_spiral(
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
 
-    COMPAS_ASSERT(coil_sensitivities.size(1) == nvoxels);
+    COMPAS_ASSERT(coil_sensitivities.size(1) == voxels.size());
 
     COMPAS_ASSERT(signal.size(0) == ncoils);
     COMPAS_ASSERT(signal.size(1) == nreadouts);
     COMPAS_ASSERT(signal.size(2) == samples_per_readout);
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.size(1) == nvoxels);
+    COMPAS_ASSERT(echos.size(1) == voxels.size());
 
     dim3 block_dim = {32, 4};
-    dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
+    dim3 grid_dim = {
+        div_ceil(uint(voxels.size()), block_dim.x),
+        div_ceil(uint(nreadouts), block_dim.y)};
 
     kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context.stream()>>>(
-        subrange,
+        voxels,
+        nreadouts,
         factors,
         echos,
         parameters,
@@ -213,7 +217,7 @@ void magnetization_to_signal_spiral(
     COMPAS_GPU_CHECK(gpuGetLastError());
 
     block_dim = {32, 4};
-    grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
+    grid_dim = {div_ceil(uint(voxels.size()), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
     kernels::prepare_signal_spiral<<<grid_dim, block_dim, 0, context.stream()>>>(
         exponents,
@@ -289,6 +293,7 @@ Array<cfloat, 3> magnetization_to_signal(
                 {nvoxels, nreadouts},
                 {chunk_size, nreadouts},
                 magnetization_to_signal_cartesian_direct,
+                _x,
                 reduce(kmm::Reduction::Sum, signal),
                 echos(_y, _x),
                 parameters.data(_, _x),
@@ -300,7 +305,7 @@ Array<cfloat, 3> magnetization_to_signal(
             context.submit_device(
                 {nvoxels, nreadouts},
                 magnetization_to_signal_cartesian_gemm,
-                nvoxels,
+                _x,
                 write(signal),
                 echos,
                 parameters,
@@ -317,7 +322,7 @@ Array<cfloat, 3> magnetization_to_signal(
         context.submit_device(
             {nvoxels, nreadouts},
             magnetization_to_signal_spiral,
-            nvoxels,
+            _x,
             write(signal),
             echos,
             parameters,
