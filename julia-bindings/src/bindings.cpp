@@ -30,8 +30,8 @@ auto catch_exceptions(F fun) -> decltype(fun()) {
 }
 
 template<typename T, typename... Ns>
-compas::host_view_mut<T, sizeof...(Ns)> make_view(T* ptr, Ns... sizes) {
-    using index_type = typename compas::host_view_mut<T, sizeof...(Ns)>::index_type;
+compas::ViewMut<T, sizeof...(Ns)> make_view(T* ptr, Ns... sizes) {
+    using index_type = typename compas::ViewMut<T, sizeof...(Ns)>::index_type;
     return {ptr, {{kmm::checked_cast<index_type>(sizes)...}}};
 }
 

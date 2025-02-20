@@ -8,7 +8,7 @@ template<int max_N, int warp_size = max_N>
 void simulate_fisp_sequence_for_size(
     const kmm::DeviceContext& context,
     kmm::Range<index_t> voxels,
-    gpu_subview_mut<cfloat, 2> echos,
+    GPUSubviewMut<cfloat, 2> echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
     COMPAS_ASSERT(sequence.max_state <= max_N);
@@ -38,7 +38,7 @@ void simulate_fisp_sequence_for_size(
 void simulate_magnetization_kernel(
     const kmm::DeviceContext& context,
     kmm::Range<index_t> voxels,
-    gpu_subview_mut<cfloat, 2> echos,
+    GPUSubviewMut<cfloat, 2> echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
     if (sequence.max_state <= 4) {
@@ -73,7 +73,7 @@ Array<cfloat, 2> simulate_magnetization(
     void (*fun)(
         const kmm::DeviceContext&,
         kmm::Range<index_t>,
-        gpu_subview_mut<cfloat, 2>,
+        GPUSubviewMut<cfloat, 2>,
         TissueParametersView,
         FISPSequenceView) = simulate_magnetization_kernel;
 

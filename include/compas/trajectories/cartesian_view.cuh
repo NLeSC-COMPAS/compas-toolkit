@@ -39,7 +39,7 @@ struct CartesianTrajectoryView {
     int nreadouts;
     int samples_per_readout;
     float delta_t;
-    gpu_view<cfloat> k_start;
+    GPUView<cfloat> k_start;
     cfloat delta_k;
 
     /**

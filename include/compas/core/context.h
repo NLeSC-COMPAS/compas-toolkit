@@ -25,7 +25,7 @@ struct CompasContext {
         m_device(device) {}
 
     template<typename T, size_t N>
-    Array<std::decay_t<T>, N> allocate(host_view<T, N> content) const {
+    Array<std::decay_t<T>, N> allocate(View<T, N> content) const {
         return m_runtime.allocate(content.data(), kmm::Dim<N>::from(content.sizes()));
     }
 

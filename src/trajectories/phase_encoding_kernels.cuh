@@ -9,8 +9,8 @@ namespace kernels {
 
 __global__ void phase_encoding(
     kmm::Bounds<2, index_t> range,
-    gpu_subview_mut<cfloat, 2> ph_en_echos,
-    gpu_subview<cfloat, 2> echos,
+    GPUSubviewMut<cfloat, 2> ph_en_echos,
+    GPUSubview<cfloat, 2> echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
     auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);

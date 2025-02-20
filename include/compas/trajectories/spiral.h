@@ -43,8 +43,8 @@ inline SpiralTrajectory make_spiral_trajectory(
     int nreadouts,
     int samples_per_readout,
     float delta_t,
-    host_view<cfloat> k_start,
-    host_view<cfloat> delta_k) {
+    View<cfloat> k_start,
+    View<cfloat> delta_k) {
     COMPAS_ASSERT(k_start.size() == nreadouts);
     COMPAS_ASSERT(delta_k.size() == nreadouts);
 

@@ -6,8 +6,8 @@ namespace kernels {
 
 static __global__ void delta_to_sample_exponent(
     kmm::Bounds<2, int> range,
-    gpu_subview_mut<cfloat, 2> E,
-    gpu_subview_mut<cfloat, 2> dEdT2,
+    GPUSubviewMut<cfloat, 2> E,
+    GPUSubviewMut<cfloat, 2> dEdT2,
     CartesianTrajectoryView trajectory,
     TissueParametersView parameters) {
     index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
@@ -52,15 +52,15 @@ template<
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_product(
     kmm::Bounds<3, index_t> subrange,
     index_t coil_offset,
-    gpu_subview_mut<cfloat, 3> Jv,
-    gpu_subview<cfloat, 2> echos,
-    gpu_subview<cfloat, 2> delta_echos_T1,
-    gpu_subview<cfloat, 2> delta_echos_T2,
+    GPUSubviewMut<cfloat, 3> Jv,
+    GPUSubview<cfloat, 2> echos,
+    GPUSubview<cfloat, 2> delta_echos_T1,
+    GPUSubview<cfloat, 2> delta_echos_T2,
     TissueParametersView parameters,
-    gpu_subview<cfloat, 2> coil_sensitivities,
-    gpu_subview<cfloat, 2> E,
-    gpu_subview<cfloat, 2> dEdT2,
-    gpu_subview<cfloat, 2> v) {
+    GPUSubview<cfloat, 2> coil_sensitivities,
+    GPUSubview<cfloat, 2> E,
+    GPUSubview<cfloat, 2> dEdT2,
+    GPUSubview<cfloat, 2> v) {
 
     index_t voxel_begin = index_t(subrange.x.begin);
     index_t voxel_end = index_t(subrange.x.end);

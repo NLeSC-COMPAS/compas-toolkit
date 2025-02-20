@@ -5,28 +5,28 @@ namespace compas {
 
 using index_t = int;
 
-using kmm::strided_subview;
-using kmm::strided_subview_mut;
-using kmm::strided_view;
-using kmm::strided_view_mut;
-using kmm::subview;
-using kmm::subview_mut;
-using kmm::view;
-using kmm::view_mut;
+using kmm::Subview;
+using kmm::SubviewMut;
+using kmm::SubviewStrided;
+using kmm::SubviewStridedMut;
+using kmm::View;
+using kmm::ViewMut;
+using kmm::ViewStrided;
+using kmm::ViewStridedMut;
 
-using kmm::gpu_strided_subview;
-using kmm::gpu_strided_subview_mut;
-using kmm::gpu_strided_view;
-using kmm::gpu_strided_view_mut;
-using kmm::gpu_subview;
-using kmm::gpu_subview_mut;
-using kmm::gpu_view;
-using kmm::gpu_view_mut;
-
-template<typename T, size_t N = 1>
-using host_view = kmm::view<T, N>;
+using kmm::GPUSubview;
+using kmm::GPUSubviewMut;
+using kmm::GPUSubviewStrided;
+using kmm::GPUSubviewStridedMut;
+using kmm::GPUView;
+using kmm::GPUViewMut;
+using kmm::GPUViewStrided;
+using kmm::GPUViewStridedMut;
 
 template<typename T, size_t N = 1>
-using host_view_mut = kmm::view_mut<T, N>;
+using HostView = kmm::View<T, N>;
+
+template<typename T, size_t N = 1>
+using HostViewMut = kmm::ViewMut<T, N>;
 
 }  // namespace compas

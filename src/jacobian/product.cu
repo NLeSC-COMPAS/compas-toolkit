@@ -8,15 +8,15 @@ namespace compas {
 static void launch_jacobian_product(
     kmm::DeviceContext& ctx,
     kmm::Bounds<3> range,
-    gpu_subview_mut<cfloat, 3> Jv,
-    gpu_subview<cfloat, 2> echos,
-    gpu_subview<cfloat, 2> delta_echos_T1,
-    gpu_subview<cfloat, 2> delta_echos_T2,
+    GPUSubviewMut<cfloat, 3> Jv,
+    GPUSubview<cfloat, 2> echos,
+    GPUSubview<cfloat, 2> delta_echos_T1,
+    GPUSubview<cfloat, 2> delta_echos_T2,
     TissueParametersView parameters,
-    gpu_subview<cfloat, 2> coil_sensitivities,
-    gpu_subview<cfloat, 2> E,
-    gpu_subview<cfloat, 2> dEdT2,
-    gpu_subview<cfloat, 2> v);
+    GPUSubview<cfloat, 2> coil_sensitivities,
+    GPUSubview<cfloat, 2> E,
+    GPUSubview<cfloat, 2> dEdT2,
+    GPUSubview<cfloat, 2> v);
 
 Array<cfloat, 3> compute_jacobian(
     const CompasContext& ctx,
@@ -145,15 +145,15 @@ launch_jacobian_product_impl(kmm::DeviceContext& ctx, kmm::Bounds<3> range, Args
 static void launch_jacobian_product(
     kmm::DeviceContext& ctx,
     kmm::Bounds<3> range,
-    gpu_subview_mut<cfloat, 3> Jv,
-    gpu_subview<cfloat, 2> echos,
-    gpu_subview<cfloat, 2> delta_echos_T1,
-    gpu_subview<cfloat, 2> delta_echos_T2,
+    GPUSubviewMut<cfloat, 3> Jv,
+    GPUSubview<cfloat, 2> echos,
+    GPUSubview<cfloat, 2> delta_echos_T1,
+    GPUSubview<cfloat, 2> delta_echos_T2,
     TissueParametersView parameters,
-    gpu_subview<cfloat, 2> coil_sensitivities,
-    gpu_subview<cfloat, 2> E,
-    gpu_subview<cfloat, 2> dEdT2,
-    gpu_subview<cfloat, 2> v) {
+    GPUSubview<cfloat, 2> coil_sensitivities,
+    GPUSubview<cfloat, 2> E,
+    GPUSubview<cfloat, 2> dEdT2,
+    GPUSubview<cfloat, 2> v) {
     int coil_offset = 0;
     int ncoils = coil_sensitivities.size(0);
 

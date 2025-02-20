@@ -29,7 +29,7 @@ __global__ void calculate_elementwise_difference(
     const cfloat* lhs,
     const cfloat* rhs,
     cfloat* output,
-    gpu_view_mut<float> partial_sums) {
+    GPUViewMut<float> partial_sums) {
     __shared__ float shared_partial_sums[block_size];
     auto tid = index_t(threadIdx.x);
     auto start = index_t(blockIdx.x * block_size + threadIdx.x) + range.begin;
@@ -50,7 +50,7 @@ __global__ void calculate_elementwise_difference(
 
 template<int block_size>
 __global__ void
-accumulate_partial_sums(gpu_view<float> partial_sums, gpu_view_mut<float> result_sum) {
+accumulate_partial_sums(GPUView<float> partial_sums, GPUViewMut<float> result_sum) {
     __shared__ float shared_partial_sums[block_size];
     auto tid = index_t(threadIdx.x);
     shared_partial_sums[tid] = 0;

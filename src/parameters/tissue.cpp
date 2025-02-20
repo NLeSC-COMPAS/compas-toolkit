@@ -7,15 +7,15 @@ TissueParameters make_tissue_parameters(
     const CompasContext& ctx,
     int num_voxels,
     int voxels_per_chunk,
-    host_view<float> T1,
-    host_view<float> T2,
-    host_view<float> B1,
-    host_view<float> B0,
-    host_view<float> rho_x,
-    host_view<float> rho_y,
-    host_view<float> x,
-    host_view<float> y,
-    host_view<float> z) {
+    View<float> T1,
+    View<float> T2,
+    View<float> B1,
+    View<float> B0,
+    View<float> rho_x,
+    View<float> rho_y,
+    View<float> x,
+    View<float> y,
+    View<float> z) {
     using namespace kmm::placeholders;
     auto params = kmm::Array<float, 2> {{TissueParameterField::NUM_FIELDS, num_voxels}};
 
@@ -26,9 +26,7 @@ TissueParameters make_tissue_parameters(
     ctx.parallel_device(
         num_voxels,
         voxels_per_chunk,
-        [&](kmm::DeviceContext& device,
-            kmm::Range<index_t> range,
-            gpu_subview_mut<float, 2> params) {
+        [&](kmm::DeviceContext& device, kmm::Range<index_t> range, GPUSubviewMut<float, 2> params) {
             KMM_ASSERT(params.is_contiguous());
             device.fill(params.data(), params.size(), 0.0F);
             auto offset = range.begin;

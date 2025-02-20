@@ -53,12 +53,12 @@ struct pSSFPSequence {
 
 inline pSSFPSequence make_pssfp_sequence(
     const CompasContext& context,
-    host_view<cfloat> RF_train,
+    View<cfloat> RF_train,
     float TR,
-    host_view<cfloat> gamma_dt_RF,
+    View<cfloat> gamma_dt_RF,
     RepetitionData dt,
     RepetitionData gamma_dt_GRz,
-    host_view<float> z) {
+    View<float> z) {
     COMPAS_ASSERT(RF_train.size() > 0);
 
     return {

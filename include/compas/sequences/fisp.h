@@ -31,8 +31,8 @@ struct FISPSequence {
 
 inline FISPSequence make_fisp_sequence(
     const CompasContext& context,
-    host_view<cfloat> RF_train,
-    host_view<cfloat, 2> sliceprofiles,
+    View<cfloat> RF_train,
+    View<cfloat, 2> sliceprofiles,
     float TR,
     float TE,
     int max_state,

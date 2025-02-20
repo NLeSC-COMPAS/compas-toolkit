@@ -33,15 +33,15 @@ TissueParameters make_tissue_parameters(
     const CompasContext& ctx,
     int num_voxels,
     int chunk_size,
-    view<float> T1,
-    view<float> T2,
-    view<float> B1,
-    view<float> B0,
-    view<float> rho_x,
-    view<float> rho_y,
-    view<float> x,
-    view<float> y,
-    view<float> z = {});
+    View<float> T1,
+    View<float> T2,
+    View<float> B1,
+    View<float> B0,
+    View<float> rho_x,
+    View<float> rho_y,
+    View<float> x,
+    View<float> y,
+    View<float> z = {});
 
 }  // namespace compas
 

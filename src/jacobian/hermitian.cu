@@ -8,15 +8,15 @@ namespace compas {
 void launch_jacobian_hermitian_kernel(
     kmm::DeviceContext& ctx,
     kmm::Bounds<3> subrange,
-    gpu_subview_mut<cfloat, 2> JHv,
-    gpu_subview<cfloat, 2> echos,
-    gpu_subview<cfloat, 2> delta_echos_T1,
-    gpu_subview<cfloat, 2> delta_echos_T2,
+    GPUSubviewMut<cfloat, 2> JHv,
+    GPUSubview<cfloat, 2> echos,
+    GPUSubview<cfloat, 2> delta_echos_T1,
+    GPUSubview<cfloat, 2> delta_echos_T2,
     TissueParametersView parameters,
-    gpu_subview<cfloat, 2> coil_sensitivities,
-    gpu_subview<cfloat, 3> vector,
-    gpu_subview<cfloat, 2> E,
-    gpu_subview<cfloat, 2> dEdT2) {
+    GPUSubview<cfloat, 2> coil_sensitivities,
+    GPUSubview<cfloat, 3> vector,
+    GPUSubview<cfloat, 2> E,
+    GPUSubview<cfloat, 2> dEdT2) {
     uint ncoils = coil_sensitivities.size(0);
     uint nvoxels = subrange.x.size();
     uint ns = subrange.y.size();

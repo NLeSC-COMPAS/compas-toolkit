@@ -12,13 +12,13 @@ namespace compas {
 void magnetization_to_signal_cartesian_direct(
     const kmm::DeviceContext& context,
     kmm::Range<index_t> voxels,
-    gpu_view_mut<cfloat, 3> signal,
-    gpu_subview<cfloat, 2> echos,
+    GPUViewMut<cfloat, 3> signal,
+    GPUSubview<cfloat, 2> echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
-    gpu_subview<cfloat, 2> coil_sensitivities,
-    gpu_subview_mut<cfloat, 2> exponents,
-    gpu_subview_mut<cfloat, 2> factors) {
+    GPUSubview<cfloat, 2> coil_sensitivities,
+    GPUSubviewMut<cfloat, 2> exponents,
+    GPUSubviewMut<cfloat, 2> factors) {
     int voxel_begin = int(voxels.begin);
     int voxel_end = int(voxels.end);
     int nvoxels = int(voxel_end - voxel_begin);
@@ -101,13 +101,13 @@ void magnetization_to_signal_cartesian_direct(
 void magnetization_to_signal_cartesian_gemm(
     const kmm::DeviceContext& context,
     kmm::Range<index_t> voxels,
-    gpu_view_mut<cfloat, 3> signal,
-    gpu_view<cfloat, 2> echos,
+    GPUViewMut<cfloat, 3> signal,
+    GPUView<cfloat, 2> echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
-    gpu_view<cfloat, 2> coil_sensitivities,
-    gpu_view_mut<cfloat, 2> exponents,
-    gpu_view_mut<cfloat, 2> factors,
+    GPUView<cfloat, 2> coil_sensitivities,
+    GPUViewMut<cfloat, 2> exponents,
+    GPUViewMut<cfloat, 2> factors,
     cublasComputeType_t compute_type) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;
@@ -182,13 +182,13 @@ void magnetization_to_signal_cartesian_gemm(
 void magnetization_to_signal_spiral(
     const kmm::DeviceContext& context,
     kmm::Range<index_t> voxels,
-    gpu_view_mut<cfloat, 3> signal,
-    gpu_view<cfloat, 2> echos,
+    GPUViewMut<cfloat, 3> signal,
+    GPUView<cfloat, 2> echos,
     TissueParametersView parameters,
     SpiralTrajectoryView trajectory,
-    gpu_view<cfloat, 2> coil_sensitivities,
-    gpu_view_mut<cfloat, 2> exponents,
-    gpu_view_mut<cfloat, 2> factors) {
+    GPUView<cfloat, 2> coil_sensitivities,
+    GPUViewMut<cfloat, 2> exponents,
+    GPUViewMut<cfloat, 2> factors) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;

@@ -1,4 +1,3 @@
-#include "compas/core/utils.h"
 #include "compas/trajectories/phase_encoding.h"
 #include "phase_encoding_kernels.cuh"
 

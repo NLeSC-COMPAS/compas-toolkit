@@ -11,8 +11,8 @@ namespace kernels {
 // Defined in product_kernels.cuh
 static __global__ void delta_to_sample_exponent(
         kmm::Bounds<2, int> range,
-        gpu_subview_mut<cfloat, 2> E,
-        gpu_subview_mut<cfloat, 2> dEdT2,
+        GPUSubviewMut<cfloat, 2> E,
+        GPUSubviewMut<cfloat, 2> dEdT2,
         CartesianTrajectoryView trajectory,
         TissueParametersView parameters);
 
@@ -28,7 +28,7 @@ static COMPAS_DEVICE cfloat add_mul_conj(cfloat a, cfloat b, cfloat c) {
 
 template <typename T, typename U>
 __global__
-void convert_kernel(kmm::Bounds<3, int> subrange, gpu_view_mut<T, 3> output, gpu_view<U, 3> input) {
+void convert_kernel(kmm::Bounds<3, int> subrange, GPUSubviewMut<T, 3> output, GPUSubview<U, 3> input) {
     auto k = index_t(blockIdx.x * blockDim.x + threadIdx.x);
     auto j = index_t(blockIdx.y * blockDim.y + threadIdx.y);
     auto i = index_t(blockIdx.z * blockDim.z + threadIdx.z);
@@ -50,15 +50,15 @@ template<
         bool use_smem=true>
 __launch_bounds__(block_size_x*block_size_y*block_size_z, blocks_per_sm) __global__ void jacobian_hermitian_product(
     kmm::Bounds<3, int> subrange,
-    gpu_subview_mut<cfloat, 2> JHv,
-    gpu_subview<cfloat, 2> echos,
-    gpu_subview<cfloat, 2> delta_echos_T1,
-    gpu_subview<cfloat, 2> delta_echos_T2,
+    GPUSubviewMut<cfloat, 2> JHv,
+    GPUSubview<cfloat, 2> echos,
+    GPUSubview<cfloat, 2> delta_echos_T1,
+    GPUSubview<cfloat, 2> delta_echos_T2,
     TissueParametersView parameters,
-    gpu_subview<cfloat, 2> coil_sensitivities,
-    gpu_subview<cfloat, 3> vector,
-    gpu_subview<cfloat, 2> E,
-    gpu_subview<cfloat, 2> dEdT2) {
+    GPUSubview<cfloat, 2> coil_sensitivities,
+    GPUSubview<cfloat, 3> vector,
+    GPUSubview<cfloat, 2> E,
+    GPUSubview<cfloat, 2> dEdT2) {
 
     static constexpr index_t voxels_per_thread =
             (voxel_tile_size / block_size_x) + int(voxel_tile_size % block_size_x > 0);
