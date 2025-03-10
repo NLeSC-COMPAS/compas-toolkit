@@ -1,9 +1,5 @@
-using BlochSimulators
 using CompasToolkit
 using ImagePhantoms
-using ComputationalResources
-using LinearAlgebra
-using StaticArrays
 
 include("common.jl")
 
@@ -25,7 +21,7 @@ Y = [y for x ∈ 1:N, y ∈ LinRange(-FOVʸ/2, FOVʸ/2, N)] .|> Float32 |> vec;
 nvoxels = N*N
 
 # Finally we assemble the phantom as an array of `T₁T₂B₀ρˣρʸxy` values
-parameters_ref = map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)
+parameters_ref = map(T₁T₂B₀ρˣρʸ, T₁, T₂, B₀, real.(ρ), imag.(ρ))
 parameters = CompasToolkit.TissueParameters(nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
 
 # Next, we assemble a balanced sequence with constant flip angle of 60 degrees,

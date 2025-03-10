@@ -1,15 +1,9 @@
-using BlochSimulators
 using CompasToolkit
 using ImagePhantoms
-using ComputationalResources
-using LinearAlgebra
-using StaticArrays
-
 include("common.jl")
 
 function make_phantom(N, coordinates)
     sl = shepp_logan(N, SheppLoganBrainWeb()) |> rotr90
-
     regions = map( val -> findall(sl .== val), unique(sl))
 
     T₁ = zeros(N,N)
@@ -26,11 +20,7 @@ function make_phantom(N, coordinates)
 
     T₂[ T₂ .> T₁ ] .= 0.5 * T₁[ T₂ .> T₁ ]
 
-    @assert length(coordinates) == N^2
-    x = first.(coordinates)
-    y = last.(coordinates)
-
-    return map(T₁T₂ρˣρʸxy, T₁, T₂, ρˣ, ρʸ, x, y)
+    return map(T₁T₂ρˣρʸ, T₁, T₂, ρˣ, ρʸ)
 end
 
 # Simulation size
@@ -43,7 +33,7 @@ RF_train = range(start=1,stop=90,length=nTR) .|> complex;
 sliceprofiles = ones(nTR,1) .|> complex;
 TR = 0.010;
 TE = 0.006;
-max_state = 35;
+max_state = 32;
 TI = 0.025;
 
 # assemble sequence struct
@@ -80,7 +70,7 @@ k_start_readout = [(-N/2 * Δkˣ) + im * (py[r] * Δkʸ) for r in 1:nTR];
 nreadouts = nTR
 nsamplesperreadout = N
 
-trajectory = CartesianTrajectory(nreadouts, nsamplesperreadout, Δt, k_start_readout, Δk_adc, py)
+trajectory = CartesianTrajectory2D(nreadouts, nsamplesperreadout, Δt, k_start_readout, Δk_adc, py, 2)
 
 # Make phantom
 parameters = vec(make_phantom(N, coordinates));
@@ -109,8 +99,8 @@ compas_parameters = CompasToolkit.TissueParameters(
     fill(0, nvoxels), # B0
     [p.ρˣ for p in parameters],
     [p.ρʸ for p in parameters],
-    [p.x for p in parameters],
-    [p.y for p in parameters],
+    first.(coordinates) |> vec,
+    last.(coordinates) |> vec,
 )
 compas_trajectory = CompasToolkit.CartesianTrajectory(
     trajectory.nreadouts,
@@ -129,8 +119,7 @@ coil_sensitivities  = gpu(f32(coil_sensitivities))
 trajectory          = gpu(f32(trajectory))
 
 # Simulate data
-resource = CUDALibs()
-echos_ref = simulate_magnetization(resource, sequence, parameters)
+echos_ref = simulate_magnetization(CUDALibs(), sequence, parameters)
 
 # Compare to compas data
 print_equals_check(transpose(collect(echos_ref)), collect(echos))

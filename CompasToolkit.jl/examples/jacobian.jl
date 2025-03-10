@@ -1,21 +1,15 @@
 using CompasToolkit
-using ImagePhantoms
-using LinearAlgebra
-using BlochSimulators
 using CUDA
-using Cthulhu
 
 include("common.jl")
 
 
-@inline function ∂to_sample_point(mₑ, ∂mₑ::∂mˣʸ∂T₁T₂, trajectory, readout_idx, sample_idx, p)
-
+@inline function ∂to_sample_point(mₑ, ∂mₑ::∂mˣʸ∂T₁T₂, trajectory, readout_idx, sample_idx, p, x)
     # Read in constants
     R₂ = inv(p.T₂)
     ns = nsamplesperreadout(trajectory, readout_idx)
     Δt = trajectory.Δt
     Δkₓ = trajectory.Δk_adc
-    x = p.x
 
     # There are ns samples per readout, echo time is assumed to occur
     # at index (ns÷2)+1. Now compute sample index relative to the echo time
@@ -34,7 +28,7 @@ include("common.jl")
     return mₛ, ∂mˣʸ∂T₁T₂(∂mₛ[1], ∂mₛ[2])
 end
 
-function Jv_kernel!(Jv, echos, ∂echos, parameters, coil_sensitivities::AbstractArray{SVector{Nc}{T}}, trajectory, v) where {T,Nc}
+function Jv_kernel!(Jv, echos, ∂echos, parameters, coil_sensitivities::AbstractArray{SVector{Nc}{T}}, X, Y, trajectory, v) where {T,Nc}
 
     # global sample point index
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x 
@@ -51,6 +45,7 @@ function Jv_kernel!(Jv, echos, ∂echos, parameters, coil_sensitivities::Abstrac
         jv = zero(MVector{Nc, T})
 
         for voxel ∈ 1:nv
+            x = X[voxel]
 
             # load coordinates, parameters, coilsensitivities and proton density for voxel
             p = parameters[voxel]
@@ -62,7 +57,7 @@ function Jv_kernel!(Jv, echos, ∂echos, parameters, coil_sensitivities::Abstrac
             m  =  echos[voxel,r]
             ∂m = ∂mˣʸ∂T₁T₂(∂echos.T1[voxel,r], ∂echos.T2[voxel,r])
             # compute decay (T₂) and rotation (gradients and B₀) to go to sample point
-            m, ∂m = ∂to_sample_point(m, ∂m, trajectory, r, s, p)
+            m, ∂m = ∂to_sample_point(m, ∂m, trajectory, r, s, p, x)
             # store magnetization from this voxel, scaled with v (~ proton density) and C in accumulator
             ∂mv = v[voxel] .* ∂mˣʸ∂T₁T₂ρˣρʸ(∂m.∂T₁, ∂m.∂T₂, m, m*im)
             for c in eachindex(C)
@@ -78,7 +73,7 @@ function Jv_kernel!(Jv, echos, ∂echos, parameters, coil_sensitivities::Abstrac
     nothing
 end
 
-function compute_Jv(echos, ∂echos, parameters, coil_sensitivities::AbstractArray{SVector{Nc, T}}, trajectory, v) where {Nc,T}
+function compute_Jv(echos, ∂echos, parameters, coil_sensitivities::AbstractArray{SVector{Nc, T}}, X, Y, trajectory, v) where {Nc,T}
     # allocate output on GPU
     Jv = CUDA.zeros(SVector{Nc, T}, nsamples(trajectory))
 
@@ -87,7 +82,7 @@ function compute_Jv(echos, ∂echos, parameters, coil_sensitivities::AbstractArr
     nr_blocks = cld(nsamples(trajectory), THREADS_PER_BLOCK)
 
     CUDA.@sync begin
-        @cuda blocks=nr_blocks threads=THREADS_PER_BLOCK Jv_kernel!(Jv, echos, ∂echos, parameters, coil_sensitivities, trajectory, v)
+        @cuda blocks=nr_blocks threads=THREADS_PER_BLOCK Jv_kernel!(Jv, echos, ∂echos, parameters, coil_sensitivities, X, Y, trajectory, v)
     end
 
     return Jv
@@ -100,7 +95,7 @@ context = CompasToolkit.init_context(0)
 N = 256
 nvoxels = N * N
 T₁, T₂, B₁, B₀, ρ, X, Y = generate_parameters(N)
-parameters_ref = map(T₁T₂B₀ρˣρʸxy, T₁, T₂, B₀, real.(ρ), imag.(ρ), X, Y)
+parameters_ref = map(T₁T₂B₀ρˣρʸ, T₁, T₂, B₀, real.(ρ), imag.(ρ))
 parameters = CompasToolkit.TissueParameters(nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
 
 # Next, we assemble a Cartesian trajectory with linear phase encoding
@@ -125,7 +120,7 @@ echos = generate_echos(N, pssfp_ref)
 v = rand(ComplexF32, nvoxels, 4)
 v_ref = map(SVector{4}, eachcol(v)...)
 
-Jv_ref = compute_Jv(gpu(echos), gpu(∂echos), gpu(parameters_ref), gpu(coil_sensitivities_ref), gpu(trajectory_ref), gpu(v_ref))
+Jv_ref = compute_Jv(gpu(echos), gpu(∂echos), gpu(parameters_ref), gpu(coil_sensitivities_ref), gpu(X), gpu(Y), gpu(trajectory_ref), gpu(v_ref))
 Jv_ref = reduce(hcat, collect(Jv_ref)) # Vector{Svector} -> Matrix
 
 Jv = CompasToolkit.compute_jacobian(
