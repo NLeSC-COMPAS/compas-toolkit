@@ -105,5 +105,6 @@ inline CompasContext make_context(int device = 0) {
 
 }  // namespace compas
 
-template<typename T>
-struct kmm::DataTypeOf<compas::complex_type<T>>: kmm::DataTypeOf<::std::complex<T>> {};
+
+KMM_DEFINE_SCALAR_TYPE(Complex32, kmm::cfloat)
+KMM_DEFINE_SCALAR_TYPE(Complex64, kmm::cdouble)
