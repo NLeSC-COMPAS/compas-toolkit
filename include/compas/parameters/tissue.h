@@ -69,7 +69,7 @@ struct Argument<Read<const compas::TissueParameters, M>> {
     }
 
     compas::TissueParametersView view;
-    packed_argument_t<Read<Array<float, 2>, M>> params;
+    packed_argument_t<Read<Array<float, 2>, IdentityMap>> params;
 };
 
 // Forward compas::TissueParameters& to Read<compas::TissueParameters>
