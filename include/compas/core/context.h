@@ -93,12 +93,12 @@ struct CompasContext {
         m_runtime.synchronize();
     }
 
-    const kmm::Runtime& runtime() const {
+    const kmm::RuntimeHandle& runtime() const {
         return m_runtime;
     }
 
   private:
-    kmm::Runtime m_runtime;
+    kmm::RuntimeHandle m_runtime;
     kmm::DeviceId m_device;
 };
 
