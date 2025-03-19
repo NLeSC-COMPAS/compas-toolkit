@@ -48,11 +48,11 @@ TissueParameters make_tissue_parameters(
 namespace kmm {
 
 template<typename M>
-struct Argument<Read<compas::TissueParameters, M>> {
+struct Argument<Read<const compas::TissueParameters, M>> {
     using type = compas::TissueParametersView;
 
     static Argument
-    pack(TaskInstance& task, Read<compas::TissueParameters, M> access) {
+    pack(TaskInstance& task, Read<const compas::TissueParameters, M> access) {
         const compas::TissueParameters& params = access.argument;
         compas::TissueParametersView view;
         view.has_z = params.has_z;
