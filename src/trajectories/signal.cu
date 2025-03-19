@@ -10,7 +10,7 @@
 namespace compas {
 
 void magnetization_to_signal_cartesian_direct(
-    const kmm::DeviceContext& context,
+    const kmm::DeviceResource& context,
     kmm::Range<index_t> voxels,
     GPUViewMut<cfloat, 3> signal,
     GPUSubview<cfloat, 2> echos,
@@ -99,7 +99,7 @@ void magnetization_to_signal_cartesian_direct(
 }
 
 void magnetization_to_signal_cartesian_gemm(
-    const kmm::DeviceContext& context,
+    const kmm::DeviceResource& context,
     kmm::Range<index_t> voxels,
     GPUViewMut<cfloat, 3> signal,
     GPUView<cfloat, 2> echos,
@@ -180,7 +180,7 @@ void magnetization_to_signal_cartesian_gemm(
 }
 
 void magnetization_to_signal_spiral(
-    const kmm::DeviceContext& context,
+    const kmm::DeviceResource& context,
     kmm::Range<index_t> voxels,
     GPUViewMut<cfloat, 3> signal,
     GPUView<cfloat, 2> echos,

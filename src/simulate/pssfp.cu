@@ -6,7 +6,7 @@ namespace compas {
 
 template<int batch_size>
 int simulate_pssfp_sequence_batch(
-    const kmm::DeviceContext& context,
+    const kmm::DeviceResource& context,
     int nvoxels,
     int iz,
     const GPUSubviewMut<cfloat, 2>& echos,
@@ -38,7 +38,7 @@ int simulate_pssfp_sequence_batch(
 }
 
 void simulate_magnetization_kernel(
-    const kmm::DeviceContext& context,
+    const kmm::DeviceResource& context,
     kmm::Range<index_t>,
     int nvoxels,
     GPUSubviewMut<cfloat, 2> echos,
@@ -79,7 +79,7 @@ Array<cfloat, 2> simulate_magnetization(
     auto echos = Array<cfloat, 2> {{nreadouts, nvoxels}};
 
     void (*fun)(
-        const kmm::DeviceContext&,
+        const kmm::DeviceResource&,
         kmm::Range<index_t>,
         int,
         GPUSubviewMut<cfloat, 2>,

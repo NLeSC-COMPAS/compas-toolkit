@@ -6,7 +6,7 @@
 namespace compas {
 
 static void launch_jacobian_product(
-    kmm::DeviceContext& ctx,
+    kmm::DeviceResource& ctx,
     kmm::Bounds<3> range,
     GPUSubviewMut<cfloat, 3> Jv,
     GPUSubview<cfloat, 2> echos,
@@ -91,7 +91,7 @@ template<
     int blocks_per_sm,
     typename... Args>
 static void
-launch_jacobian_product_impl(kmm::DeviceContext& ctx, kmm::Bounds<3> range, Args... args) {
+launch_jacobian_product_impl(kmm::DeviceResource& ctx, kmm::Bounds<3> range, Args... args) {
     auto nsamples = range.sizes().y;
     auto nreadouts = range.sizes().z;
 
@@ -143,7 +143,7 @@ launch_jacobian_product_impl(kmm::DeviceContext& ctx, kmm::Bounds<3> range, Args
 }
 
 static void launch_jacobian_product(
-    kmm::DeviceContext& ctx,
+    kmm::DeviceResource& ctx,
     kmm::Bounds<3> range,
     GPUSubviewMut<cfloat, 3> Jv,
     GPUSubview<cfloat, 2> echos,
