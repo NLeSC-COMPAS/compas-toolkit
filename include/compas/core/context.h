@@ -42,7 +42,7 @@ struct CompasContext {
 
     template<typename L, typename... Args>
     void
-    parallel_submit(kmm::WorkDim index_space, kmm::WorkDim chunk_size, L launcher, Args... args)
+    parallel_submit(kmm::DomainDim index_space, kmm::DomainDim chunk_size, L launcher, Args... args)
         const {
         m_runtime.parallel_submit(  //
             index_space,
@@ -53,7 +53,7 @@ struct CompasContext {
 
     template<typename F, typename... Args>
     void
-    parallel_device(kmm::WorkDim index_space, kmm::WorkDim chunk_size, F fun, Args... args) const {
+    parallel_device(kmm::DomainDim index_space, kmm::DomainDim chunk_size, F fun, Args... args) const {
         m_runtime.parallel_submit(  //
             index_space,
             kmm::ChunkPartitioner(chunk_size),
@@ -63,8 +63,8 @@ struct CompasContext {
 
     template<typename F, typename... Args>
     void parallel_kernel(
-        kmm::WorkDim index_space,
-        kmm::WorkDim chunk_size,
+        kmm::DomainDim index_space,
+        kmm::DomainDim chunk_size,
         dim3 block_dim,
         F kernel,
         Args... args) const {
@@ -76,14 +76,14 @@ struct CompasContext {
     }
 
     template<typename F, typename... Args>
-    void submit_device(kmm::WorkDim index_space, F fun, Args... args) const {
+    void submit_device(kmm::DomainDim index_space, F fun, Args... args) const {
         m_runtime.submit(index_space, m_device, kmm::GPU(fun), args...);
     }
 
     template<typename F, typename... Args>
     void submit_kernel(dim3 grid_dim, dim3 block_dim, F kernel, Args... args) const {
         m_runtime.submit(
-            kmm::WorkDim(grid_dim.x, grid_dim.y, grid_dim.z),
+            kmm::DomainDim(grid_dim.x, grid_dim.y, grid_dim.z),
             m_device,
             kmm::GPUKernel(kernel, block_dim, dim3()),
             args...);
