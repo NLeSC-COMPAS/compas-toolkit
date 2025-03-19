@@ -6,7 +6,7 @@ namespace compas {
 
 template<int max_N, int warp_size = max_N>
 void simulate_fisp_sequence_for_size(
-    const kmm::DeviceContext& context,
+    const kmm::DeviceResource& context,
     kmm::Range<index_t> voxels,
     GPUSubviewMut<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -36,7 +36,7 @@ void simulate_fisp_sequence_for_size(
 }
 
 void simulate_magnetization_kernel(
-    const kmm::DeviceContext& context,
+    const kmm::DeviceResource& context,
     kmm::Range<index_t> voxels,
     GPUSubviewMut<cfloat, 2> echos,
     TissueParametersView parameters,
@@ -71,7 +71,7 @@ Array<cfloat, 2> simulate_magnetization(
     auto echos = Array<cfloat, 2> {{nreadouts, nvoxels}};
 
     void (*fun)(
-        const kmm::DeviceContext&,
+        const kmm::DeviceResource&,
         kmm::Range<index_t>,
         GPUSubviewMut<cfloat, 2>,
         TissueParametersView,

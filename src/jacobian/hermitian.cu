@@ -6,7 +6,7 @@
 namespace compas {
 
 void launch_jacobian_hermitian_kernel(
-    kmm::DeviceContext& ctx,
+    kmm::DeviceResource& ctx,
     kmm::Bounds<3> subrange,
     GPUSubviewMut<cfloat, 2> JHv,
     GPUSubview<cfloat, 2> echos,

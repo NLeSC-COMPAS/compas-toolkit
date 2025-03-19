@@ -10,7 +10,7 @@ namespace compas {
 
 template<typename SequenceView>
 void simulate_magnetization_derivative_impl(
-    const kmm::DeviceContext& context,
+    const kmm::DeviceResource& context,
     kmm::Bounds<2> range,
     int field,
     GPUSubviewMut<float, 2> new_parameters,
