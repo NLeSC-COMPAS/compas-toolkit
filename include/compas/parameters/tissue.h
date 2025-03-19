@@ -59,7 +59,7 @@ struct Argument<Read<const compas::TissueParameters, M>> {
         view.has_b0 = params.has_b0;
         view.has_b1 = params.has_b1;
 
-        return {view, pack_argument(task, params.data(All(), access.mode.access_mapper))};
+        return {view, pack_argument(task, params.data(All(), access.access_mapper))};
     }
 
     template<ExecutionSpace Space>
