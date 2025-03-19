@@ -77,7 +77,7 @@ template<>
 struct ArgumentHandler<const compas::TissueParameters&>: //
         ArgumentHandler<Read<compas::TissueParameters>>{
     ArgumentHandler(const compas::TissueParameters& p) :
-        ArgumentHandler<Read<compas::TissueParameters>>>(p) {}
+        ArgumentHandler<Read<compas::TissueParameters>>(p) {}
 };
 
 }  // namespace kmm
