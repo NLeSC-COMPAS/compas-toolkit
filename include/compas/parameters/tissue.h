@@ -48,11 +48,11 @@ TissueParameters make_tissue_parameters(
 namespace kmm {
 
 template<typename M>
-struct Argument<Read<TissueParameters, M>> {
+struct Argument<Read<compas::TissueParameters, M>> {
     using type = compas::TissueParametersView;
 
     static Argument
-    pack(TaskInstance& task, Read<TissueParameters, M> access) {
+    pack(TaskInstance& task, Read<compas::TissueParameters, M> access) {
         const compas::TissueParameters& params = access.argument;
         compas::TissueParametersView view;
         view.has_z = params.has_z;
@@ -72,12 +72,12 @@ struct Argument<Read<TissueParameters, M>> {
     packed_argument_t<Read<Array<float, 2>, M>> params;
 };
 
-// Forward compas::TissueParameters& to Read<TissueParameters>
+// Forward compas::TissueParameters& to Read<compas::TissueParameters>
 template<>
 struct ArgumentHandler<const compas::TissueParameters&>: //
-        ArgumentHandler<Read<TissueParameters>>{
+        ArgumentHandler<Read<compas::TissueParameters>>{
     ArgumentHandler(const compas::TissueParameters& p) :
-        ArgumentHandler<Read<TissueParameters>>>(p) {}
+        ArgumentHandler<Read<compas::TissueParameters>>>(p) {}
 };
 
 }  // namespace kmm
