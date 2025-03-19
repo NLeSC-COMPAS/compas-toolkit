@@ -45,8 +45,7 @@ struct CompasContext {
     parallel_submit(kmm::DomainDim index_space, kmm::DomainDim chunk_size, L launcher, Args... args)
         const {
         m_runtime.parallel_submit(  //
-            index_space,
-            kmm::ChunkPartitioner(chunk_size),
+            kmm::TileDomain(index_space, chunk_size),
             launcher,
             args...);
     }
@@ -55,8 +54,7 @@ struct CompasContext {
     void
     parallel_device(kmm::DomainDim index_space, kmm::DomainDim chunk_size, F fun, Args... args) const {
         m_runtime.parallel_submit(  //
-            index_space,
-            kmm::ChunkPartitioner(chunk_size),
+            kmm::TileDomain(index_space, chunk_size),
             kmm::GPU(fun),
             args...);
     }
@@ -69,8 +67,7 @@ struct CompasContext {
         F kernel,
         Args... args) const {
         m_runtime.parallel_submit(
-            index_space,
-            kmm::ChunkPartitioner(chunk_size),
+            kmm::TileDomain(index_space, chunk_size),
             kmm::GPUKernel(kernel, block_dim),
             args...);
     }
