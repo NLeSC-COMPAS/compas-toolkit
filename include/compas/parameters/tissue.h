@@ -48,11 +48,11 @@ TissueParameters make_tissue_parameters(
 namespace kmm {
 
 template<typename M>
-struct Argument<Access<const compas::TissueParameters, Read<M>>> {
+struct Argument<MultiIndexAccess<const compas::TissueParameters, Read<M>>> {
     using type = compas::TissueParametersView;
 
     static Argument
-    pack(TaskInstance& task, Access<const compas::TissueParameters, Read<M>> access) {
+    pack(TaskInstance& task, MultiIndexAccess<const compas::TissueParameters, Read<M>> access) {
         const compas::TissueParameters& params = access.argument;
         compas::TissueParametersView view;
         view.has_z = params.has_z;
@@ -69,15 +69,15 @@ struct Argument<Access<const compas::TissueParameters, Read<M>>> {
     }
 
     compas::TissueParametersView view;
-    packed_argument_t<Access<Array<float, 2>, Read<IdentityMap>>> params;
+    packed_argument_t<MultiIndexAccess<Array<float, 2>, Read<IdentityMap>>> params;
 };
 
-// Forward compas::TissueParameters& to Access<const compas::TissueParameters, Read<>>
+// Forward compas::TissueParameters& to MultiIndexAccess<const compas::TissueParameters, Read<>>
 template<>
 struct ArgumentHandler<const compas::TissueParameters&>: //
-        ArgumentHandler<Access<const compas::TissueParameters, Read<>>>{
+        ArgumentHandler<MultiIndexAccess<const compas::TissueParameters, Read<>>>{
     ArgumentHandler(const compas::TissueParameters& p) :
-        ArgumentHandler<Access<const compas::TissueParameters, Read<>>>(p) {}
+        ArgumentHandler<MultiIndexAccess<const compas::TissueParameters, Read<>>>(p) {}
 };
 
 }  // namespace kmm
