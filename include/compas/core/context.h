@@ -20,7 +20,7 @@ template<typename T, size_t N = 1>
 using Array = kmm::Array<T, N>;
 
 struct CompasContext {
-    CompasContext(kmm::Runtime runtime, kmm::DeviceId device) :
+    CompasContext(kmm::RuntimeHandle runtime, kmm::DeviceId device) :
         m_runtime(runtime),
         m_device(device) {}
 
