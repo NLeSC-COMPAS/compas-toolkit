@@ -106,5 +106,5 @@ inline CompasContext make_context(int device = 0) {
 }  // namespace compas
 
 
-KMM_DEFINE_SCALAR_TYPE(Complex32, kmm::cfloat)
-KMM_DEFINE_SCALAR_TYPE(Complex64, kmm::cdouble)
+KMM_DEFINE_SCALAR_TYPE(Complex32, compas::cfloat)
+KMM_DEFINE_SCALAR_TYPE(Complex64, compas::cdouble)
