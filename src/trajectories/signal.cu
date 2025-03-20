@@ -303,7 +303,6 @@ Array<cfloat, 3> magnetization_to_signal(
                 write(temp_factors(_y, _x)));
         } else {
             context.submit_device(
-                {nvoxels, nreadouts},
                 magnetization_to_signal_cartesian_gemm,
                 _x,
                 write(signal),
@@ -320,7 +319,6 @@ Array<cfloat, 3> magnetization_to_signal(
         auto temp_factors = Array<cfloat, 2>(echos.shape());
 
         context.submit_device(
-            {nvoxels, nreadouts},
             magnetization_to_signal_spiral,
             _x,
             write(signal),

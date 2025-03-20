@@ -73,8 +73,8 @@ struct CompasContext {
     }
 
     template<typename F, typename... Args>
-    void submit_device(kmm::DomainDim index_space, F fun, Args... args) const {
-        m_runtime.submit(index_space, m_device, kmm::GPU(fun), args...);
+    void submit_device(F fun, Args... args) const {
+        m_runtime.submit(m_device, kmm::GPU(fun), args...);
     }
 
     template<typename F, typename... Args>

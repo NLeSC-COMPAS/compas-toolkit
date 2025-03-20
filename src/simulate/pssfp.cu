@@ -86,7 +86,7 @@ Array<cfloat, 2> simulate_magnetization(
         TissueParametersView,
         pSSFPSequenceView) = simulate_magnetization_kernel;
 
-    context.submit_device(nvoxels, fun, _x, nvoxels, write(echos), parameters, sequence);
+    context.submit_device(fun, _x, nvoxels, write(echos), parameters, sequence);
     return echos;
 }
 }  // namespace compas
