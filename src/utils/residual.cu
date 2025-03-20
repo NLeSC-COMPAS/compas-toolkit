@@ -10,9 +10,9 @@ Array<cfloat, 3> compute_residual(
     Array<cfloat, 3> lhs,
     Array<cfloat, 3> rhs,
     float* objective_out) {
-    COMPAS_ASSERT(lhs.sizes() == rhs.sizes());
+    COMPAS_ASSERT(lhs.shape() == rhs.shape());
     auto n = kmm::checked_cast<int>(lhs.size());
-    auto d = lhs.sizes();
+    auto d = lhs.shape();
 
     static int constexpr block_dim = 256;
     int num_blocks = std::min(1024, div_ceil(n, block_dim));

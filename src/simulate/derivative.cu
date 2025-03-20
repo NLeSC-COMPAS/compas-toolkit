@@ -65,8 +65,8 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
 
-    auto new_parameters = Array<float, 2> {parameters.data.sizes()};
-    auto delta_echos = Array<cfloat, 2> {echos.sizes()};
+    auto new_parameters = Array<float, 2> {parameters.data.shape()};
+    auto delta_echos = Array<cfloat, 2> {echos.shape()};
 
     context.parallel_device(
         {nvoxels, nreadouts},
@@ -99,8 +99,8 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.size(1) == nvoxels);
 
-    auto new_parameters = Array<float, 2> {parameters.data.sizes()};
-    auto delta_echos = Array<cfloat, 2> {echos.sizes()};
+    auto new_parameters = Array<float, 2> {parameters.data.shape()};
+    auto delta_echos = Array<cfloat, 2> {echos.shape()};
 
     context.parallel_device(
         {nvoxels, nreadouts},
