@@ -80,7 +80,6 @@ struct CompasContext {
     template<typename F, typename... Args>
     void submit_kernel(dim3 grid_dim, dim3 block_dim, F kernel, Args... args) const {
         m_runtime.submit(
-            kmm::DomainDim(grid_dim.x, grid_dim.y, grid_dim.z),
             m_device,
             kmm::GPUKernel(kernel, block_dim, dim3()),
             args...);
