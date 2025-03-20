@@ -6,7 +6,7 @@ namespace compas {
 TissueParameters make_tissue_parameters(
     const CompasContext& ctx,
     int num_voxels,
-    int voxels_per_chunk,
+    int chunk_size,
     View<float> T1,
     View<float> T2,
     View<float> B1,
@@ -25,7 +25,7 @@ TissueParameters make_tissue_parameters(
 
     ctx.parallel_device(
         num_voxels,
-        voxels_per_chunk,
+        chunk_size,
         [&](kmm::DeviceResource& device, kmm::Range<index_t> range, GPUSubviewMut<float, 2> params) {
             KMM_ASSERT(params.is_contiguous());
             device.fill(params.data(), params.size(), 0.0F);
