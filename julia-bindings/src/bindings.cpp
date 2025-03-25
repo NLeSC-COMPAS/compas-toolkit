@@ -416,7 +416,8 @@ extern "C" compas::Array<cfloat, 2>* compas_simulate_magnetization_derivative_fi
     int max_state,
     float TI) {
     return catch_exceptions([&] {
-        auto sequence = compas::FISPSequence {*RF_train, *sliceprofiles, TR, TE, max_state, TI};
+        float TW = 0.0F;
+        auto sequence = compas::FISPSequence {*RF_train, *sliceprofiles, TR, TE, TW, max_state, TI};
 
         auto delta_echos = compas::simulate_magnetization_derivative(
             *context,

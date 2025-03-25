@@ -5,83 +5,6 @@
 
 namespace compas {
 
-static void launch_jacobian_product(
-    kmm::DeviceResource& ctx,
-    kmm::Bounds<3> range,
-    GPUSubviewMut<cfloat, 3> Jv,
-    GPUSubview<cfloat, 2> echos,
-    GPUSubview<cfloat, 2> delta_echos_T1,
-    GPUSubview<cfloat, 2> delta_echos_T2,
-    TissueParametersView parameters,
-    GPUSubview<cfloat, 2> coil_sensitivities,
-    GPUSubview<cfloat, 2> E,
-    GPUSubview<cfloat, 2> dEdT2,
-    GPUSubview<cfloat, 2> v);
-
-Array<cfloat, 3> compute_jacobian(
-    const CompasContext& ctx,
-    Array<cfloat, 2> echos,
-    Array<cfloat, 2> delta_echos_T1,
-    Array<cfloat, 2> delta_echos_T2,
-    TissueParameters parameters,
-    CartesianTrajectory trajectory,
-    Array<cfloat, 2> coil_sensitivities,
-    Array<cfloat, 2> vector) {
-    using namespace kmm::placeholders;
-    int ns = trajectory.samples_per_readout;
-    int nreadouts = trajectory.nreadouts;
-    int nvoxels = parameters.nvoxels;
-    int ncoils = int(coil_sensitivities.size(0));
-    int chunk_size = parameters.chunk_size;
-
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.size(1) == nvoxels);
-    COMPAS_ASSERT(delta_echos_T1.size(0) == nreadouts);
-    COMPAS_ASSERT(delta_echos_T1.size(1) == nvoxels);
-    COMPAS_ASSERT(delta_echos_T2.size(0) == nreadouts);
-    COMPAS_ASSERT(delta_echos_T2.size(1) == nvoxels);
-    COMPAS_ASSERT(coil_sensitivities.size(0) == ncoils);
-    COMPAS_ASSERT(coil_sensitivities.size(1) == nvoxels);
-    COMPAS_ASSERT(vector.size(0) == 4);  // four reconstruction parameters: T1, T2, rho_x, rho_y
-    COMPAS_ASSERT(vector.size(1) == nvoxels);
-
-    auto Jv = Array<cfloat, 3> {{ncoils, nreadouts, ns}};
-    auto E = Array<cfloat, 2> {{ns, nvoxels}};
-    auto dEdT2 = Array<cfloat, 2> {{ns, nvoxels}};
-
-    auto _voxel = kmm::Axis(0);
-    auto _sample = kmm::Axis(1);
-    auto _readout = kmm::Axis(2);
-
-    ctx.parallel_kernel(
-        {nvoxels, ns},
-        {chunk_size, ns},
-        {32, 8},
-        kernels::delta_to_sample_exponent,
-        _xy,
-        write(E(_, _voxel)),
-        write(dEdT2(_, _voxel)),
-        trajectory,
-        read(parameters, _voxel));
-
-    ctx.parallel_submit(
-        {nvoxels, ns, nreadouts},
-        {chunk_size, ns, nreadouts},
-        kmm::GPU(launch_jacobian_product),
-        _xyz,
-        reduce(kmm::Reduction::Sum, Jv(_, _readout, _sample)),
-        echos(_, _voxel),
-        delta_echos_T1(_, _voxel),
-        delta_echos_T2(_, _voxel),
-        read(parameters, _voxel),
-        coil_sensitivities(_, _voxel),
-        E(_, _voxel),
-        dEdT2(_, _voxel),
-        vector(_, _voxel));
-
-    return Jv;
-}
-
 template<
     int threads_per_item,
     int samples_per_thread,
@@ -154,8 +77,8 @@ static void launch_jacobian_product(
     GPUSubview<cfloat, 2> E,
     GPUSubview<cfloat, 2> dEdT2,
     GPUSubview<cfloat, 2> v) {
-    int coil_offset = 0;
-    int ncoils = coil_sensitivities.size(0);
+    auto coil_offset = 0;
+    auto ncoils = coil_sensitivities.size(0);
 
 #define COMPAS_COMPUTE_JACOBIAN_IMPL(N)                     \
     for (; coil_offset + N <= ncoils; coil_offset += N) {   \
@@ -175,9 +98,72 @@ static void launch_jacobian_product(
     }
 
     COMPAS_COMPUTE_JACOBIAN_IMPL(4)
-    COMPAS_COMPUTE_JACOBIAN_IMPL(3)
     COMPAS_COMPUTE_JACOBIAN_IMPL(2)
     COMPAS_COMPUTE_JACOBIAN_IMPL(1)
+}
+
+Array<cfloat, 3> compute_jacobian(
+    const CompasContext& ctx,
+    Array<cfloat, 2> echos,
+    Array<cfloat, 2> delta_echos_T1,
+    Array<cfloat, 2> delta_echos_T2,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
+    Array<cfloat, 2> coil_sensitivities,
+    Array<cfloat, 2> vector) {
+    using namespace kmm::placeholders;
+    int ns = trajectory.samples_per_readout;
+    int nreadouts = trajectory.nreadouts;
+    int nvoxels = parameters.nvoxels;
+    int ncoils = int(coil_sensitivities.size(0));
+    int chunk_size = parameters.chunk_size;
+
+    COMPAS_ASSERT(echos.size(0) == nreadouts);
+    COMPAS_ASSERT(echos.size(1) == nvoxels);
+    COMPAS_ASSERT(delta_echos_T1.size(0) == nreadouts);
+    COMPAS_ASSERT(delta_echos_T1.size(1) == nvoxels);
+    COMPAS_ASSERT(delta_echos_T2.size(0) == nreadouts);
+    COMPAS_ASSERT(delta_echos_T2.size(1) == nvoxels);
+    COMPAS_ASSERT(coil_sensitivities.size(0) == ncoils);
+    COMPAS_ASSERT(coil_sensitivities.size(1) == nvoxels);
+    COMPAS_ASSERT(vector.size(0) == 4);  // four reconstruction parameters: T1, T2, rho_x, rho_y
+    COMPAS_ASSERT(vector.size(1) == nvoxels);
+
+    auto Jv = Array<cfloat, 3> {{ncoils, nreadouts, ns}};
+    auto E = Array<cfloat, 2> {{ns, nvoxels}};
+    auto dEdT2 = Array<cfloat, 2> {{ns, nvoxels}};
+
+    auto _voxel = kmm::Axis(0);
+    auto _sample = kmm::Axis(1);
+    auto _readout = kmm::Axis(2);
+
+    ctx.parallel_kernel(
+        {nvoxels, ns},
+        {chunk_size, ns},
+        {32, 8},
+        kernels::delta_to_sample_exponent,
+        _xy,
+        write(E(_, _voxel)),
+        write(dEdT2(_, _voxel)),
+        trajectory,
+        read(parameters, _voxel));
+
+    ctx.parallel_submit(
+        {nvoxels, ns, nreadouts},
+        {chunk_size, ns, nreadouts},
+        kmm::GPU(launch_jacobian_product),
+        _xyz,
+        write(Jv[_][_readout][_sample]),
+        echos(_, _voxel),
+        delta_echos_T1(_, _voxel),
+        delta_echos_T2(_, _voxel),
+        read(parameters, _voxel),
+        coil_sensitivities(_, _voxel),
+        E(_, _voxel),
+        dEdT2(_, _voxel),
+        vector(_, _voxel));
+
+    return Jv;
 }
 
 }  // namespace compas

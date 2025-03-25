@@ -83,7 +83,7 @@ Array<cfloat, 2> simulate_magnetization(
         fun,
         _x,
         write(echos(_, _x)),
-        parameters.data(_, _x),
+        read(parameters, _x),
         sequence);
 
     return echos;

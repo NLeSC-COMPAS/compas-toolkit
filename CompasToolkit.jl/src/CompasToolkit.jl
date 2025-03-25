@@ -144,12 +144,12 @@ function assert_size(input::AbstractArray, expected::Dims)
 end
 
 function convert_array(input::CompasArray{T,N}, ty::Type{T}, dims::Integer...)::CompasArray{T,N} where {T,N}
-    assert_size(input, dims)
+    assert_size(input, Dims(dims))
     return input
 end
 
 function convert_array(input::Array{T,N}, ty::Type{T}, dims::Integer...)::CompasArray{T,N} where {T,N}
-    assert_size(input, dims)
+    assert_size(input, Dims(dims))
     context = get_context()
     return make_array(context, input)
 end

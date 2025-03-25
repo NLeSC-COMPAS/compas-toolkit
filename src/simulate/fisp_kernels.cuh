@@ -68,7 +68,7 @@ COMPAS_DEVICE void simulate_fisp_for_voxel(
             omega.rotate_decay(E1_TE, E2_TE, r_TE);
             omega.regrowth(E1_TE);
             // sample F₊[0] at last repetition
-            if (repeat == 0) {
+            if (repeat == 1) {
                 omega.sample_transverse(&echos[i], 0);
             }
             // T2 decay F states, T1 decay Z states, B0 rotation until next RF excitation

@@ -58,6 +58,7 @@ end
 
 function generate_cartesian_trajectory(N)
     FOVˣ, FOVʸ = 25.6, 25.6;
+    FOVˣ, FOVʸ = 30.0, 28.0;
 
     nr = N # nr of readouts
     ns = N # nr of samples per readout
@@ -77,7 +78,8 @@ function generate_coils(N, ncoils)
     coil₃ = coil₁;
     coil₄ = coil₂;
     
-    return hcat(coil₁ |> vec, coil₂ |> vec, coil₃ |> vec, coil₄ |> vec) .|> ComplexF32
+    coils = hcat(coil₁ |> vec, coil₂ |> vec, coil₃ |> vec, coil₄ |> vec) .|> ComplexF32
+    return coils[:, 1:ncoils]
 end
 
 function generate_echos(N, sequence)

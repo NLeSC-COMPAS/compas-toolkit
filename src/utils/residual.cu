@@ -31,14 +31,14 @@ Array<cfloat, 3> compute_residual(
         write(output),
         write(partials));
 
-    if (objective_out != nullptr) {
-        ctx.submit_kernel(
-            1,
-            block_dim,
-            kernels::accumulate_partial_sums<block_dim>,
-            partials,
-            write(objective));
+    ctx.submit_kernel(
+        1,
+        block_dim,
+        kernels::accumulate_partial_sums<block_dim>,
+        partials,
+        write(objective));
 
+    if (objective_out != nullptr) {
         objective.copy_to(objective_out);
     }
 
