@@ -59,29 +59,12 @@ inline CartesianTrajectory make_cartesian_trajectory(
 
 }  // namespace compas
 
-namespace kmm {
-template<>
-struct Argument<compas::CartesianTrajectory> {
-    using type = compas::CartesianTrajectoryView;
+KMM_DEFINE_STRUCT_ARGUMENT(
+    compas::CartesianTrajectory,
+    it.nreadouts,
+    it.samples_per_readout,
+    it.delta_t,
+    it.k_start,
+    it.delta_k)
 
-    static Argument pack(TaskInstance& task, const compas::CartesianTrajectory& t) {
-        return {
-            {//
-             .nreadouts = t.nreadouts,
-             .samples_per_readout = t.samples_per_readout,
-             .delta_t = t.delta_t,
-             .k_start = {},
-             .delta_k = t.delta_k},
-            pack_argument(task, t.k_start)};
-    }
-
-    template<ExecutionSpace Space>
-    type unpack(TaskContext& context) {
-        view.k_start = unpack_argument<Space>(context, k_start);
-        return view;
-    }
-
-    compas::CartesianTrajectoryView view;
-    packed_argument_t<Array<compas::cfloat>> k_start;
-};
-}  // namespace kmm
+KMM_DEFINE_STRUCT_VIEW(compas::CartesianTrajectory, compas::CartesianTrajectoryView)

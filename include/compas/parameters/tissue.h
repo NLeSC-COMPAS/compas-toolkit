@@ -45,39 +45,9 @@ TissueParameters make_tissue_parameters(
 
 }  // namespace compas
 
-namespace kmm {
+KMM_DEFINE_STRUCT_ARGUMENT(compas::TissueParameters, it.data)
+KMM_DEFINE_STRUCT_VIEW(compas::TissueParameters, compas::TissueParametersView)
 
-template<typename M>
-struct Argument<Read<const compas::TissueParameters, M>> {
-    using type = compas::TissueParametersView;
-
-    static Argument
-    pack(TaskInstance& task, Read<const compas::TissueParameters, M> access) {
-        const compas::TissueParameters& params = access.argument;
-        compas::TissueParametersView view;
-        view.has_z = params.has_z;
-        view.has_b0 = params.has_b0;
-        view.has_b1 = params.has_b1;
-
-        return {view, pack_argument(task, params.data(All(), access.access_mapper))};
-    }
-
-    template<ExecutionSpace Space>
-    type unpack(TaskContext& context) {
-        view.parameters = unpack_argument<Space>(context, params);
-        return view;
-    }
-
-    compas::TissueParametersView view;
-    packed_argument_t<Read<Array<float, 2>, IdentityMap>> params;
-};
-
-// Forward compas::TissueParameters& to Read<compas::TissueParameters>
-template<>
-struct ArgumentHandler<const compas::TissueParameters&>: //
-        ArgumentHandler<Read<const compas::TissueParameters>>{
-    ArgumentHandler(const compas::TissueParameters& p) :
-        ArgumentHandler<Read<const compas::TissueParameters>>(read(p)) {}
-};
-
-}  // namespace kmm
+using TissueParametersSlice = kmm::Read<const compas::TissueParameters, kmm::Axis>;
+KMM_DEFINE_STRUCT_ARGUMENT(TissueParametersSlice, it.argument.data[kmm::All()][it.access_mapper])
+KMM_DEFINE_STRUCT_VIEW(TissueParametersSlice, compas::TissueParametersView)

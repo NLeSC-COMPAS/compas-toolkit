@@ -37,9 +37,7 @@ void simulate_magnetization_derivative_impl(
         field,
         delta);
 
-    auto new_tissue = TissueParametersView {tissue};
-    new_tissue.parameters = new_parameters;
-
+    auto new_tissue = TissueParametersView {new_parameters};
     simulate_magnetization_kernel(context, range[0], delta_echos, new_tissue, sequence);
 
     num_blocks = {div_ceil(uint(nvoxels), block_size.x), div_ceil(uint(nreadouts), block_size.y)};

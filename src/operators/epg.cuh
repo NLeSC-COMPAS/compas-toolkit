@@ -60,6 +60,15 @@ struct EPGThreadBlockState {
     }
 
     COMPAS_DEVICE
+    void spoil() {
+#pragma unroll items_per_thread
+        for (int i = 0; i < items_per_thread; i++) {
+            state[i].F_plus = 0.0f;
+            state[i].F_min = 0.0f;
+        }
+    }
+
+    COMPAS_DEVICE
     void decay(float E1, float E2) {
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {

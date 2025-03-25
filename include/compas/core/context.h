@@ -51,8 +51,8 @@ struct CompasContext {
     }
 
     template<typename F, typename... Args>
-    void
-    parallel_device(kmm::DomainDim index_space, kmm::DomainDim chunk_size, F fun, Args... args) const {
+    void parallel_device(kmm::DomainDim index_space, kmm::DomainDim chunk_size, F fun, Args... args)
+        const {
         m_runtime.parallel_submit(  //
             kmm::TileDomain(index_space, chunk_size),
             kmm::GPU(fun),
@@ -79,10 +79,7 @@ struct CompasContext {
 
     template<typename F, typename... Args>
     void submit_kernel(dim3 grid_dim, dim3 block_dim, F kernel, Args... args) const {
-        m_runtime.submit(
-            m_device,
-            kmm::GPUKernel(kernel, block_dim, dim3()),
-            args...);
+        m_runtime.submit(m_device, kmm::GPUKernel(kernel, block_dim, dim3()), args...);
     }
 
     void synchronize() const {
@@ -103,7 +100,6 @@ inline CompasContext make_context(int device = 0) {
 }
 
 }  // namespace compas
-
 
 KMM_DEFINE_SCALAR_TYPE(Complex32, compas::cfloat)
 KMM_DEFINE_SCALAR_TYPE(Complex64, compas::cdouble)

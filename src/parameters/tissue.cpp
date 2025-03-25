@@ -26,7 +26,9 @@ TissueParameters make_tissue_parameters(
     ctx.parallel_device(
         num_voxels,
         chunk_size,
-        [&](kmm::DeviceResource& device, kmm::Range<index_t> range, GPUSubviewMut<float, 2> params) {
+        [&](kmm::DeviceResource& device,
+            kmm::Range<index_t> range,
+            GPUSubviewMut<float, 2> params) {
             KMM_ASSERT(params.is_contiguous());
             device.fill(params.data(), params.size(), 0.0F);
             auto offset = range.begin;

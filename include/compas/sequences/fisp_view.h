@@ -19,10 +19,18 @@ struct FISPSequenceView {
     // Echo time in seconds, assumed constant during the sequence
     float TE;
 
+    float TW = 0;
+
     // Maximum number of states to keep track of in EPG simulation
     int max_state;
 
     // Inversion delay after the inversion prepulse in seconds
     float TI;
+
+    int repetitions = 1;
+
+    bool inversion_prepulse = true;
+
+    bool wait_spoiling = true;
 };
 }  // namespace compas

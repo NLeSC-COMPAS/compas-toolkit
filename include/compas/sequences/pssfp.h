@@ -73,38 +73,14 @@ inline pSSFPSequence make_pssfp_sequence(
 
 }  // namespace compas
 
-namespace kmm {
-template<>
-struct Argument<compas::pSSFPSequence> {
-    using type = compas::pSSFPSequenceView;
+KMM_DEFINE_STRUCT_ARGUMENT(
+    compas::pSSFPSequence,
+    it.nTR,
+    it.RF_train,
+    it.TR,
+    it.gamma_dt_RF,
+    it.dt,
+    it.gamma_dt_GRz,
+    it.z)
 
-    static Argument pack(TaskInstance& task, compas::pSSFPSequence p) {
-        return {
-            {.nTR = p.nTR,
-             .RF_train = {},
-             .TR = p.TR,
-             .gamma_dt_RF = {},
-             .dt = p.dt,
-             .gamma_dt_GRz = p.gamma_dt_GRz,
-             .z = {}},
-            pack_argument(task, p.RF_train),
-            pack_argument(task, p.gamma_dt_RF),
-            pack_argument(task, p.z),
-        };
-    }
-
-    template<ExecutionSpace space>
-    type unpack(TaskContext& context) {
-        view.RF_train = unpack_argument<space>(context, RF_train);
-        view.gamma_dt_RF = unpack_argument<space>(context, gamma_dt_RF);
-        view.z = unpack_argument<space>(context, z);
-        return view;
-    }
-
-    compas::pSSFPSequenceView view;
-    packed_argument_t<Array<compas::cfloat>> RF_train;
-    packed_argument_t<Array<compas::cfloat>> gamma_dt_RF;
-    packed_argument_t<Array<float>> z;
-};
-
-};  // namespace kmm
+KMM_DEFINE_STRUCT_VIEW(compas::pSSFPSequence, compas::pSSFPSequenceView)

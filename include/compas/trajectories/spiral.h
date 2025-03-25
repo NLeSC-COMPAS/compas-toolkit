@@ -58,32 +58,12 @@ inline SpiralTrajectory make_spiral_trajectory(
 
 }  // namespace compas
 
-namespace kmm {
-template<>
-struct Argument<compas::SpiralTrajectory> {
-    using type = compas::SpiralTrajectoryView;
+KMM_DEFINE_STRUCT_ARGUMENT(
+    compas::SpiralTrajectory,
+    it.nreadouts,
+    it.samples_per_readout,
+    it.delta_t,
+    it.k_start,
+    it.delta_k)
 
-    static Argument pack(TaskInstance& task, const compas::SpiralTrajectory& t) {
-        return {
-            {//
-             .nreadouts = t.nreadouts,
-             .samples_per_readout = t.samples_per_readout,
-             .delta_t = t.delta_t,
-             .k_start = {},
-             .delta_k = {}},
-            pack_argument(task, t.k_start),
-            pack_argument(task, t.delta_k)};
-    }
-
-    template<ExecutionSpace space>
-    type unpack(TaskContext& context) {
-        view.k_start = unpack_argument<space>(context, k_start);
-        view.delta_k = unpack_argument<space>(context, delta_k);
-        return view;
-    }
-
-    compas::SpiralTrajectoryView view;
-    packed_argument_t<Array<compas::cfloat>> k_start;
-    packed_argument_t<Array<compas::cfloat>> delta_k;
-};
-}  // namespace kmm
+KMM_DEFINE_STRUCT_VIEW(compas::SpiralTrajectory, compas::SpiralTrajectoryView)

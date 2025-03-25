@@ -166,7 +166,16 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_fisp(
     int max_state,
     float TI) {
     return catch_exceptions([&] {
-        auto sequence = compas::FISPSequence {*RF_train, *sliceprofiles, TR, TE, max_state, TI};
+        float TW = 0.0F;
+
+        auto sequence = compas::FISPSequence {//
+                                              *RF_train,
+                                              *sliceprofiles,
+                                              TR,
+                                              TE,
+                                              TW,
+                                              max_state,
+                                              TI};
 
         auto echos = compas::simulate_magnetization(*context, *parameters, sequence);
 
@@ -221,8 +230,10 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
             *k_start,
             delta_k};
 
+        context->synchronize();
         auto signal =
             compas::magnetization_to_signal(*context, *echos, *parameters, trajectory, *coils);
+        context->synchronize();
         return new compas::Array<cfloat, 3>(signal);
     });
 }

@@ -22,6 +22,8 @@ struct FISPSequence {
     // Echo time in seconds, assumed constant during the sequence
     float TE;
 
+    float TW = 0;
+
     // Maximum number of states to keep track of in EPG simulation
     int max_state;
 
@@ -38,39 +40,26 @@ inline FISPSequence make_fisp_sequence(
     int max_state,
     float TI) {
     COMPAS_ASSERT(sliceprofiles.size(1) == RF_train.size(0));
-    return {context.allocate(RF_train), context.allocate(sliceprofiles), TR, TE, max_state, TI};
+    return {
+        context.allocate(RF_train),
+        context.allocate(sliceprofiles),
+        TR,
+        TE,
+        0.0F,
+        max_state,
+        TI};
 }
 
 }  // namespace compas
 
-namespace kmm {
+KMM_DEFINE_STRUCT_ARGUMENT(
+    compas::FISPSequence,
+    it.RF_train,
+    it.sliceprofiles,
+    it.TR,
+    it.TE,
+    it.TW,
+    it.max_state,
+    it.TI)
 
-template<>
-struct Argument<compas::FISPSequence> {
-    using type = compas::FISPSequenceView;
-
-    static Argument pack(TaskInstance& task, compas::FISPSequence p) {
-        return {
-            {.RF_train = {},
-             .sliceprofiles = {},
-             .TR = p.TR,
-             .TE = p.TE,
-             .max_state = p.max_state,
-             .TI = p.TI},
-            pack_argument(task, p.RF_train),
-            pack_argument(task, p.sliceprofiles)};
-    }
-
-    template<ExecutionSpace space>
-    type unpack(TaskContext& context) {
-        view.RF_train = unpack_argument<space>(context, RF_train);
-        view.sliceprofiles = unpack_argument<space>(context, sliceprofiles);
-        return view;
-    }
-
-    type view;
-    packed_argument_t<Array<compas::cfloat>> RF_train;
-    packed_argument_t<Array<compas::cfloat, 2>> sliceprofiles;
-};
-
-};  // namespace kmm
+KMM_DEFINE_STRUCT_VIEW(compas::FISPSequence, compas::FISPSequenceView)
