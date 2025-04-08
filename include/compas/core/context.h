@@ -101,7 +101,9 @@ struct CompasContext {
 };
 
 inline CompasContext make_context(int device = 0) {
-    return {kmm::make_runtime(), kmm::DeviceId(device)};
+    auto config = kmm::default_config_from_environment();
+    config.device_memory_kind = kmm::DeviceMemoryKind::NoPool;
+    return {kmm::make_runtime(config), kmm::DeviceId(device)};
 }
 
 }  // namespace compas
