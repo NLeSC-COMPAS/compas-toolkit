@@ -27,10 +27,12 @@ struct FISPSequenceView {
     // Inversion delay after the inversion prepulse in seconds
     float TI;
 
-    int repetitions = 1;
+    int undersampling_factor;
 
-    bool inversion_prepulse = true;
+    int repetitions;
 
-    bool wait_spoiling = true;
+    bool inversion_prepulse;
+
+    bool wait_spoiling;
 };
 }  // namespace compas

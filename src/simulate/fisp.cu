@@ -11,11 +11,11 @@ void simulate_fisp_sequence_for_size(
     GPUSubviewMut<cfloat, 2> echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
-    COMPAS_ASSERT(sequence.max_state <= max_N);
+    int nreadouts = int(sequence.RF_train.size()) * sequence.undersampling_factor;
+
     COMPAS_ASSERT(is_power_of_two(warp_size) && warp_size <= 32);
-
-    int nreadouts = int(sequence.RF_train.size());
-
+    COMPAS_ASSERT(sequence.max_state <= max_N);
+    COMPAS_ASSERT(sequence.sliceprofiles.size(1) == sequence.RF_train.size());
     COMPAS_ASSERT(echos.size(0) == nreadouts);
     COMPAS_ASSERT(echos.begin(1) == voxels.begin);
     COMPAS_ASSERT(echos.end(1) == voxels.end);
@@ -32,6 +32,8 @@ void simulate_fisp_sequence_for_size(
             sequence.sliceprofiles.drop_axis(i),
             parameters,
             sequence);
+
+        KMM_GPU_CHECK(gpuGetLastError());
     }
 }
 
@@ -65,7 +67,7 @@ Array<cfloat, 2> simulate_magnetization(
     TissueParameters parameters,
     FISPSequence sequence) {
     using namespace kmm::placeholders;
-    int nreadouts = int(sequence.RF_train.size());
+    int nreadouts = int(sequence.RF_train.size()) * sequence.undersampling_factor;
     int nvoxels = parameters.nvoxels;
     int chunk_size = parameters.chunk_size;
     auto echos = Array<cfloat, 2> {{nreadouts, nvoxels}};

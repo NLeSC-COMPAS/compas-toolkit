@@ -91,7 +91,7 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     float delta) {
     using namespace kmm::placeholders;
     auto nvoxels = parameters.nvoxels;
-    auto nreadouts = sequence.RF_train.size();
+    auto nreadouts = sequence.RF_train.size() * sequence.undersampling_factor;
     auto chunk_size = parameters.chunk_size;
 
     COMPAS_ASSERT(echos.size(0) == nreadouts);

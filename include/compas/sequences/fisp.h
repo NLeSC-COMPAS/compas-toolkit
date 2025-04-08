@@ -29,6 +29,16 @@ struct FISPSequence {
 
     // Inversion delay after the inversion prepulse in seconds
     float TI;
+
+    int undersampling_factor = 1;
+
+    int repetitions = 1;
+
+    // With or without inversion prepulse at the start of every repetition
+    bool inversion_prepulse = true;
+
+    // Spoiling is assumed before the start of a next cycle
+    bool wait_spoiling = true;
 };
 
 inline FISPSequence make_fisp_sequence(
@@ -39,7 +49,6 @@ inline FISPSequence make_fisp_sequence(
     float TE,
     int max_state,
     float TI) {
-    COMPAS_ASSERT(sliceprofiles.size(1) == RF_train.size(0));
     return {
         context.allocate(RF_train),
         context.allocate(sliceprofiles),
@@ -60,6 +69,10 @@ KMM_DEFINE_STRUCT_ARGUMENT(
     it.TE,
     it.TW,
     it.max_state,
-    it.TI)
+    it.TI,
+    it.undersampling_factor,
+    it.repetitions,
+    it.inversion_prepulse,
+    it.wait_spoiling)
 
 KMM_DEFINE_STRUCT_VIEW(compas::FISPSequence, compas::FISPSequenceView)

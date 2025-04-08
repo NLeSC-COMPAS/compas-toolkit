@@ -40,7 +40,7 @@ void magnetization_to_signal_cartesian_direct(
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context.stream()>>>(
+    kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context>>>(
         voxels,
         nreadouts,
         factors,
@@ -52,7 +52,7 @@ void magnetization_to_signal_cartesian_direct(
     block_dim = {256};
     grid_dim = {div_ceil(uint(nvoxels), block_dim.x)};
 
-    kernels::prepare_signal_cartesian<<<grid_dim, block_dim, 0, context.stream()>>>(
+    kernels::prepare_signal_cartesian<<<grid_dim, block_dim, 0, context>>>(
         voxels,
         samples_per_readout,
         exponents,
@@ -60,8 +60,7 @@ void magnetization_to_signal_cartesian_direct(
         trajectory);
     COMPAS_GPU_CHECK(gpuGetLastError());
 
-    //    const uint block_size_x = 64;
-    //    const uint block_size_y = 1;
+    // TODO: Are these faster?
     //    const uint threads_cooperative = 32;
     //    const uint samples_per_thread = 8;
     //    const uint readouts_per_thread = 1;
