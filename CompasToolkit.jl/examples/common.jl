@@ -1,9 +1,11 @@
 using BlochSimulators
 using StaticArrays
+using Statistics
 using ComputationalResources
 using ImagePhantoms
 using LinearAlgebra
 using Random
+using Printf
 
 Random.seed!(1337)
 
@@ -118,16 +120,42 @@ end
 function print_equals_check(expected, answer; atol = 1e-9)
     answer = collect(answer)
 
+    println("=== Statistics ===")
+    # Shape and length are the same, so print once
+    @printf("  Shape: %s\n", string(size(expected)))
+    @printf("  Min:   %s vs %s\n", expected[argmin(real.(expected))], answer[argmin(real.(answer))])
+    @printf("  Max:   %s vs %s\n", expected[argmax(real.(expected))], answer[argmax(real.(answer))])
+    @printf("  Mean:  %s vs %s\n", mean(expected), mean(answer))
+    @printf("  Std.:  %s vs %s\n", std(expected), std(answer))
+    @printf("  Zeros: %s vs %s\n", mean(expected .== 0), mean(answer .== 0))
+    println()
+
+    println("=== Fraction of equal values ===")
     for rtol in [0.001, 0.005, 0.01, 0.05, 0.1]
         is_equal = isapprox.(answer, expected, atol=atol, rtol=rtol)
-        println("fraction equal (atol=$(atol), rtol=$(rtol)): ", sum(is_equal) / length(answer))
+        println("  atol=$(atol), rtol=$(rtol): ", sum(is_equal) / length(answer))
     end
 
-    err = abs.(answer - expected)
-    index = argmax(err)
-    println("maximum abs error ($(index)): ", err[index], " ($(answer[index]) vs $(expected[index]))")
+    err = abs.(answer .- expected)
+    idx_abs = argmax(err)
+    max_abs_err = err[idx_abs]
+
+    println("\n=== Maximum absolute error ===")
+    println("  Index:          $(Tuple(idx_abs))")
+    println("  Answer:         $(answer[idx_abs])")
+    println("  Expected:       $(expected[idx_abs])")
+    println("  Absolute Error: $(max_abs_err)")
+    println()
 
     rel_err = err ./ max.(abs.(expected), atol)
-    index = argmax(rel_err)
-    println("maximum rel error ($(index)): ", rel_err[index], " ($(answer[index]) vs $(expected[index]))")
+    idx_rel = argmax(rel_err)
+    max_rel_err = rel_err[idx_rel]
+
+    println("\n=== Maximum relative error ===")
+    println("  Index:          $(Tuple(idx_rel))")
+    println("  Answer:         $(answer[idx_rel])")
+    println("  Expected:       $(expected[idx_rel])")
+    println("  Relative Error: $max_rel_err")
+    println()
+    println()
 end
