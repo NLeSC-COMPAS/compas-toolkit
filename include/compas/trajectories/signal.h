@@ -13,7 +13,12 @@ namespace compas {
  */
 enum struct SimulateSignalMethod {
     /**
-     * Direct simulation without optimization or approximations. This is the most reliable method, but is also slow.
+     * Naive simulation without optimization or approximations. This is the most reliable method, but is also slow.
+     */
+    Naive,
+
+    /**
+     * Direct simulation. This is the more performant method if there are many coils.
      */
     Direct,
 
@@ -55,6 +60,6 @@ Array<cfloat, 3> magnetization_to_signal(
     TissueParameters parameters,
     const Trajectory& trajectory,
     Array<cfloat, 2> coil_sensitivities,
-    SimulateSignalMethod method = SimulateSignalMethod::Direct);
+    SimulateSignalMethod method = SimulateSignalMethod::Naive);
 
 }  // namespace compas

@@ -31,7 +31,7 @@ trajectory = CompasToolkit.CartesianTrajectory(
 nr = trajectory_ref.nreadouts
 ns = trajectory_ref.nsamplesperreadout
 
-# We use two different receive coils
+# We use four different receive coils
 ncoils = 4
 coil_sensitivities = generate_coils(N, ncoils)
 
@@ -39,6 +39,7 @@ echos_ref = gpu(transpose(echos))
 trajectory_ref  = gpu(f32(trajectory_ref))
 coil_sensitivities_ref  = gpu(f32(coil_sensitivities))
 coordinates_ref = gpu(StructArray(Coordinates(x, y, zero(x)) for (x, y) in zip(X, Y)))
+
 signal_ref = magnetization_to_signal(CUDALibs(), echos_ref, gpu(parameters_ref), trajectory_ref, coordinates_ref, coil_sensitivities_ref)
 signal_ref = collect(signal_ref)
 signal_ref = reshape(signal_ref, ns, nr, ncoils)
@@ -50,8 +51,4 @@ signal = CompasToolkit.magnetization_to_signal(
     coil_sensitivities)
 signal = collect(signal)
 
-for c in 1:ncoils
-    expected = signal_ref[:,:,c]
-    answer = signal[:,:,c]
-    print_equals_check(expected, answer)
-end
+print_equals_check(signal_ref, signal)

@@ -17,11 +17,11 @@ void magnetization_to_signal_cartesian_direct(
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
     GPUSubview<cfloat, 2> coil_sensitivities,
-    GPUSubviewMut<cfloat, 2> exponents,
-    GPUSubviewMut<cfloat, 2> factors) {
-    int voxel_begin = int(voxels.begin);
-    int voxel_end = int(voxels.end);
-    int nvoxels = int(voxel_end - voxel_begin);
+    GPUSubviewMut<cfloat, 2> sample_decay,
+    GPUSubviewMut<cfloat, 2> readout_echos) {
+    int voxel_begin = voxels.begin;
+    int voxel_end = voxels.end;
+    int nvoxels = voxels.size();
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
@@ -40,10 +40,10 @@ void magnetization_to_signal_cartesian_direct(
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context>>>(
+    kernels::prepare_readout_echos<<<grid_dim, block_dim, 0, context>>>(
         voxels,
         nreadouts,
-        factors,
+        readout_echos,
         echos,
         parameters,
         trajectory);
@@ -52,10 +52,10 @@ void magnetization_to_signal_cartesian_direct(
     block_dim = {256};
     grid_dim = {div_ceil(uint(nvoxels), block_dim.x)};
 
-    kernels::prepare_signal_cartesian<<<grid_dim, block_dim, 0, context>>>(
+    kernels::prepare_sample_decay_cartesian<<<grid_dim, block_dim, 0, context>>>(
         voxels,
         samples_per_readout,
-        exponents,
+        sample_decay,
         parameters,
         trajectory);
     COMPAS_GPU_CHECK(gpuGetLastError());
@@ -66,9 +66,9 @@ void magnetization_to_signal_cartesian_direct(
     //    const uint readouts_per_thread = 1;
     //    const uint coils_per_thread = 4;
 
-    const uint block_size_x = 64;
-    const uint block_size_y = 1;
-    const uint threads_cooperative = 1;
+    const uint block_size_x = 32;
+    const uint block_size_y = 8;
+    const uint threads_cooperative = 32;
     const uint samples_per_thread = 1;
     const uint readouts_per_thread = 1;
     const uint coils_per_thread = 1;
@@ -87,14 +87,15 @@ void magnetization_to_signal_cartesian_direct(
         threads_cooperative,
         samples_per_thread,
         readouts_per_thread,
-        coils_per_thread><<<grid_dim, block_dim, 0, context.stream()>>>(
+        coils_per_thread><<<grid_dim, block_dim, 0, context>>>(
         voxels,
         signal,
-        exponents,
-        factors,
+        sample_decay,
+        readout_echos,
         coil_sensitivities);
 
     COMPAS_GPU_CHECK(gpuGetLastError());
+    context.synchronize();
 }
 
 void magnetization_to_signal_cartesian_gemm(
@@ -125,7 +126,7 @@ void magnetization_to_signal_cartesian_gemm(
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context.stream()>>>(
+    kernels::prepare_readout_echos<<<grid_dim, block_dim, 0, context.stream()>>>(
         voxels,
         nreadouts,
         factors,
@@ -138,11 +139,12 @@ void magnetization_to_signal_cartesian_gemm(
         block_dim = {256};
         grid_dim = {div_ceil(uint(nvoxels), block_dim.x)};
 
-        kernels::prepare_signal_cartesian_with_coil<<<grid_dim, block_dim, 0, context.stream()>>>(
-            exponents,
-            coil_sensitivities.drop_axis<0>(icoil),
-            parameters,
-            trajectory);
+        kernels::
+            prepare_sample_decay_cartesian_with_coil<<<grid_dim, block_dim, 0, context.stream()>>>(
+                exponents,
+                coil_sensitivities.drop_axis<0>(icoil),
+                parameters,
+                trajectory);
         COMPAS_GPU_CHECK(gpuGetLastError());
 
         cuComplex alpha = {1, 0};
@@ -152,7 +154,7 @@ void magnetization_to_signal_cartesian_gemm(
         cudaDataType_t input_type = CUDA_C_32F;
         cublasGemmAlgo_t compute_algo = CUBLAS_GEMM_DEFAULT;
 
-        COMPAS_GPU_CHECK(cublasSetStream(context.blas(), nullptr));
+        COMPAS_GPU_CHECK(cublasSetStream(context.blas(), context.stream()));
         COMPAS_GPU_CHECK(cublasGemmEx(
             context.blas(),
             CUBLAS_OP_T,  // transa
@@ -186,8 +188,8 @@ void magnetization_to_signal_spiral(
     TissueParametersView parameters,
     SpiralTrajectoryView trajectory,
     GPUView<cfloat, 2> coil_sensitivities,
-    GPUViewMut<cfloat, 2> exponents,
-    GPUViewMut<cfloat, 2> factors) {
+    GPUViewMut<cfloat, 2> sample_decay,
+    GPUViewMut<cfloat, 2> readout_echos) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
@@ -206,10 +208,10 @@ void magnetization_to_signal_spiral(
         div_ceil(uint(voxels.size()), block_dim.x),
         div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_signal_factors<<<grid_dim, block_dim, 0, context.stream()>>>(
+    kernels::prepare_readout_echos<<<grid_dim, block_dim, 0, context.stream()>>>(
         voxels,
         nreadouts,
-        factors,
+        readout_echos,
         echos,
         parameters,
         trajectory);
@@ -218,8 +220,8 @@ void magnetization_to_signal_spiral(
     block_dim = {32, 4};
     grid_dim = {div_ceil(uint(voxels.size()), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_signal_spiral<<<grid_dim, block_dim, 0, context.stream()>>>(
-        exponents,
+    kernels::prepare_sample_decay_spiral<<<grid_dim, block_dim, 0, context.stream()>>>(
+        sample_decay,
         parameters,
         trajectory);
     COMPAS_GPU_CHECK(gpuGetLastError());
@@ -244,8 +246,8 @@ void magnetization_to_signal_spiral(
         samples_per_thread,
         coils_per_thread><<<grid_dim, block_dim, 0, context.stream()>>>(
         signal,
-        exponents,
-        factors,
+        sample_decay,
+        readout_echos,
         coil_sensitivities);
 
     COMPAS_GPU_CHECK(gpuGetLastError());
@@ -283,31 +285,43 @@ Array<cfloat, 3> magnetization_to_signal(
 
     auto signal = Array<cfloat, 3> {{ncoils, nreadouts, samples_per_readout}};
 
-    if (const auto* c = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
+    if (const auto* cart = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
         auto temp_exponents = Array<cfloat, 2> {{samples_per_readout, nvoxels}};
         auto temp_factors = Array<cfloat, 2> {{nreadouts, nvoxels}};
 
-        if (method == SimulateSignalMethod::Direct) {
+        if (method == SimulateSignalMethod::Naive) {
+            context.submit_kernel(
+                {uint(samples_per_readout), uint(nreadouts), uint(ncoils)},
+                256,
+                kernels::sum_signal_cartesian_naive,
+                nvoxels,
+                write(signal),
+                echos,
+                parameters,
+                *cart,
+                coil_sensitivities);
+
+        } else if (method == SimulateSignalMethod::Direct) {
             context.parallel_device(
                 {nvoxels, nreadouts},
                 {chunk_size, nreadouts},
                 magnetization_to_signal_cartesian_direct,
                 _x,
                 reduce(kmm::Reduction::Sum, signal),
-                echos(_y, _x),
-                parameters.data(_, _x),
-                *c,
-                coil_sensitivities(_, _x),
-                write(temp_exponents(_, _x)),
-                write(temp_factors(_y, _x)));
+                echos[_y][_x],
+                parameters.data[_][_x],
+                *cart,
+                coil_sensitivities[_][_x],
+                write(temp_exponents[_][_x]),
+                write(temp_factors[_y][_x]));
         } else {
             context.submit_device(
                 magnetization_to_signal_cartesian_gemm,
-                _x,
+                nvoxels,
                 write(signal),
                 echos,
                 parameters,
-                *c,
+                *cart,
                 coil_sensitivities,
                 write(temp_exponents),
                 write(temp_factors),
