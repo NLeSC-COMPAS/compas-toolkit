@@ -9,14 +9,15 @@
 template <typename F>
 static std::pair<double, int> benchmark(F fun) {
     auto before = std::chrono::high_resolution_clock::now();
+    auto deadline = before + std::chrono::seconds(1);
     auto after = before;
     int runs = 0;
 
-    do {
+    while (after < deadline) {
         fun();
         after = std::chrono::high_resolution_clock::now();
         runs++;
-    } while (after < before + std::chrono::seconds(1));
+    }
 
     double duration =
             static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(after - before).count()) * 1e-6 / runs;
@@ -50,6 +51,7 @@ static compas::TissueParameters generate_tissue_parameters(const compas::CompasC
 
     auto parameters = make_tissue_parameters(
         context,
+        nvoxels,
         nvoxels,
         {T1.data(), {{nvoxels}}},
         {T2.data(), {{nvoxels}}},

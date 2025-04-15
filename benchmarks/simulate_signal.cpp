@@ -93,7 +93,7 @@ int main() {
         nreadouts,
         samples_per_readout,
         delta_t,
-        compas::host_view<cfloat> {k_start.data(), {{nreadouts}}},
+        compas::View<cfloat> {k_start.data(), {{nreadouts}}},
         delta_k);
 
     auto signal = compas::magnetization_to_signal(
@@ -102,10 +102,20 @@ int main() {
         parameters,
         trajectory,
         coil_sensitivities,
-        SimulateSignalMethod::Direct);
+        SimulateSignalMethod::Naive);
 
     auto signal_ref = std::vector<cfloat>(signal.size());
     signal.copy_to(signal_ref.data(), signal_ref.size());
+
+    benchmark_method(
+        "naive",
+        SimulateSignalMethod::Naive,
+        context,
+        echos,
+        coil_sensitivities,
+        parameters,
+        trajectory,
+        signal_ref);
 
     benchmark_method(
         "direct",
