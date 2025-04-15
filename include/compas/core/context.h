@@ -102,7 +102,11 @@ struct CompasContext {
 
 inline CompasContext make_context(int device = 0) {
     auto config = kmm::default_config_from_environment();
+
+    // TODO: Use caching pools for host and device until segfaults are fixed
+    config.host_memory_kind = kmm::HostMemoryKind::NoPool;
     config.device_memory_kind = kmm::DeviceMemoryKind::NoPool;
+
     return {kmm::make_runtime(config), kmm::DeviceId(device)};
 }
 
