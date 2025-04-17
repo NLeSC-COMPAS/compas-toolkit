@@ -1,5 +1,6 @@
 #pragma once
 #include "kmm/core/view.hpp"
+#include "kmm/utils/geometry.hpp"
 
 namespace compas {
 

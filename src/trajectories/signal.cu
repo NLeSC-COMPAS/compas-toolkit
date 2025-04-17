@@ -66,11 +66,11 @@ void magnetization_to_signal_cartesian_direct(
     //    const uint readouts_per_thread = 1;
     //    const uint coils_per_thread = 4;
 
-    const uint block_size_x = 32;
-    const uint block_size_y = 8;
-    const uint threads_cooperative = 32;
-    const uint samples_per_thread = 1;
-    const uint readouts_per_thread = 1;
+    const uint block_size_x = 16;
+    const uint block_size_y = 4;
+    const uint threads_cooperative = 16;
+    const uint samples_per_thread = 4;
+    const uint readouts_per_thread = 4;
     const uint coils_per_thread = 1;
 
     block_dim = {block_size_x, block_size_y};
@@ -88,11 +88,15 @@ void magnetization_to_signal_cartesian_direct(
         samples_per_thread,
         readouts_per_thread,
         coils_per_thread><<<grid_dim, block_dim, 0, context>>>(
-        voxels,
-        signal,
-        sample_decay,
-        readout_echos,
-        coil_sensitivities);
+        voxel_begin,
+        nvoxels,
+        ncoils,
+        nreadouts,
+        samples_per_readout,
+        signal.data_at(0, 0, 0),
+        sample_decay.data_at(0, voxel_begin),
+        readout_echos.data_at(0, voxel_begin),
+        coil_sensitivities.data_at(0, voxel_begin));
 
     COMPAS_GPU_CHECK(gpuGetLastError());
     context.synchronize();

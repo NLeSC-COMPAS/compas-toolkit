@@ -1,6 +1,8 @@
 #pragma once
 
 #include "compas/core/view.h"
+#include "compas/core/utils.h"
+#include "compas/core/complex_type.h"
 #include "compas/trajectories/cartesian_view.cuh"
 #include "compas/trajectories/spiral_view.cuh"
 
@@ -15,8 +17,8 @@ __global__ void prepare_readout_echos(
     GPUSubview<cfloat, 2> echos,
     TissueParametersView parameters,
     TrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + voxels.begin);
-    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + readouts.begin);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x) + voxels.begin;
+    auto readout = index_t(blockIdx.y * blockDim.y + threadIdx.y) + readouts.begin;
 
     if (voxel < voxels.end && readout < readouts.end) {
         auto m = echos[readout][voxel];
@@ -90,8 +92,8 @@ COMPAS_DEVICE void reduce_signal_cooperative(
     static_assert(is_power_of_two(threads_cooperative) && threads_cooperative <= 32);
 
 #pragma unroll 6
-    for (uint delta = threads_cooperative / 2; delta > 0; delta /= 2) {
-        static constexpr uint mask = uint((1L << threads_cooperative) - 1);
+    for (unsigned int delta = threads_cooperative / 2; delta > 0; delta /= 2) {
+        static constexpr unsigned int mask = (1L << threads_cooperative) - 1;
 
         value.re += __shfl_down_sync(mask, value.re, delta, threads_cooperative);
         value.im += __shfl_down_sync(mask, value.im, delta, threads_cooperative);
@@ -145,17 +147,22 @@ template<
     int coil_tiling_factor,
     int blocks_per_sm = 1>
 __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_cartesian(
-    kmm::Range<index_t> voxels,
-    GPUViewMut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
-    GPUSubview<cfloat, 2> sample_decay,  // [num_samples num_voxels]
-    GPUSubview<cfloat, 2> readout_echos,  // [num_readouts num_voxels]
-    GPUSubview<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
+    int voxel_begin,
+    int num_voxels,
+    int num_coils,
+    int num_readouts,
+    int num_samples,
+    cfloat* signal_ptr,  // [num_coils num_readouts num_samples]
+    const cfloat* sample_decay_ptr,  // [num_samples num_voxels]
+    const cfloat* readout_echos_ptr,  // [num_readouts num_voxels]
+    const cfloat* coil_sensitivities_ptr  // [num_coils num_voxels]
 ) {
     static_assert(threads_per_block % threads_cooperative == 0);
 
-    auto num_coils = signal.size(0);
-    auto num_readouts = signal.size(1);
-    auto num_samples = signal.size(2);
+    GPUViewMut<cfloat, 3> signal = {signal_ptr, {{num_coils, num_readouts, num_samples}}};
+    GPUSubview<cfloat, 2> sample_decay = {sample_decay_ptr, {{num_samples, num_voxels}}};
+    GPUSubview<cfloat, 2> readout_echos = {readout_echos_ptr, {{num_readouts, num_voxels}}};
+    GPUSubview<cfloat, 2> coil_sensitivities = {coil_sensitivities_ptr, {{num_coils, num_voxels}}};
 
     auto lane = index_t(threadIdx.x % threads_cooperative);
     auto sample_start = index_t((blockIdx.x * blockDim.x + threadIdx.x) / threads_cooperative)
@@ -164,7 +171,7 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
     auto coil_start = index_t(blockIdx.z * blockDim.z + threadIdx.z) * coil_tiling_factor;
 
     // If the start indices are out of bounds, we exit immediately
-    if (!signal.in_bounds({coil_start, readout_start, sample_start})) {
+    if (!signal.in_bounds(coil_start, readout_start, sample_start)) {
         return;
     }
 
@@ -180,10 +187,12 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
         }
     }
 
-    for (index_t voxel = voxels.begin + lane; voxel < voxels.end; voxel += threads_cooperative) {
+    for (index_t v = lane; v < num_voxels; v += threads_cooperative) {
         cfloat local_readouts[readout_tiling_factor];
         cfloat local_samples[sample_tiling_factor];
         cfloat local_coils[coil_tiling_factor];
+
+        int voxel = voxel_begin + v;
 
 #pragma unroll
         for (int r = 0; r < readout_tiling_factor; r++) {

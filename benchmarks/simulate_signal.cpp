@@ -64,7 +64,7 @@ static void benchmark_method(
 int main() {
     auto context = make_context();
 
-    int ncoils = 4;
+    int ncoils = 1;
     int nvoxels = 256 * 256;
     int nreadouts = 256;
     int samples_per_readout = 256;
