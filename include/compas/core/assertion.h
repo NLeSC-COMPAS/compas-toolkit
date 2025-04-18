@@ -6,9 +6,9 @@
 namespace compas {
 
 [[noreturn]] __device__ __noinline__ void
-panic(const char* message, const char* file, const int line, const char* func) {
+raise_error(const char* message, const char* file, const int line, const char* func) {
     printf(
-        "[GPU thread (%d, %d, %d)(%d, %d, %d)] panic occured: (%s:%d:%s): %s\n",
+        "[GPU thread (%d, %d, %d)(%d, %d, %d)] COMPAS error: (%s:%d:%s): %s\n",
         blockIdx.x,
         blockIdx.y,
         blockIdx.z,
@@ -36,30 +36,30 @@ struct CompasException: std::runtime_error {
 };
 
 [[noreturn]] inline void
-panic(const char* message, const char* file, const int line, const char* func) {
+raise_error(const char* message, const char* file, const int line, const char* func) {
     std::stringstream ss;
-    ss << "panic occurred (" << file << ":" << line << ":" << func << "): " << message;
+    ss << "COMPAS error occurred (" << file << ":" << line << ":" << func << "): " << message;
     throw CompasException(ss.str());
 }
 }  // namespace compas
 #endif
 
-#define COMPAS_PANIC(message)                                   \
-    do {                                                        \
-        ::compas::panic(message, __FILE__, __LINE__, __func__); \
-        while (1) {                                             \
-        }                                                       \
+#define COMPAS_ERROR(message)                                         \
+    do {                                                              \
+        ::compas::raise_error(message, __FILE__, __LINE__, __func__); \
+        while (1) {                                                   \
+        }                                                             \
     } while (0)
 
-#define COMPAS_ASSERT(...)                                   \
+#define COMPAS_CHECK(...)                                    \
     do {                                                     \
         if (!(__VA_ARGS__)) {                                \
-            COMPAS_PANIC("assertion failed: " #__VA_ARGS__); \
+            COMPAS_ERROR("assertion failed: " #__VA_ARGS__); \
         }                                                    \
     } while (0)
 
 #ifdef NDEBUG
     #define COMPAS_DEBUG_ASSERT(...) COMPAS_ASSUME((__VA_ARGS__))
 #else
-    #define COMPAS_DEBUG_ASSERT(...) COMPAS_ASSERT((__VA_ARGS__))
+    #define COMPAS_DEBUG_ASSERT(...) COMPAS_CHECK((__VA_ARGS__))
 #endif

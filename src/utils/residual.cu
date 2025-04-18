@@ -10,7 +10,7 @@ Array<cfloat, 3> compute_residual(
     Array<cfloat, 3> lhs,
     Array<cfloat, 3> rhs,
     float* objective_out) {
-    COMPAS_ASSERT(lhs.shape() == rhs.shape());
+    COMPAS_CHECK(lhs.shape() == rhs.shape());
     auto n = kmm::checked_cast<int>(lhs.size());
     auto d = lhs.shape();
 

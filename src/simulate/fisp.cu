@@ -13,12 +13,12 @@ void simulate_fisp_sequence_for_size(
     FISPSequenceView sequence) {
     int nreadouts = int(sequence.RF_train.size()) * sequence.undersampling_factor;
 
-    COMPAS_ASSERT(is_power_of_two(warp_size) && warp_size <= 32);
-    COMPAS_ASSERT(sequence.max_state <= max_N);
-    COMPAS_ASSERT(sequence.sliceprofiles.size(1) == sequence.RF_train.size());
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.begin(1) == voxels.begin);
-    COMPAS_ASSERT(echos.end(1) == voxels.end);
+    COMPAS_CHECK(is_power_of_two(warp_size) && warp_size <= 32);
+    COMPAS_CHECK(sequence.max_state <= max_N);
+    COMPAS_CHECK(sequence.sliceprofiles.size(1) == sequence.RF_train.size());
+    COMPAS_CHECK(echos.size(0) == nreadouts);
+    COMPAS_CHECK(echos.begin(1) == voxels.begin);
+    COMPAS_CHECK(echos.end(1) == voxels.end);
 
     context.fill(echos.data(), echos.size(), cfloat(0));
 
@@ -58,7 +58,7 @@ void simulate_magnetization_kernel(
     } else if (sequence.max_state <= 128) {
         simulate_fisp_sequence_for_size<128, 32>(context, voxels, echos, parameters, sequence);
     } else {
-        COMPAS_PANIC("max_state cannot exceed 128");
+        COMPAS_ERROR("max_state cannot exceed 128");
     }
 }
 

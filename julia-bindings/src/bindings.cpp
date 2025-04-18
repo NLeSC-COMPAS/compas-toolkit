@@ -52,7 +52,7 @@ extern "C" const kmm::ArrayBase* compas_make_array_float(
             return new kmm::Array<float, 3>(
                 context->allocate(data_ptr, sizes[0], sizes[1], sizes[2]));
         } else {
-            COMPAS_PANIC("cannot support rank > 3");
+            COMPAS_ERROR("cannot support rank > 3");
         }
     });
 }
@@ -81,7 +81,7 @@ extern "C" const kmm::ArrayBase* compas_make_array_complex(
         } else if (rank == 3) {
             return new_object(context->allocate(data_ptr, sizes[0], sizes[1], sizes[2]));
         } else {
-            COMPAS_PANIC("cannot support rank > 3");
+            COMPAS_ERROR("cannot support rank > 3");
         }
     });
 }

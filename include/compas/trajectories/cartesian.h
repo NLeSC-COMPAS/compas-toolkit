@@ -47,7 +47,7 @@ inline CartesianTrajectory make_cartesian_trajectory(
     float delta_t,
     HostView<cfloat> k_start,
     cfloat delta_k) {
-    COMPAS_ASSERT(k_start.size() == nreadouts);
+    COMPAS_CHECK(k_start.size() == nreadouts);
 
     return CartesianTrajectory {
         nreadouts,

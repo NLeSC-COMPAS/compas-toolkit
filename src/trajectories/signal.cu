@@ -26,16 +26,16 @@ void magnetization_to_signal_cartesian_direct(
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
 
-    COMPAS_ASSERT(coil_sensitivities.begin(1) <= voxel_begin);
-    COMPAS_ASSERT(coil_sensitivities.end(1) >= voxel_end);
+    COMPAS_CHECK(coil_sensitivities.begin(1) <= voxel_begin);
+    COMPAS_CHECK(coil_sensitivities.end(1) >= voxel_end);
 
-    COMPAS_ASSERT(signal.size(0) == ncoils);
-    COMPAS_ASSERT(signal.size(1) == nreadouts);
-    COMPAS_ASSERT(signal.size(2) == samples_per_readout);
+    COMPAS_CHECK(signal.size(0) == ncoils);
+    COMPAS_CHECK(signal.size(1) == nreadouts);
+    COMPAS_CHECK(signal.size(2) == samples_per_readout);
 
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.begin(1) <= voxel_begin);
-    COMPAS_ASSERT(echos.end(1) >= voxel_end);
+    COMPAS_CHECK(echos.size(0) == nreadouts);
+    COMPAS_CHECK(echos.begin(1) <= voxel_begin);
+    COMPAS_CHECK(echos.end(1) >= voxel_end);
 
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
@@ -118,14 +118,14 @@ void magnetization_to_signal_cartesian_gemm(
     int nvoxels = voxels.size();
     int samples_per_readout = trajectory.samples_per_readout;
 
-    COMPAS_ASSERT(coil_sensitivities.size(1) == voxels.size());
+    COMPAS_CHECK(coil_sensitivities.size(1) == voxels.size());
 
-    COMPAS_ASSERT(signal.size(0) == ncoils);
-    COMPAS_ASSERT(signal.size(1) == nreadouts);
-    COMPAS_ASSERT(signal.size(2) == samples_per_readout);
+    COMPAS_CHECK(signal.size(0) == ncoils);
+    COMPAS_CHECK(signal.size(1) == nreadouts);
+    COMPAS_CHECK(signal.size(2) == samples_per_readout);
 
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.size(1) == nvoxels);
+    COMPAS_CHECK(echos.size(0) == nreadouts);
+    COMPAS_CHECK(echos.size(1) == nvoxels);
 
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
@@ -198,14 +198,14 @@ void magnetization_to_signal_spiral(
     int nreadouts = trajectory.nreadouts;
     int samples_per_readout = trajectory.samples_per_readout;
 
-    COMPAS_ASSERT(coil_sensitivities.size(1) == voxels.size());
+    COMPAS_CHECK(coil_sensitivities.size(1) == voxels.size());
 
-    COMPAS_ASSERT(signal.size(0) == ncoils);
-    COMPAS_ASSERT(signal.size(1) == nreadouts);
-    COMPAS_ASSERT(signal.size(2) == samples_per_readout);
+    COMPAS_CHECK(signal.size(0) == ncoils);
+    COMPAS_CHECK(signal.size(1) == nreadouts);
+    COMPAS_CHECK(signal.size(2) == samples_per_readout);
 
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.size(1) == voxels.size());
+    COMPAS_CHECK(echos.size(0) == nreadouts);
+    COMPAS_CHECK(echos.size(1) == voxels.size());
 
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {
@@ -268,7 +268,7 @@ cublasComputeType_t cublas_compute_type_from_simulate_method(SimulateSignalMetho
         case SimulateSignalMethod::MatmulTF32:
             return CUBLAS_COMPUTE_32F_FAST_TF32;
         default:
-            COMPAS_PANIC("invalid value for `SimulateSignalMethod`");
+            COMPAS_ERROR("invalid value for `SimulateSignalMethod`");
     }
 }
 
@@ -346,7 +346,7 @@ Array<cfloat, 3> magnetization_to_signal(
             write(temp_exponents),
             write(temp_factors));
     } else {
-        COMPAS_PANIC("invalid trajectory type");
+        COMPAS_ERROR("invalid trajectory type");
     }
 
     return signal;

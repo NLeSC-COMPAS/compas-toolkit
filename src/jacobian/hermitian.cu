@@ -75,17 +75,17 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     int nvoxels = parameters.nvoxels;
     int chunk_size = parameters.chunk_size;
 
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.size(1) == nvoxels);
-    COMPAS_ASSERT(delta_echos_T1.size(0) == nreadouts);
-    COMPAS_ASSERT(delta_echos_T1.size(1) == nvoxels);
-    COMPAS_ASSERT(delta_echos_T2.size(0) == nreadouts);
-    COMPAS_ASSERT(delta_echos_T2.size(1) == nvoxels);
-    COMPAS_ASSERT(coil_sensitivities.size(0) == ncoils);
-    COMPAS_ASSERT(coil_sensitivities.size(1) == nvoxels);
-    COMPAS_ASSERT(vector.size(0) == ncoils);
-    COMPAS_ASSERT(vector.size(1) == nreadouts);
-    COMPAS_ASSERT(vector.size(2) == ns);
+    COMPAS_CHECK(echos.size(0) == nreadouts);
+    COMPAS_CHECK(echos.size(1) == nvoxels);
+    COMPAS_CHECK(delta_echos_T1.size(0) == nreadouts);
+    COMPAS_CHECK(delta_echos_T1.size(1) == nvoxels);
+    COMPAS_CHECK(delta_echos_T2.size(0) == nreadouts);
+    COMPAS_CHECK(delta_echos_T2.size(1) == nvoxels);
+    COMPAS_CHECK(coil_sensitivities.size(0) == ncoils);
+    COMPAS_CHECK(coil_sensitivities.size(1) == nvoxels);
+    COMPAS_CHECK(vector.size(0) == ncoils);
+    COMPAS_CHECK(vector.size(1) == nreadouts);
+    COMPAS_CHECK(vector.size(2) == ns);
 
     // four reconstruction parameters: T1, T2, rho_x, rho_y
     auto JHv = Array<cfloat, 2> {{4, nvoxels}};

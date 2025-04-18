@@ -59,7 +59,7 @@ inline pSSFPSequence make_pssfp_sequence(
     RepetitionData dt,
     RepetitionData gamma_dt_GRz,
     View<float> z) {
-    COMPAS_ASSERT(RF_train.size() > 0);
+    COMPAS_CHECK(RF_train.size() > 0);
 
     return {
         context.allocate(RF_train),

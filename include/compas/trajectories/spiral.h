@@ -45,8 +45,8 @@ inline SpiralTrajectory make_spiral_trajectory(
     float delta_t,
     View<cfloat> k_start,
     View<cfloat> delta_k) {
-    COMPAS_ASSERT(k_start.size() == nreadouts);
-    COMPAS_ASSERT(delta_k.size() == nreadouts);
+    COMPAS_CHECK(k_start.size() == nreadouts);
+    COMPAS_CHECK(delta_k.size() == nreadouts);
 
     return SpiralTrajectory {
         nreadouts,

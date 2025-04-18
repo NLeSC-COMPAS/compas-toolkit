@@ -15,8 +15,8 @@ int simulate_pssfp_sequence_batch(
     int nreadouts = sequence.nTR;
     int nz = kmm::checked_cast<int>(sequence.z.size());
 
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.size(1) == nvoxels);
+    COMPAS_CHECK(echos.size(0) == nreadouts);
+    COMPAS_CHECK(echos.size(1) == nvoxels);
 
     dim3 block_size = 256;
     dim3 grid_size = div_ceil(uint(nvoxels * batch_size), block_size.x);
@@ -65,7 +65,7 @@ void simulate_magnetization_kernel(
     offset =
         simulate_pssfp_sequence_batch<1>(context, nvoxels, offset, echos, parameters, sequence);
 
-    COMPAS_ASSERT(offset == sequence.z.size());
+    COMPAS_CHECK(offset == sequence.z.size());
 }
 
 Array<cfloat, 2> simulate_magnetization(

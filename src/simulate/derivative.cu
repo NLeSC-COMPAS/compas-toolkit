@@ -22,11 +22,11 @@ void simulate_magnetization_derivative_impl(
     auto nvoxels = range.x.size();
     auto nreadouts = range.y.size();
 
-    COMPAS_ASSERT(echos.begin(0) == range.y.begin);
-    COMPAS_ASSERT(echos.end(0) == range.y.end);
-    COMPAS_ASSERT(echos.begin(1) == range.x.begin);
-    COMPAS_ASSERT(echos.end(1) == range.x.end);
-    COMPAS_ASSERT(field >= 0 && field < TissueParameterField::NUM_FIELDS);
+    COMPAS_CHECK(echos.begin(0) == range.y.begin);
+    COMPAS_CHECK(echos.end(0) == range.y.end);
+    COMPAS_CHECK(echos.begin(1) == range.x.begin);
+    COMPAS_CHECK(echos.end(1) == range.x.end);
+    COMPAS_CHECK(field >= 0 && field < TissueParameterField::NUM_FIELDS);
 
     dim3 block_size = 256;
     dim3 num_blocks = div_ceil(uint(nvoxels), block_size.x);
@@ -60,8 +60,8 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     auto nreadouts = sequence.RF_train.size();
     auto chunk_size = parameters.chunk_size;
 
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.size(1) == nvoxels);
+    COMPAS_CHECK(echos.size(0) == nreadouts);
+    COMPAS_CHECK(echos.size(1) == nvoxels);
 
     auto new_parameters = Array<float, 2> {parameters.data.shape()};
     auto delta_echos = Array<cfloat, 2> {echos.shape()};
@@ -94,8 +94,8 @@ Array<cfloat, 2> simulate_magnetization_derivative(
     auto nreadouts = sequence.RF_train.size() * sequence.undersampling_factor;
     auto chunk_size = parameters.chunk_size;
 
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.size(1) == nvoxels);
+    COMPAS_CHECK(echos.size(0) == nreadouts);
+    COMPAS_CHECK(echos.size(1) == nvoxels);
 
     auto new_parameters = Array<float, 2> {parameters.data.shape()};
     auto delta_echos = Array<cfloat, 2> {echos.shape()};
