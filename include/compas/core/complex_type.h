@@ -142,6 +142,18 @@ COMPAS_HOST_DEVICE complex_type<T> pow(const T& a, const complex_type<T>& b) {
 }
 
 template<typename T>
+COMPAS_HOST_DEVICE complex_type<T>
+fma(const complex_type<T>& a, const complex_type<T>& b, const complex_type<T>& c) {
+    return {c.re + a.re * b.re - a.im * b.im, c.im + a.re * b.im + a.im * b.re};
+}
+
+template<>
+COMPAS_HOST_DEVICE complex_type<float>
+fma(const complex_type<float>& a, const complex_type<float>& b, const complex_type<float>& c) {
+    return {fmaf(a.re, b.re, fmaf(-a.im, b.im, c.re)), fmaf(a.re, b.im, fmaf(a.im, b.re, c.im))};
+}
+
+template<typename T>
 COMPAS_HOST_DEVICE complex_type<T> operator+(const complex_type<T>& a) {
     return a;
 }

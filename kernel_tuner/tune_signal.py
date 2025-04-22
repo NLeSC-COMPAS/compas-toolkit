@@ -8,16 +8,28 @@ from common import *
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__)) + "/../"
 
 def main():
+    N, K = 244, 5
     parser = argparse.ArgumentParser(description="Tune the simulate_signal kernel.")
     parser.add_argument("--cache", type=str, help="The cache name", default=None)
     parser.add_argument("--strategy", type=str, help="The strategy name", default=None)
+    parser.add_argument("--coils", type=int, help="The number of coils", default=1)
+    parser.add_argument("--voxels", type=int, help="The number of voxels", default=N * N)
+    parser.add_argument("--readouts", type=int, help="The number of readouts", default=N)
+    parser.add_argument("--samples", type=int, help="The number of samples per readout", default=N * K)
     cli_args = parser.parse_args()
 
-    N, K = 244, 5
-    nvoxels = np.int32(N * N)
-    nreadouts = np.int32(N * K)
-    nsamples_per_readout = np.int32(N)
-    ncoils = np.int32(1)
+    nvoxels = np.int32(cli_args.voxels)
+    nreadouts = np.int32(cli_args.readouts)
+    nsamples_per_readout = np.int32(cli_args.samples)
+    ncoils = np.int32(cli_args.coils)
+
+    print("parameters:")
+    print(" - voxels:", nvoxels)
+    print(" - readouts:", nreadouts)
+    print(" - samples per readout:", nsamples_per_readout)
+    print(" - coils:", ncoils)
+    print(" - cache:", cli_args.cache or "no")
+    print("")
 
     signal = random_complex(ncoils, nreadouts, nsamples_per_readout)
     sample_decay = random_complex(nsamples_per_readout, nvoxels)
@@ -64,8 +76,8 @@ def main():
     tune_params["BLOCK_SIZE_Y"] = [1, 2, 4, 8, 16]
     tune_params["BLOCK_SIZE_Z"] = [1, 2, 4]
     tune_params["THREADS_PER_VOXEL"] = [1, 2, 4, 8, 16, 32]
-    tune_params["SAMPLES_PER_THREAD"] = [1, 2, 3, 4]
-    tune_params["READOUTS_PER_THREAD"] = [1, 2, 3, 4]
+    tune_params["SAMPLES_PER_THREAD"] = [1, 2, 3, 4, 5, 6]
+    tune_params["READOUTS_PER_THREAD"] = [1, 2, 3, 4, 5, 6]
     tune_params["COILS_PER_THREAD"] = [1, 2, 3, 4]
     tune_params["BLOCKS_PER_SM"] = [4, 8, 12, 16]
 
@@ -73,7 +85,7 @@ def main():
         "BLOCK_SIZE_X * BLOCK_SIZE_Y >= 64",
         "BLOCK_SIZE_X * BLOCK_SIZE_Y <= 1024",
         "BLOCK_SIZE_X >= THREADS_PER_VOXEL",
-        "SAMPLES_PER_THREAD * READOUTS_PER_THREAD * COILS_PER_THREAD <= 16",
+        "SAMPLES_PER_THREAD * READOUTS_PER_THREAD * COILS_PER_THREAD <= 32",
         "BLOCK_SIZE_X * BLOCK_SIZE_Y * BLOCK_SIZE_Z * BLOCKS_PER_SM <= 2048",
     ]
 

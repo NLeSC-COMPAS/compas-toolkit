@@ -65,9 +65,9 @@ int main() {
     auto context = make_context();
 
     int ncoils = 1;
-    int nvoxels = 256 * 256;
-    int nreadouts = 256;
-    int samples_per_readout = 256;
+    int nvoxels = 50176;
+    int nreadouts = 1120;
+    int samples_per_readout = 224;
 
     auto h_echos = std::vector<cfloat>(nreadouts * nvoxels);
     for (int i = 0; i < nreadouts * nvoxels; i++) {

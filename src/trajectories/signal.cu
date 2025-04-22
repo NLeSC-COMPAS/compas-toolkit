@@ -66,11 +66,11 @@ void magnetization_to_signal_cartesian_direct(
     //    const uint readouts_per_thread = 1;
     //    const uint coils_per_thread = 4;
 
-    const uint block_size_x = 16;
+    const uint block_size_x = 64;
     const uint block_size_y = 4;
     const uint threads_cooperative = 16;
     const uint samples_per_thread = 4;
-    const uint readouts_per_thread = 4;
+    const uint readouts_per_thread = 6;
     const uint coils_per_thread = 1;
 
     block_dim = {block_size_x, block_size_y};
