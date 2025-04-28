@@ -3,6 +3,7 @@
 #include <random>
 
 #include "common.hpp"
+#include "compas/jacobian/product.h"
 #include "compas/trajectories/cartesian.h"
 #include "compas/trajectories/signal.h"
 
@@ -10,24 +11,30 @@ using namespace compas;
 
 static void benchmark_method(
     std::string name,
-    SimulateSignalMethod method,
+    JacobianComputeMethod kind,
     const CompasContext& context,
     Array<cfloat, 2> echos,
-    Array<cfloat, 2> coil_sensitivities,
+    Array<cfloat, 2> delta_echos_T1,
+    Array<cfloat, 2> delta_echos_T2,
     TissueParameters parameters,
     CartesianTrajectory trajectory,
-    const std::vector<cfloat>& signal_ref) {
-    Array<cfloat, 3> signal;
+    Array<cfloat, 2> coil_sensitivities,
+    Array<cfloat, 2> vector,
+    const std::vector<cfloat>& expected_Jv) {
+    Array<cfloat, 3> Jv;
     context.synchronize();
 
     auto [duration, runs] = benchmark([&] {
-        signal = compas::magnetization_to_signal(
+        Jv = compute_jacobian(
             context,
             echos,
+            delta_echos_T1,
+            delta_echos_T2,
             parameters,
             trajectory,
             coil_sensitivities,
-            method);
+            vector,
+            kind);
 
         context.synchronize();
     });
@@ -37,7 +44,7 @@ static void benchmark_method(
     std::cout << "benchmark: " << name << "\n";
     std::cout << "iterations: " << runs << "\n";
     std::cout << "time: " << duration << " milliseconds\n";
-    compare_output(signal_ref, signal.copy_to_vector());
+    compare_output(expected_Jv, Jv.copy_to_vector());
     std::cout << "\n";
 }
 
@@ -50,6 +57,9 @@ int main() {
     int samples_per_readout = 224;
 
     auto echos = generate_random_complex(context, nreadouts, nvoxels);
+    auto delta_echos_T1 = generate_random_complex(context, nreadouts, nvoxels);
+    auto delta_echos_T2 = generate_random_complex(context, nreadouts, nvoxels);
+    auto vector = generate_random_complex(context, 4, nvoxels);
     auto coil_sensitivities = generate_random_complex(context, ncoils, nvoxels);
     TissueParameters parameters = generate_tissue_parameters(context, nvoxels);
 
@@ -65,75 +75,70 @@ int main() {
         compas::View<cfloat> {k_start.data(), {{nreadouts}}},
         delta_k);
 
-    auto signal = compas::magnetization_to_signal(
+    auto Jv = compas::compute_jacobian(
         context,
         echos,
+        delta_echos_T1,
+        delta_echos_T2,
         parameters,
         trajectory,
         coil_sensitivities,
-        SimulateSignalMethod::Naive);
+        vector,
+        JacobianComputeMethod::Naive);
 
-    auto signal_ref = signal.copy_to_vector();
+    auto Jv_ref = Jv.copy_to_vector();
 
     benchmark_method(
         "naive",
-        SimulateSignalMethod::Naive,
+        JacobianComputeMethod::Naive,
         context,
         echos,
-        coil_sensitivities,
+        delta_echos_T1,
+        delta_echos_T2,
         parameters,
         trajectory,
-        signal_ref);
+        coil_sensitivities,
+        vector,
+        Jv_ref);
 
     benchmark_method(
         "direct",
-        SimulateSignalMethod::Direct,
+        JacobianComputeMethod::Direct,
         context,
         echos,
-        coil_sensitivities,
+        delta_echos_T1,
+        delta_echos_T2,
         parameters,
         trajectory,
-        signal_ref);
+        coil_sensitivities,
+        vector,
+        Jv_ref);
 
     benchmark_method(
-        "matmul (pedantic)",
-        SimulateSignalMethod::MatmulPedantic,
+        "matmul",
+        JacobianComputeMethod::Gemm,
         context,
         echos,
-        coil_sensitivities,
+        delta_echos_T1,
+        delta_echos_T2,
         parameters,
         trajectory,
-        signal_ref);
+        coil_sensitivities,
+        vector,
+        Jv_ref);
 
     benchmark_method(
-        "matmul (regular)",
-        SimulateSignalMethod::Matmul,
+        "matmul (low precision)",
+        JacobianComputeMethod::GemmLow,
         context,
         echos,
-        coil_sensitivities,
+        delta_echos_T1,
+        delta_echos_T2,
         parameters,
         trajectory,
-        signal_ref);
-
-    benchmark_method(
-        "matmul (TF32)",
-        SimulateSignalMethod::MatmulTF32,
-        context,
-        echos,
         coil_sensitivities,
-        parameters,
-        trajectory,
-        signal_ref);
-
-    benchmark_method(
-        "matmul (BF16)",
-        SimulateSignalMethod::MatmulBF16,
-        context,
-        echos,
-        coil_sensitivities,
-        parameters,
-        trajectory,
-        signal_ref);
+        vector,
+        Jv_ref);
 
     return 0;
 }

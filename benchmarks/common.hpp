@@ -65,3 +65,70 @@ static compas::TissueParameters generate_tissue_parameters(const compas::CompasC
 
     return parameters;
 }
+
+template <typename T, typename F>
+compas::Array<T, 2> generate_input(
+        compas::CompasContext& context,
+        F generator,
+        int height,
+        int width
+) {
+    std::vector<T> h_data(height * width);
+
+    for (int64_t i = 0; i < height; i++) {
+        for (int64_t j = 0; j < width; j++) {
+            h_data[i * width + j] = generator(i, j);
+        }
+    }
+
+    return context.allocate(h_data.data(), height, width);
+}
+
+static compas::Array<compas::cfloat, 2> generate_random_complex(
+        compas::CompasContext& context,
+        int height,
+        int width
+) {
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+
+    return generate_input<compas::cfloat>(
+            context,
+            [&](int i, int j) {
+                return compas::polar(
+                    dist(gen),
+                    dist(gen) * 2.0f * float(M_PI)
+                );
+            },
+            height,
+            width
+    );
+}
+
+template <typename T>
+static void compare_output(
+        const std::vector<T>& expected,
+        const std::vector<T>& answer
+) {
+    double max_abs_error = 0;
+    double max_rel_error = 0;
+    double total_abs_error = 0;
+    double total_rel_error = 0;
+
+    for (size_t i = 0; i < expected.size(); i++) {
+        double abs_error = abs((answer[i] - expected[i]));
+        double rel_error = abs_error / std::max(1e-10f, abs(expected[i]));
+
+        max_abs_error = std::max(max_abs_error, abs_error);
+        max_rel_error = std::max(max_rel_error, rel_error);
+
+        total_abs_error += abs_error;
+        total_rel_error += rel_error;
+    }
+
+    std::cout << "average absolute error: " << (total_abs_error / expected.size()) << "\n";
+    std::cout << "average relative error: " << (total_rel_error / expected.size()) << "\n";
+    std::cout << "maximum absolute error: " << max_abs_error << "\n";
+    std::cout << "maximum relative error: " << max_rel_error << "\n";
+}

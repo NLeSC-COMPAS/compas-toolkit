@@ -7,6 +7,8 @@
 
 namespace compas {
 
+enum struct JacobianComputeMethod { Naive, Direct, Gemm, GemmLow };
+
 /**
  * Computes the product of the Jacobian matrix with the given vector.
  *
@@ -28,6 +30,7 @@ Array<cfloat, 3> compute_jacobian(
     TissueParameters parameters,
     CartesianTrajectory trajectory,
     Array<cfloat, 2> coil_sensitivities,
-    Array<cfloat, 2> vector);
+    Array<cfloat, 2> vector,
+    JacobianComputeMethod kind = JacobianComputeMethod::Direct);
 
 }  // namespace compas

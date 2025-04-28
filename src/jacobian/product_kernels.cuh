@@ -4,6 +4,68 @@
 namespace compas {
 namespace kernels {
 
+static __global__ void jacobian_product_naive(
+    kmm::Range<int> voxels,
+    int icoil,
+    int nreadouts,
+    int ns,
+    GPUSubviewMut<cfloat, 3> Jv,
+    GPUSubview<cfloat, 2> echos,
+    GPUSubview<cfloat, 2> delta_echos_T1,
+    GPUSubview<cfloat, 2> delta_echos_T2,
+    TissueParametersView parameters,
+    CartesianTrajectoryView trajectory,
+    GPUSubview<cfloat, 2> coil_sensitivities,
+    GPUSubview<cfloat, 2> vector) {
+    index_t voxel_begin = index_t(voxels.begin);
+    index_t voxel_end = index_t(voxels.end);
+    index_t s = index_t(blockIdx.x * blockDim.x + threadIdx.x);
+    index_t r = index_t(blockIdx.y * blockDim.y + threadIdx.y);
+
+    if (s >= ns || r >= nreadouts) {
+        return;
+    }
+
+    cfloat result = 0;
+
+    for (index_t voxel = voxel_begin; voxel < voxel_end; voxel++) {
+        TissueVoxel p = parameters.get(voxel);
+
+        // Read in constants
+        auto R2 = 1.0f / p.T2;
+        auto ns = trajectory.samples_per_readout;
+        auto delta_t = trajectory.delta_t;
+        auto delta_k0 = trajectory.delta_k;
+        auto x = p.x;
+        auto y = p.y;
+
+        // There are ns samples per readout, echo time is assumed to occur
+        // at index (ns/2)+1. Now compute sample index relative to the echo time
+        float sample = float(s) - 0.5f * float(ns);
+
+        // Apply readout gradient, T₂ decay and B₀ rotation
+        auto Theta = delta_k0.re * x + delta_k0.im * y;
+        Theta += delta_t * float(2 * M_PI) * p.B0;
+
+        cfloat Es = exp(sample * cfloat(-delta_t * R2, Theta));
+        cfloat dEsdT2 = (sample * delta_t) * R2 * R2 * Es;
+
+        auto me = echos[r][voxel];
+        auto dme = vec2<cfloat> {delta_echos_T1[r][voxel], delta_echos_T2[r][voxel]};
+
+        auto prod =  //
+            vector[0][voxel] * Es * p.T1 * p.rho * dme[0] +  //
+            vector[1][voxel] * (Es * dme[1] + dEsdT2 * me) * p.T2 * p.rho +  //
+            vector[2][voxel] * Es * me +  //
+            vector[3][voxel] * Es * cfloat(0, 1) * me;  //
+
+        auto C = coil_sensitivities[icoil][voxel];
+        result += prod * C;
+    }
+
+    Jv[icoil][r][s] = result;
+}
+
 static __global__ void compute_sample_decay(
     kmm::Bounds<2, int> range,
     GPUSubviewMut<cfloat, 2> E,
@@ -69,6 +131,39 @@ static __global__ void compute_adjoint_sources(
         vector[3][voxel] * cfloat(0, 1) * me;
 
     adj_decay[readout][voxel] = vector[1][voxel] * p.T2 * p.rho * me;
+}
+
+static __global__ void compute_adjoint_sources_with_coil(
+    kmm::Bounds<2, int> range,
+    GPUSubviewMut<cfloat, 2> adj_phase,
+    GPUSubviewMut<cfloat, 2> adj_decay,
+    int icoil,
+    GPUSubview<cfloat, 2> coil_sensitivities,
+    GPUSubview<cfloat, 2> echos,
+    GPUSubview<cfloat, 2> delta_echos_T1,
+    GPUSubview<cfloat, 2> delta_echos_T2,
+    GPUSubview<cfloat, 2> vector,
+    TissueParametersView parameters) {
+    index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
+    index_t readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.y.begin);
+
+    if (!range.contains(voxel, readout)) {
+        return;
+    }
+
+    auto p = parameters.get(voxel);
+    auto me = echos[readout][voxel];
+    auto dme = vec2<cfloat> {delta_echos_T1[readout][voxel], delta_echos_T2[readout][voxel]};
+    auto C = coil_sensitivities[icoil][voxel];
+
+    auto phase =  //
+        vector[0][voxel] * p.T1 * p.rho * dme[0] +  //
+        vector[1][voxel] * p.T2 * p.rho * dme[1] +  //
+        vector[2][voxel] * me +  //
+        vector[3][voxel] * cfloat(0, 1) * me;
+
+    adj_phase[readout][voxel] = C * phase;
+    adj_decay[readout][voxel] = C * vector[1][voxel] * p.T2 * p.rho * me;
 }
 
 template<

@@ -1,9 +1,48 @@
 #include "compas/core/assertion.h"
 #include "compas/core/utils.h"
 #include "compas/jacobian/product.h"
+#include "compas/utils/gemm.h"
 #include "product_kernels.cuh"
 
 namespace compas {
+
+static Array<cfloat, 3> compute_jacobian_naive(
+    const CompasContext& ctx,
+    int nreadouts,
+    int ns,
+    int nvoxels,
+    int ncoils,
+    Array<cfloat, 2> echos,
+    Array<cfloat, 2> delta_echos_T1,
+    Array<cfloat, 2> delta_echos_T2,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
+    Array<cfloat, 2> coil_sensitivities,
+    Array<cfloat, 2> vector) {
+    auto Jv = Array<cfloat, 3> {{ncoils, nreadouts, ns}};
+
+    for (int icoil = 0; icoil < ncoils; icoil++) {
+        ctx.parallel_kernel(
+            {ns, nreadouts},
+            {ns, nreadouts},
+            {32, 8},
+            kernels::jacobian_product_naive,
+            nvoxels,
+            icoil,
+            nreadouts,
+            ns,
+            write(Jv),
+            echos,
+            delta_echos_T1,
+            delta_echos_T2,
+            parameters,
+            trajectory,
+            coil_sensitivities,
+            vector);
+    }
+
+    return Jv;
+}
 
 template<
     int threads_per_item,
@@ -96,8 +135,12 @@ static void launch_jacobian_product(
     COMPAS_COMPUTE_JACOBIAN_IMPL(1)
 }
 
-Array<cfloat, 3> compute_jacobian(
+static Array<cfloat, 3> compute_jacobian_direct(
     const CompasContext& ctx,
+    int nreadouts,
+    int ns,
+    int nvoxels,
+    int ncoils,
     Array<cfloat, 2> echos,
     Array<cfloat, 2> delta_echos_T1,
     Array<cfloat, 2> delta_echos_T2,
@@ -106,32 +149,14 @@ Array<cfloat, 3> compute_jacobian(
     Array<cfloat, 2> coil_sensitivities,
     Array<cfloat, 2> vector) {
     using namespace kmm::placeholders;
-    int ns = trajectory.samples_per_readout;
-    int nreadouts = trajectory.nreadouts;
-    int nvoxels = parameters.nvoxels;
-    int ncoils = int(coil_sensitivities.size(0));
-    int chunk_size = parameters.chunk_size;
-
-    COMPAS_CHECK(echos.size(0) == nreadouts);
-    COMPAS_CHECK(echos.size(1) == nvoxels);
-    COMPAS_CHECK(delta_echos_T1.size(0) == nreadouts);
-    COMPAS_CHECK(delta_echos_T1.size(1) == nvoxels);
-    COMPAS_CHECK(delta_echos_T2.size(0) == nreadouts);
-    COMPAS_CHECK(delta_echos_T2.size(1) == nvoxels);
-    COMPAS_CHECK(coil_sensitivities.size(0) == ncoils);
-    COMPAS_CHECK(coil_sensitivities.size(1) == nvoxels);
-    COMPAS_CHECK(vector.size(0) == 4);  // four reconstruction parameters: T1, T2, rho_x, rho_y
-    COMPAS_CHECK(vector.size(1) == nvoxels);
-
     auto Jv = Array<cfloat, 3> {{ncoils, nreadouts, ns}};
     auto E = Array<cfloat, 2> {{ns, nvoxels}};
     auto dEdT2 = Array<cfloat, 2> {{ns, nvoxels}};
     auto adj_phase = Array<cfloat, 2> {{nreadouts, nvoxels}};
     auto adj_decay = Array<cfloat, 2> {{nreadouts, nvoxels}};
 
+    auto chunk_size = parameters.chunk_size;
     auto _voxel = kmm::Axis(0);
-    auto _sample = kmm::Axis(1);
-    auto _readout = kmm::Axis(2);
 
     ctx.parallel_kernel(
         {nvoxels, ns},
@@ -163,7 +188,7 @@ Array<cfloat, 3> compute_jacobian(
         {chunk_size, ns, nreadouts},
         kmm::GPU(launch_jacobian_product),
         _xyz,
-        write(Jv[_][_readout][_sample]),
+        write(Jv),
         coil_sensitivities[_][_voxel],
         E[_][_voxel],
         dEdT2[_][_voxel],
@@ -171,6 +196,158 @@ Array<cfloat, 3> compute_jacobian(
         adj_decay[_][_voxel]);
 
     return Jv;
+}
+
+static Array<cfloat, 3> compute_jacobian_gemm(
+    const CompasContext& ctx,
+    int nreadouts,
+    int ns,
+    int nvoxels,
+    int ncoils,
+    Array<cfloat, 2> echos,
+    Array<cfloat, 2> delta_echos_T1,
+    Array<cfloat, 2> delta_echos_T2,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
+    Array<cfloat, 2> coil_sensitivities,
+    Array<cfloat, 2> vector,
+    GemmComputeMethod kind) {
+    using namespace kmm::placeholders;
+    auto Jv = Array<cfloat, 3> {{ncoils, nreadouts, ns}};
+    auto E = Array<cfloat, 2> {{ns, nvoxels}};
+    auto dEdT2 = Array<cfloat, 2> {{ns, nvoxels}};
+
+    auto chunk_size = parameters.chunk_size;
+    auto _voxel = kmm::Axis(0);
+
+    ctx.parallel_kernel(
+        {nvoxels, ns},
+        {chunk_size, ns},
+        {32, 8},
+        kernels::compute_sample_decay,
+        _xy,
+        write(E[_][_voxel]),
+        write(dEdT2[_][_voxel]),
+        trajectory,
+        read(parameters, _voxel));
+
+    for (int icoil = 0; icoil < ncoils; icoil++) {
+        auto adj_phase = Array<cfloat, 2> {{nreadouts, nvoxels}};
+        auto adj_decay = Array<cfloat, 2> {{nreadouts, nvoxels}};
+
+        ctx.parallel_kernel(
+            {nvoxels, nreadouts},
+            {chunk_size, nreadouts},
+            {32, 8},
+            kernels::compute_adjoint_sources_with_coil,
+            _xy,
+            write(adj_phase[_][_voxel]),
+            write(adj_decay[_][_voxel]),
+            icoil,
+            coil_sensitivities[icoil][_voxel],
+            echos[_][_voxel],
+            delta_echos_T1[_][_voxel],
+            delta_echos_T2[_][_voxel],
+            vector[_][_voxel],
+            read(parameters, _voxel));
+
+        ctx.parallel_device(
+            nvoxels,
+            chunk_size,
+            [=](auto& device, auto result, auto lhs, auto rhs) {
+                compute_gemm(device, result.drop_axis(icoil), lhs, rhs, cfloat(0.0), kind);
+            },
+            write(Jv),
+            adj_phase[_][_voxel],
+            E[_][_voxel]);
+
+        ctx.parallel_device(
+            nvoxels,
+            chunk_size,
+            [=](auto& device, auto result, auto lhs, auto rhs) {
+                compute_gemm(device, result.drop_axis(icoil), lhs, rhs, cfloat(1.0), kind);
+            },
+            write(Jv),
+            adj_decay[_][_voxel],
+            dEdT2[_][_voxel]);
+    }
+
+    return Jv;
+}
+
+Array<cfloat, 3> compute_jacobian(
+    const CompasContext& ctx,
+    Array<cfloat, 2> echos,
+    Array<cfloat, 2> delta_echos_T1,
+    Array<cfloat, 2> delta_echos_T2,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
+    Array<cfloat, 2> coil_sensitivities,
+    Array<cfloat, 2> vector,
+    JacobianComputeMethod kind) {
+    int ns = trajectory.samples_per_readout;
+    int nreadouts = trajectory.nreadouts;
+    int nvoxels = parameters.nvoxels;
+    int ncoils = int(coil_sensitivities.size(0));
+
+    COMPAS_CHECK(echos.size(0) == nreadouts);
+    COMPAS_CHECK(echos.size(1) == nvoxels);
+    COMPAS_CHECK(delta_echos_T1.size(0) == nreadouts);
+    COMPAS_CHECK(delta_echos_T1.size(1) == nvoxels);
+    COMPAS_CHECK(delta_echos_T2.size(0) == nreadouts);
+    COMPAS_CHECK(delta_echos_T2.size(1) == nvoxels);
+    COMPAS_CHECK(coil_sensitivities.size(0) == ncoils);
+    COMPAS_CHECK(coil_sensitivities.size(1) == nvoxels);
+    COMPAS_CHECK(vector.size(0) == 4);  // four reconstruction parameters: T1, T2, rho_x, rho_y
+    COMPAS_CHECK(vector.size(1) == nvoxels);
+
+    if (kind == JacobianComputeMethod::Naive) {
+        return compute_jacobian_naive(
+            ctx,
+            nreadouts,
+            ns,
+            nvoxels,
+            ncoils,
+            echos,
+            delta_echos_T1,
+            delta_echos_T2,
+            parameters,
+            trajectory,
+            coil_sensitivities,
+            vector);
+    } else if (kind == JacobianComputeMethod::Direct) {
+        return compute_jacobian_direct(
+            ctx,
+            nreadouts,
+            ns,
+            nvoxels,
+            ncoils,
+            echos,
+            delta_echos_T1,
+            delta_echos_T2,
+            parameters,
+            trajectory,
+            coil_sensitivities,
+            vector);
+    } else {
+        GemmComputeMethod gemm = kind == JacobianComputeMethod::GemmLow ? GemmComputeMethod::BF16
+                                                                        : GemmComputeMethod::Fast;
+
+        return compute_jacobian_gemm(
+            ctx,
+            nreadouts,
+            ns,
+            nvoxels,
+            ncoils,
+            echos,
+            delta_echos_T1,
+            delta_echos_T2,
+            parameters,
+            trajectory,
+            coil_sensitivities,
+            vector,
+            gemm);
+    }
 }
 
 }  // namespace compas

@@ -5,6 +5,7 @@
 #include "compas/trajectories/cartesian.h"
 #include "compas/trajectories/signal.h"
 #include "compas/trajectories/spiral.h"
+#include "compas/utils/gemm.h"
 #include "signal_kernels.cuh"
 
 namespace compas {
@@ -112,7 +113,7 @@ void magnetization_to_signal_cartesian_gemm(
     GPUView<cfloat, 2> coil_sensitivities,
     GPUViewMut<cfloat, 2> exponents,
     GPUViewMut<cfloat, 2> factors,
-    cublasComputeType_t compute_type) {
+    GemmComputeMethod compute_type) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;
     int nvoxels = voxels.size();
@@ -151,34 +152,7 @@ void magnetization_to_signal_cartesian_gemm(
                 trajectory);
         COMPAS_GPU_CHECK(gpuGetLastError());
 
-        cuComplex alpha = {1, 0};
-        cuComplex beta = {0, 0};
-
-        cudaDataType_t output_type = CUDA_C_32F;
-        cudaDataType_t input_type = CUDA_C_32F;
-        cublasGemmAlgo_t compute_algo = CUBLAS_GEMM_DEFAULT;
-
-        COMPAS_GPU_CHECK(cublasSetStream(context.blas(), context.stream()));
-        COMPAS_GPU_CHECK(cublasGemmEx(
-            context.blas(),
-            CUBLAS_OP_T,  // transa
-            CUBLAS_OP_N,  // transb
-            samples_per_readout,  // m
-            nreadouts,  // n
-            nvoxels,  // k
-            &alpha,  // alpha
-            exponents.data(),  // A
-            input_type,  // A type
-            nvoxels,  // lda
-            factors.data(),  // B
-            input_type,  // B type
-            nvoxels,  // ldb
-            &beta,  //beta
-            signal.data() + signal.stride(0) * icoil,  // C
-            output_type,  // C type
-            samples_per_readout,  // ldc
-            compute_type,
-            compute_algo));
+        compute_gemm(context, signal.drop_axis(icoil), factors, exponents, cfloat(0), compute_type);
     }
 
     COMPAS_GPU_CHECK(gpuGetLastError());
@@ -257,16 +231,16 @@ void magnetization_to_signal_spiral(
     COMPAS_GPU_CHECK(gpuGetLastError());
 }
 
-cublasComputeType_t cublas_compute_type_from_simulate_method(SimulateSignalMethod method) {
+GemmComputeMethod cublas_compute_type_from_simulate_method(SimulateSignalMethod method) {
     switch (method) {
         case SimulateSignalMethod::MatmulPedantic:
-            return CUBLAS_COMPUTE_32F_PEDANTIC;
+            return GemmComputeMethod::Pedantic;
         case SimulateSignalMethod::Matmul:
-            return CUBLAS_COMPUTE_32F;
+            return GemmComputeMethod::Fast;
         case SimulateSignalMethod::MatmulBF16:
-            return CUBLAS_COMPUTE_32F_FAST_16BF;
+            return GemmComputeMethod::BF16;
         case SimulateSignalMethod::MatmulTF32:
-            return CUBLAS_COMPUTE_32F_FAST_TF32;
+            return GemmComputeMethod::TF32;
         default:
             COMPAS_ERROR("invalid value for `SimulateSignalMethod`");
     }
