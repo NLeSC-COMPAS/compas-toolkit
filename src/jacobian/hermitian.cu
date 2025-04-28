@@ -97,10 +97,10 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     ctx.parallel_submit(
         {nvoxels, ns},
         {chunk_size, ns},
-        kmm::GPUKernel(kernels::delta_to_sample_exponent, block_dim),
+        kmm::GPUKernel(kernels::compute_sample_decay, block_dim),
         _xy,
-        write(E(_, _voxel)),
-        write(dEdT2(_, _voxel)),
+        write(E[_][_voxel]),
+        write(dEdT2[_][_voxel]),
         trajectory,
         read(parameters, _voxel));
 
@@ -109,15 +109,15 @@ Array<cfloat, 2> compute_jacobian_hermitian(
         {chunk_size, ns, nreadouts},
         kmm::GPU(launch_jacobian_hermitian_kernel),
         _xyz,
-        write(JHv(_, _voxel)),
-        echos(_, _voxel),
-        delta_echos_T1(_, _voxel),
-        delta_echos_T2(_, _voxel),
+        write(JHv[_][_voxel]),
+        echos[_][_voxel],
+        delta_echos_T1[_][_voxel],
+        delta_echos_T2[_][_voxel],
         read(parameters, _voxel),
-        coil_sensitivities(_, _voxel),
-        vector(_, _, _),
-        E(_, _voxel),
-        dEdT2(_, _voxel));
+        coil_sensitivities[_][_voxel],
+        vector,
+        E[_][_voxel],
+        dEdT2[_][_voxel]);
 
     return JHv;
 }

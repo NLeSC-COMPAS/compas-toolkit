@@ -4,7 +4,7 @@
 namespace compas {
 namespace kernels {
 
-static __global__ void delta_to_sample_exponent(
+static __global__ void compute_sample_decay(
     kmm::Bounds<2, int> range,
     GPUSubviewMut<cfloat, 2> E,
     GPUSubviewMut<cfloat, 2> dEdT2,
@@ -42,6 +42,35 @@ static __global__ void delta_to_sample_exponent(
     dEdT2[sample][voxel] = dEsdT2;
 }
 
+static __global__ void compute_adjoint_sources(
+    kmm::Bounds<2, int> range,
+    GPUSubviewMut<cfloat, 2> adj_phase,
+    GPUSubviewMut<cfloat, 2> adj_decay,
+    GPUSubview<cfloat, 2> echos,
+    GPUSubview<cfloat, 2> delta_echos_T1,
+    GPUSubview<cfloat, 2> delta_echos_T2,
+    GPUSubview<cfloat, 2> vector,
+    TissueParametersView parameters) {
+    index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
+    index_t readout = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.y.begin);
+
+    if (!range.contains(voxel, readout)) {
+        return;
+    }
+
+    auto p = parameters.get(voxel);
+    auto me = echos[readout][voxel];
+    auto dme = vec2<cfloat> {delta_echos_T1[readout][voxel], delta_echos_T2[readout][voxel]};
+
+    adj_phase[readout][voxel] =  //
+        vector[0][voxel] * p.T1 * p.rho * dme[0] +  //
+        vector[1][voxel] * p.T2 * p.rho * dme[1] +  //
+        vector[2][voxel] * me +  //
+        vector[3][voxel] * cfloat(0, 1) * me;
+
+    adj_decay[readout][voxel] = vector[1][voxel] * p.T2 * p.rho * me;
+}
+
 template<
     int threads_per_item = 1,
     int samples_per_thread = 1,
@@ -53,19 +82,17 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_pro
     kmm::Bounds<3, index_t> subrange,
     index_t coil_offset,
     GPUSubviewMut<cfloat, 3> Jv,
-    GPUSubview<cfloat, 2> echos,
-    GPUSubview<cfloat, 2> delta_echos_T1,
-    GPUSubview<cfloat, 2> delta_echos_T2,
-    TissueParametersView parameters,
     GPUSubview<cfloat, 2> coil_sensitivities,
     GPUSubview<cfloat, 2> E,
     GPUSubview<cfloat, 2> dEdT2,
-    GPUSubview<cfloat, 2> v) {
-
+    GPUSubview<cfloat, 2> adj_phase,
+    GPUSubview<cfloat, 2> adj_decay) {
     index_t voxel_begin = index_t(subrange.x.begin);
     index_t voxel_end = index_t(subrange.x.end);
-    index_t sample_offset = index_t(blockIdx.y * blockDim.y + threadIdx.y) * samples_per_thread + subrange.y.begin;
-    index_t readout_offset = index_t(blockIdx.z * blockDim.z + threadIdx.z) * readouts_per_thread + subrange.z.begin;
+    index_t sample_offset =
+        index_t(blockIdx.y * blockDim.y + threadIdx.y) * samples_per_thread + subrange.y.begin;
+    index_t readout_offset =
+        index_t(blockIdx.z * blockDim.z + threadIdx.z) * readouts_per_thread + subrange.z.begin;
     index_t lane_id = index_t(threadIdx.x);
 
     if (sample_offset >= subrange.y.end || readout_offset >= subrange.z.end) {
@@ -84,12 +111,6 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_pro
     }
 
     for (index_t voxel = voxel_begin + lane_id; voxel < voxel_end; voxel += threads_per_item) {
-        // load coordinates, parameters, coil sensitivities and proton density for voxel
-        auto p = parameters.get(voxel);
-        auto T1 = p.T1;
-        auto T2 = p.T2;
-        auto rho = p.rho;
-
 #pragma unroll
         for (int i = 0; i < samples_per_thread; i++) {
 #pragma unroll
@@ -97,23 +118,9 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_pro
                 int s = sample_offset + i;
                 int r = readout_offset + j;
 
-                // load magnetization and partial derivatives at echo time of the r-th readout
-                auto me = echos[r][voxel];
-                auto dme = vec2<cfloat> {delta_echos_T1[r][voxel], delta_echos_T2[r][voxel]};
-
-                // compute decay (T₂) and rotation (gradients and B₀) to go to sample point
-                auto Es = E[s][voxel];
-                //            auto dEs = vec2<cfloat> {0, dEdT2[s][voxel]};
-
-                //            auto dm = dme * Es + me * dEs;
-                auto dm = vec2<cfloat> {dme[0] * Es, dme[1] * Es + me * dEdT2[s][voxel]};
-                auto m = Es * me;
-
-                // store magnetization from this voxel, scaled with v (~ proton density) and C in accumulator
-                auto dmv = vec4<cfloat>(v[0][voxel], v[1][voxel], v[2][voxel], v[3][voxel]);
-                auto lin_scale =
-                    vec4<cfloat>(T1 * rho * dm[0], T2 * rho * dm[1], m, m * cfloat(0, 1));
-                auto prod = dot(lin_scale, dmv);
+                auto prod =  //
+                    adj_phase[r][voxel] * E[s][voxel] +  //
+                    adj_decay[r][voxel] * dEdT2[s][voxel];
 
 #pragma unroll
                 for (int k = 0; k < coils_per_thread; k++) {
