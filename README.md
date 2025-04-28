@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="https://avatars.githubusercontent.com/u/132893361" width=230 />
+</p>
+
+
 # Compas Toolkit
 
 [![github](https://img.shields.io/badge/github-repo-000.svg?logo=github&labelColor=gray&color=blue)](https://github.com/NLeSC-COMPAS/compas-toolkit)
