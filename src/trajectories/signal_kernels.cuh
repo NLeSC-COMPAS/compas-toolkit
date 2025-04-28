@@ -1,8 +1,8 @@
 #pragma once
 
-#include "compas/core/view.h"
-#include "compas/core/utils.h"
 #include "compas/core/complex_type.h"
+#include "compas/core/utils.h"
+#include "compas/core/view.h"
 #include "compas/trajectories/cartesian_view.cuh"
 #include "compas/trajectories/spiral_view.cuh"
 
@@ -108,12 +108,12 @@ COMPAS_DEVICE void reduce_signal_cooperative(
 }
 
 __global__ void sum_signal_cartesian_naive(
-        kmm::Range<index_t> voxels,
-        GPUViewMut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
-        GPUSubview<cfloat, 2> echos,
-        TissueParametersView parameters,
-        CartesianTrajectoryView trajectory,
-        GPUSubview<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
+    kmm::Range<index_t> voxels,
+    GPUViewMut<cfloat, 3> signal,  // [num_coils num_readouts num_samples]
+    GPUSubview<cfloat, 2> echos,
+    TissueParametersView parameters,
+    CartesianTrajectoryView trajectory,
+    GPUSubview<cfloat, 2> coil_sensitivities  // [num_coils num_voxels]
 ) {
     auto sample_index = index_t(blockIdx.x * blockDim.x + threadIdx.x);
     auto readout_index = index_t(blockIdx.y * blockDim.y + threadIdx.y);
@@ -197,7 +197,8 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
 #pragma unroll
         for (int r = 0; r < readout_tiling_factor; r++) {
             int readout = readout_start + r;
-            local_readouts[r] = r == 0 || readout < num_readouts ? readout_echos[readout][voxel] : 0;
+            local_readouts[r] =
+                r == 0 || readout < num_readouts ? readout_echos[readout][voxel] : 0;
         }
 
 #pragma unroll
@@ -209,7 +210,8 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void sum_signal_c
 #pragma unroll
         for (int c = 0; c < coil_tiling_factor; c++) {
             auto coil_index = coil_start + c;
-            local_coils[c] = c == 0 || coil_index < num_coils ? coil_sensitivities[coil_index][voxel] : 0;
+            local_coils[c] =
+                c == 0 || coil_index < num_coils ? coil_sensitivities[coil_index][voxel] : 0;
         }
 
 #pragma unroll
