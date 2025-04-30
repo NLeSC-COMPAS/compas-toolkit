@@ -8,66 +8,69 @@
 namespace compas {
 
 /**
- * Stores the tissue parameters for each voxel. Note that, instead of having seperate 1D arrays for each field, data
- * is instead stored in a single 2D matrix where each row is different field (see `TissueParameterField`) and each
- * column is a voxel.
+ * @brief Stores tissue parameters (T1, T2, B1, B0, rho, position) for multiple voxels.
+ *
+ * Data is stored in a 2D array `data` [num_parameters, nvoxels].
+ * Parameter order depends on creation (e.g., via `make_tissue_parameters`).
  */
 struct TissueParameters: public Object {
-    Array<float, 2> parameters;  // Size: [TissueParameterField::NUM_FIELDS, nvoxels]
+    /// @brief 2D array [num_parameters, nvoxels] holding all tissue parameters.
+    Array<float, 2> data;
+    /// @brief Total number of voxels.
     int nvoxels;
+    /// @brief Voxel processing chunk size.
+    int chunk_size;
+    /// @brief True if z-coordinates are included in `data`.
     bool has_z = true;
+    /// @brief True if B0 off-resonance values are included in `data`.
     bool has_b0 = true;
+    /// @brief True if B1 scaling values are included in `data`.
     bool has_b1 = true;
 
-    TissueParameters(
-        Array<float, 2> parameters,
-        int nvoxels,
-        bool has_z,
-        bool has_b0,
-        bool has_b1) :
-        parameters(parameters),
-        nvoxels(nvoxels),
+    TissueParameters(Array<float, 2> parameters, bool has_z, bool has_b0, bool has_b1) :
+        data(parameters),
+        nvoxels(kmm::checked_cast<int>(parameters.size(1))),
+        chunk_size(kmm::checked_cast<int>(parameters.chunk_size(1))),
         has_z(has_z),
         has_b0(has_b0),
         has_b1(has_b1) {}
 };
 
+/**
+ * @brief Creates TissueParameters from individual parameters.
+ * @param ctx CompasContext for resource management.
+ * @param num_voxels Total number of voxels.
+ * @param chunk_size Desired processing chunk size.
+ * @param T1 T1 relaxation times.
+ * @param T2 T2 relaxation times.
+ * @param B1 B1 transmit field scaling factors.
+ * @param B0 B0 off-resonance field.
+ * @param rho_x Real part of proton density/coil sensitivity.
+ * @param rho_y Imaginary part of proton density/coil sensitivity.
+ * @param x X-coordinates.
+ * @param y Y-coordinates.
+ * @param z Optional z-coordinates. If empty, `has_z` becomes false.
+ * @return TissueParameters object.
+ */
 TissueParameters make_tissue_parameters(
-    const CudaContext& ctx,
+    const CompasContext& ctx,
     int num_voxels,
-    view<float> T1,
-    view<float> T2,
-    view<float> B1,
-    view<float> B0,
-    view<float> rho_x,
-    view<float> rho_y,
-    view<float> x,
-    view<float> y,
-    view<float> z);
+    int chunk_size,
+    View<float> T1,
+    View<float> T2,
+    View<float> B1,
+    View<float> B0,
+    View<float> rho_x,
+    View<float> rho_y,
+    View<float> x,
+    View<float> y,
+    View<float> z = {});
 
 }  // namespace compas
 
-namespace kmm {
-template<>
-struct TaskArgument<ExecutionSpace::Cuda, compas::TissueParameters> {
-    using type = compas::TissueParametersView;
+KMM_DEFINE_STRUCT_ARGUMENT(compas::TissueParameters, it.data)
+KMM_DEFINE_STRUCT_VIEW(compas::TissueParameters, compas::TissueParametersView)
 
-    static TaskArgument pack(TaskBuilder& builder, compas::TissueParameters p) {
-        return {
-            {.parameters = {},  //
-             .nvoxels = p.nvoxels,
-             .has_z = p.has_z,
-             .has_b0 = p.has_b0,
-             .has_b1 = p.has_b1},
-            pack_argument<ExecutionSpace::Cuda>(builder, p.parameters)};
-    }
-
-    type unpack(TaskContext& context) {
-        view.parameters = unpack_argument<ExecutionSpace::Cuda>(context, params);
-        return view;
-    }
-
-    compas::TissueParametersView view;
-    PackedArray<const float, 2> params;
-};
-}  // namespace kmm
+using TissueParametersSlice = kmm::Read<const compas::TissueParameters, kmm::Axis>;
+KMM_DEFINE_STRUCT_ARGUMENT(TissueParametersSlice, it.argument.data[kmm::All()][it.access_mapper])
+KMM_DEFINE_STRUCT_VIEW(TissueParametersSlice, compas::TissueParametersView)

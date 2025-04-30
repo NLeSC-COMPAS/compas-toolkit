@@ -1,28 +1,31 @@
-#include "compas/core/utils.h"
 #include "compas/trajectories/phase_encoding.h"
 #include "phase_encoding_kernels.cuh"
 
 namespace compas {
 
 Array<cfloat, 2> phase_encoding(
-    const CudaContext& ctx,
+    const CompasContext& ctx,
     const Array<cfloat, 2>& echos,
     const TissueParameters& parameters,
     const CartesianTrajectory& trajectory) {
+    using namespace kmm::placeholders;
+
     int nreadouts = trajectory.nreadouts;
     int nvoxels = parameters.nvoxels;
+    int chunk_size = parameters.chunk_size;
 
-    auto ph_en_echos = Array<cfloat, 2>(nreadouts, nvoxels);
-
+    auto ph_en_echos = Array<cfloat, 2> {{nreadouts, nvoxels}};
     dim3 block_dim = {32, 4};
-    dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
-    ctx.submit_kernel(
-        grid_dim,
+
+    ctx.parallel_kernel(
+        {nvoxels, nreadouts},
+        {chunk_size, nreadouts},
         block_dim,
         kernels::phase_encoding,
-        write(ph_en_echos),
-        echos,
-        parameters,
+        _xy,
+        write(ph_en_echos(_y, _x)),
+        echos(_y, _x),
+        parameters.data(_y, _x),
         trajectory);
 
     return ph_en_echos;

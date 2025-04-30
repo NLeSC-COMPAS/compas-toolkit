@@ -13,7 +13,12 @@ namespace compas {
  */
 enum struct SimulateSignalMethod {
     /**
-     * Direct simulation without optimization or approximations. This is the most reliable method, but is also slow.
+     * Naive simulation without optimization or approximations. This is the most reliable method, but is also slow.
+     */
+    Naive,
+
+    /**
+     * Direct simulation. This is the more performant method if there are many coils.
      */
     Direct,
 
@@ -50,11 +55,11 @@ enum struct SimulateSignalMethod {
  * @return The MR signal. Size: [ncoils, nreadouts, nsamples_per_readout].
  */
 Array<cfloat, 3> magnetization_to_signal(
-    const CudaContext& context,
+    const CompasContext& context,
     Array<cfloat, 2> echos,
     TissueParameters parameters,
     const Trajectory& trajectory,
-    Array<float, 2> coil_sensitivities,
-    SimulateSignalMethod method = SimulateSignalMethod::Direct);
+    Array<cfloat, 2> coil_sensitivities,
+    SimulateSignalMethod method = SimulateSignalMethod::Naive);
 
 }  // namespace compas

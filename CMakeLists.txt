@@ -27,7 +27,7 @@ set(CXXFLAGS
         $<$<COMPILE_LANGUAGE:CUDA>:-forward-unknown-to-host-compiler>
         $<$<COMPILE_LANGUAGE:CUDA>:--generate-line-info>
         -Wall -Wextra -Wconversion -Wno-unused-parameter
-        $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Werror>
+        #$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Werror>
         $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>
         $<$<COMPILE_LANGUAGE:CUDA>:-Xptxas="-v">
 )
@@ -38,12 +38,14 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 set(PROJECT_CLANG_TIDY clang-tidy)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${PROJECT_CLANG_TIDY}")
+set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
 find_package(CUDAToolkit REQUIRED)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cudart_static)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cuda_driver)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cublas)
 target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::nvrtc)
+set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_ARCHITECTURES "80")
 
 # Installation of library files
 set(COMPAS_LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib")
@@ -61,6 +63,7 @@ configure_file(
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 add_subdirectory(thirdparty/Catch2)
+
 set(KMM_USE_CUDA ON)
 set(KMM_STATIC ON)
 add_subdirectory(thirdparty/kmm)

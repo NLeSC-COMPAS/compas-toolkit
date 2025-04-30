@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cfloat>
+
 #include "compas/core/complex_type.h"
 #include "compas/core/macros.h"
 #include "compas/core/vector.h"
@@ -59,6 +61,15 @@ struct EPGThreadBlockState {
     }
 
     COMPAS_DEVICE
+    void spoil() {
+#pragma unroll items_per_thread
+        for (int i = 0; i < items_per_thread; i++) {
+            state[i].F_plus = 0.0f;
+            state[i].F_min = 0.0f;
+        }
+    }
+
+    COMPAS_DEVICE
     void decay(float E1, float E2) {
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
@@ -95,11 +106,19 @@ struct EPGThreadBlockState {
 
     COMPAS_DEVICE
     void excite(cfloat RF, float B1 = 1.0f) {
-        float deg2rad = (float(M_PI) / 180.0f);
+        static constexpr float MIN_ANGLE = FLT_EPSILON;
+        static constexpr float DEG2RAD = (float(M_PI) / 180.0f);
 
-        // angle of RF pulse, convert from degrees to radians
-        float alpha = deg2rad * abs(RF);
-        alpha *= B1;
+        // angle of RF pulse
+        float abs_RF = hypotf(RF.re, RF.im);
+
+        // if angle is small, we can skip the rotation
+        if (abs_RF < MIN_ANGLE) {
+            return;
+        }
+
+        // convert from degrees to radians
+        float alpha = DEG2RAD * abs_RF * B1;
 
         float x = alpha * 0.5f;
         float sinx, cosx;
