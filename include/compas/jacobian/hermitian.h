@@ -1,5 +1,8 @@
+#pragma once
+
 #include "compas/core/complex_type.h"
 #include "compas/core/context.h"
+#include "compas/jacobian/product.h"
 #include "compas/parameters/tissue.h"
 #include "compas/trajectories/cartesian.h"
 
@@ -26,5 +29,6 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     TissueParameters parameters,
     CartesianTrajectory trajectory,
     Array<cfloat, 2> coil_sensitivities,
-    Array<cfloat, 3> vector);
+    Array<cfloat, 3> vector,
+    JacobianComputeMethod kind = JacobianComputeMethod::Direct);
 }  // namespace compas

@@ -80,28 +80,8 @@ static __global__ void compute_sample_decay(
     }
 
     TissueVoxel p = parameters.get(voxel);
-
-    // Read in constants
-    auto R2 = 1.0f / p.T2;
-    auto ns = trajectory.samples_per_readout;
-    auto delta_t = trajectory.delta_t;
-    auto delta_k0 = trajectory.delta_k;
-    auto x = p.x;
-    auto y = p.y;
-
-    // There are ns samples per readout, echo time is assumed to occur
-    // at index (ns/2)+1. Now compute sample index relative to the echo time
-    float s = float(sample) - 0.5f * float(ns);
-
-    // Apply readout gradient, T₂ decay and B₀ rotation
-    auto Theta = delta_k0.re * x + delta_k0.im * y;
-    Theta += delta_t * float(2 * M_PI) * p.B0;
-
-    cfloat Es = exp(s * cfloat(-delta_t * R2, Theta));
-    cfloat dEsdT2 = (s * delta_t) * R2 * R2 * Es;
-
-    E[sample][voxel] = Es;
-    dEdT2[sample][voxel] = dEsdT2;
+    E[sample][voxel] = trajectory.calculate_sample_decay_absolute(sample, p);
+    dEdT2[sample][voxel] = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
 }
 
 static __global__ void compute_adjoint_sources(

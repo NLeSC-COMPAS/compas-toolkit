@@ -1,6 +1,8 @@
+#include "compas/core/assertion.h"
 #include "compas/core/utils.h"
 #include "compas/core/vector.h"
-#include "compas/jacobian/product.h"
+#include "compas/jacobian/hermitian.h"
+#include "compas/utils/gemm.h"
 #include "hermitian_kernels.cuh"
 
 namespace compas {
@@ -58,8 +60,50 @@ void launch_jacobian_hermitian_kernel(
     throw std::runtime_error("cannot support more than 4 coils");
 }
 
-Array<cfloat, 2> compute_jacobian_hermitian(
+Array<cfloat, 2> compute_jacobian_hermitian_naive(
     const CompasContext& ctx,
+    int nreadouts,
+    int ns,
+    int nvoxels,
+    int ncoils,
+    Array<cfloat, 2> echos,
+    Array<cfloat, 2> delta_echos_T1,
+    Array<cfloat, 2> delta_echos_T2,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
+    Array<cfloat, 2> coil_sensitivities,
+    Array<cfloat, 3> vector) {
+    int chunk_size = parameters.chunk_size;
+
+    // four reconstruction parameters: T1, T2, rho_x, rho_y
+    auto JHv = Array<cfloat, 2> {{4, nvoxels}};
+
+    ctx.parallel_submit(
+        {nvoxels},
+        {chunk_size},
+        kmm::GPUKernel(kernels::jacobian_hermitian_product_naive, 256),
+        kmm::placeholders::_x,
+        nreadouts,
+        ns,
+        ncoils,
+        write(JHv),
+        echos,
+        delta_echos_T1,
+        delta_echos_T2,
+        parameters,
+        trajectory,
+        coil_sensitivities,
+        vector);
+
+    return JHv;
+}
+
+Array<cfloat, 2> compute_jacobian_hermitian_direct(
+    const CompasContext& ctx,
+    int nreadouts,
+    int ns,
+    int nvoxels,
+    int ncoils,
     Array<cfloat, 2> echos,
     Array<cfloat, 2> delta_echos_T1,
     Array<cfloat, 2> delta_echos_T2,
@@ -68,32 +112,16 @@ Array<cfloat, 2> compute_jacobian_hermitian(
     Array<cfloat, 2> coil_sensitivities,
     Array<cfloat, 3> vector) {
     using namespace kmm::placeholders;
-
-    int ns = trajectory.samples_per_readout;
-    int nreadouts = trajectory.nreadouts;
-    int ncoils = int(coil_sensitivities.size(0));
-    int nvoxels = parameters.nvoxels;
     int chunk_size = parameters.chunk_size;
-
-    COMPAS_CHECK(echos.size(0) == nreadouts);
-    COMPAS_CHECK(echos.size(1) == nvoxels);
-    COMPAS_CHECK(delta_echos_T1.size(0) == nreadouts);
-    COMPAS_CHECK(delta_echos_T1.size(1) == nvoxels);
-    COMPAS_CHECK(delta_echos_T2.size(0) == nreadouts);
-    COMPAS_CHECK(delta_echos_T2.size(1) == nvoxels);
-    COMPAS_CHECK(coil_sensitivities.size(0) == ncoils);
-    COMPAS_CHECK(coil_sensitivities.size(1) == nvoxels);
-    COMPAS_CHECK(vector.size(0) == ncoils);
-    COMPAS_CHECK(vector.size(1) == nreadouts);
-    COMPAS_CHECK(vector.size(2) == ns);
 
     // four reconstruction parameters: T1, T2, rho_x, rho_y
     auto JHv = Array<cfloat, 2> {{4, nvoxels}};
     auto E = Array<cfloat, 2> {{ns, nvoxels}};
     auto dEdT2 = Array<cfloat, 2> {{ns, nvoxels}};
-    auto _voxel = kmm::Axis(0);
 
+    auto _voxel = kmm::Axis(0);
     dim3 block_dim = {64, 4};
+
     ctx.parallel_submit(
         {nvoxels, ns},
         {chunk_size, ns},
@@ -120,6 +148,169 @@ Array<cfloat, 2> compute_jacobian_hermitian(
         dEdT2[_][_voxel]);
 
     return JHv;
+}
+
+Array<cfloat, 2> compute_jacobian_hermitian_gemm(
+    const CompasContext& ctx,
+    GemmComputeMethod gemm,
+    int nreadouts,
+    int ns,
+    int nvoxels,
+    int ncoils,
+    Array<cfloat, 2> echos,
+    Array<cfloat, 2> delta_echos_T1,
+    Array<cfloat, 2> delta_echos_T2,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
+    Array<cfloat, 2> coil_sensitivities,
+    Array<cfloat, 3> vector) {
+    using namespace kmm::placeholders;
+    int chunk_size = parameters.chunk_size;
+
+    // four reconstruction parameters: T1, T2, rho_x, rho_y
+    auto JHv = Array<cfloat, 2> {{4, nvoxels}};
+    auto E_H = Array<cfloat, 2> {{nvoxels, ns}};
+    auto dEdT2_H = Array<cfloat, 2> {{nvoxels, ns}};
+    dim3 block_dim = {64, 4};
+
+    // Initialize to zero
+    ctx.parallel_device(
+        {nvoxels},
+        {chunk_size},
+        [](kmm::DeviceResource& ctx, auto v) {  //
+            ctx.fill(v, cfloat(0));
+        },
+        write(JHv));
+
+    ctx.parallel_submit(
+        {ns, nvoxels},
+        {ns, chunk_size},
+        kmm::GPUKernel(kernels::compute_sample_decay_hermitian, block_dim),
+        _xy,
+        write(E_H),
+        write(dEdT2_H),
+        trajectory,
+        parameters);
+
+    for (int icoil = 0; icoil < ncoils; icoil++) {
+        auto Ev = Array<cfloat, 2> {{nreadouts, nvoxels}};
+        auto dEdT2v = Array<cfloat, 2> {{nreadouts, nvoxels}};
+
+        ctx.parallel_device(
+            nvoxels,
+            chunk_size,
+            [=](auto& device, auto result, auto lhs, auto rhs) {
+                compute_gemm(device, result, lhs.drop_axis(icoil), rhs, cfloat(0.0), gemm);
+            },
+            write(Ev),
+            vector,
+            E_H);
+
+        ctx.parallel_device(
+            nvoxels,
+            chunk_size,
+            [=](auto& device, auto result, auto lhs, auto rhs) {
+                compute_gemm(device, result, lhs.drop_axis(icoil), rhs, cfloat(0.0), gemm);
+            },
+            write(dEdT2v),
+            vector,
+            dEdT2_H);
+
+        ctx.parallel_submit(
+            {nvoxels},
+            {chunk_size},
+            kmm::GPUKernel(kernels::jacobian_hermitian_product_finalize, 256),
+            _x,
+            nreadouts,
+            icoil,
+            write(JHv),
+            echos,
+            delta_echos_T1,
+            delta_echos_T2,
+            parameters,
+            coil_sensitivities,
+            Ev,
+            dEdT2v);
+    }
+
+    return JHv;
+}
+
+Array<cfloat, 2> compute_jacobian_hermitian(
+    const CompasContext& ctx,
+    Array<cfloat, 2> echos,
+    Array<cfloat, 2> delta_echos_T1,
+    Array<cfloat, 2> delta_echos_T2,
+    TissueParameters parameters,
+    CartesianTrajectory trajectory,
+    Array<cfloat, 2> coil_sensitivities,
+    Array<cfloat, 3> vector,
+    JacobianComputeMethod kind) {
+    int ns = trajectory.samples_per_readout;
+    int nreadouts = trajectory.nreadouts;
+    int ncoils = int(coil_sensitivities.size(0));
+    int nvoxels = parameters.nvoxels;
+
+    COMPAS_CHECK(echos.size(0) == nreadouts);
+    COMPAS_CHECK(echos.size(1) == nvoxels);
+    COMPAS_CHECK(delta_echos_T1.size(0) == nreadouts);
+    COMPAS_CHECK(delta_echos_T1.size(1) == nvoxels);
+    COMPAS_CHECK(delta_echos_T2.size(0) == nreadouts);
+    COMPAS_CHECK(delta_echos_T2.size(1) == nvoxels);
+    COMPAS_CHECK(coil_sensitivities.size(0) == ncoils);
+    COMPAS_CHECK(coil_sensitivities.size(1) == nvoxels);
+    COMPAS_CHECK(vector.size(0) == ncoils);
+    COMPAS_CHECK(vector.size(1) == nreadouts);
+    COMPAS_CHECK(vector.size(2) == ns);
+
+    if (kind == JacobianComputeMethod::Naive) {
+        return compute_jacobian_hermitian_naive(
+            ctx,
+            nreadouts,
+            ns,
+            nvoxels,
+            ncoils,
+            echos,
+            delta_echos_T1,
+            delta_echos_T2,
+            parameters,
+            trajectory,
+            coil_sensitivities,
+            vector);
+    } else if (kind == JacobianComputeMethod::Direct) {
+        return compute_jacobian_hermitian_direct(
+            ctx,
+            nreadouts,
+            ns,
+            nvoxels,
+            ncoils,
+            echos,
+            delta_echos_T1,
+            delta_echos_T2,
+            parameters,
+            trajectory,
+            coil_sensitivities,
+            vector);
+    } else {
+        auto gemm = kind == JacobianComputeMethod::Gemm  //
+            ? GemmComputeMethod::Fast
+            : GemmComputeMethod::BF16;
+
+        return compute_jacobian_hermitian_gemm(
+            ctx,
+            gemm,
+            nreadouts,
+            ns,
+            nvoxels,
+            ncoils,
+            echos,
+            delta_echos_T1,
+            delta_echos_T2,
+            parameters,
+            trajectory,
+            coil_sensitivities,
+            vector);
+    }
 }
 
 }  // namespace compas
