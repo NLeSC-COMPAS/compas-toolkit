@@ -96,13 +96,55 @@ static compas::Array<compas::cfloat, 2> generate_random_complex(
     return generate_input<compas::cfloat>(
             context,
             [&](int i, int j) {
-                return compas::polar(
-                    dist(gen),
-                    dist(gen) * 2.0f * float(M_PI)
-                );
+                return compas::polar(dist(gen), dist(gen) * 2.0F * float(M_PI));
             },
             height,
             width
+    );
+}
+
+template <typename T, typename F>
+compas::Array<T, 3> generate_input(
+        compas::CompasContext& context,
+        F generator,
+        int height,
+        int width,
+        int depth
+) {
+    std::vector<T> h_data(height * width * depth);
+
+    for (int64_t i = 0; i < height; i++) {
+        for (int64_t j = 0; j < width; j++) {
+            for (int64_t k = 0; k < depth; k++) {
+                h_data[(i * width + j) * depth + k] = generator(i, j, k);
+            }
+        }
+    }
+
+    return context.allocate(h_data.data(), height, width, depth);
+}
+
+static compas::Array<compas::cfloat, 3> generate_random_complex(
+        compas::CompasContext& context,
+        int height,
+        int width,
+        int depth
+) {
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+
+    return generate_input<compas::cfloat>(
+            context,
+            [&](int i, int j, int k) {
+                return compas::polar(
+                        dist(gen),
+                        dist(gen) * 2.0f * float(M_PI)
+                );
+            },
+            height,
+            width,
+            depth
     );
 }
 
