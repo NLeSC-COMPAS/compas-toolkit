@@ -50,7 +50,7 @@ struct CartesianTrajectoryView {
      */
     COMPAS_DEVICE
     cfloat calculate_sample_phase_decay(int sample_index, TissueVoxel p) const {
-        auto R2 = 1 / p.T2;
+        auto R2 = 1.0F / p.T2;
         auto x = p.x;
         auto y = p.y;
 
@@ -58,7 +58,36 @@ struct CartesianTrajectoryView {
         auto Theta = delta_k.re * x + delta_k.im * y;
         Theta += delta_t * float(2 * M_PI) * p.B0;
 
-        return exp(cfloat(-delta_t * R2, Theta) * float(sample_index));
+        return exp(float(sample_index) * cfloat(-delta_t * R2, Theta));
+    }
+
+    COMPAS_DEVICE
+    cfloat calculate_sample_decay_absolute(int sample_index, TissueVoxel p) const {
+        auto R2 = 1.0F / p.T2;
+        auto x = p.x;
+        auto y = p.y;
+
+        // There are ns samples per readout, echo time is assumed to occur
+        // at index (ns/2)+1. Now compute sample index relative to the echo time
+        float s = float(sample_index) - 0.5f * float(samples_per_readout);
+
+        // Apply readout gradient, T₂ decay and B₀ rotation
+        auto Theta = delta_k.re * x + delta_k.im * y;
+        Theta += delta_t * float(2 * M_PI) * p.B0;
+
+        return exp(s * cfloat(-delta_t * R2, Theta));
+    }
+
+    COMPAS_DEVICE
+    cfloat calculate_sample_decay_absolute_delta_T2(int sample_index, TissueVoxel p) const {
+        auto R2 = 1.0f / p.T2;
+
+        // There are ns samples per readout, echo time is assumed to occur
+        // at index (ns/2)+1. Now compute sample index relative to the echo time
+        float s = float(sample_index) - 0.5f * float(samples_per_readout);
+
+        auto Es = calculate_sample_decay_absolute(sample_index, p);
+        return (s * delta_t * R2 * R2) * Es;
     }
 };
 

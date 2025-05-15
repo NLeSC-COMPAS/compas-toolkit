@@ -15,6 +15,11 @@ target_link_libraries(compute_jacobian PRIVATE compas-toolkit)
 set_target_properties(compute_jacobian PROPERTIES CUDA_ARCHITECTURES "70;80")
 target_include_directories(compute_jacobian PRIVATE ${CUDA_TOOLKIT_INCLUDE})
 
+add_executable(compute_jacobian_hermitian compute_jacobian_hermitian.cpp)
+target_link_libraries(compute_jacobian_hermitian PRIVATE compas-toolkit)
+set_target_properties(compute_jacobian_hermitian PROPERTIES CUDA_ARCHITECTURES "70;80")
+target_include_directories(compute_jacobian_hermitian PRIVATE ${CUDA_TOOLKIT_INCLUDE})
+
 #add_executable(simulate_sequence_fisp simulate_sequence_fisp.cpp)
 #target_link_libraries(simulate_sequence_fisp PRIVATE compas-toolkit)
 #set_target_properties(simulate_sequence_fisp PROPERTIES CUDA_ARCHITECTURES "70;80")

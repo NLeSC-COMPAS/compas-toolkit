@@ -49,6 +49,13 @@ int main() {
     int nreadouts = 1120;
     int samples_per_readout = 224;
 
+    std::cout << "parameters:\n";
+    std::cout << "coils: " << ncoils << "\n";
+    std::cout << "voxels: " << nvoxels << "\n";
+    std::cout << "readouts: " << nreadouts << "\n";
+    std::cout << "samples per readout: " << samples_per_readout << "\n";
+    std::cout << "\n";
+
     auto echos = generate_random_complex(context, nreadouts, nvoxels);
     auto coil_sensitivities = generate_random_complex(context, ncoils, nvoxels);
     TissueParameters parameters = generate_tissue_parameters(context, nvoxels);

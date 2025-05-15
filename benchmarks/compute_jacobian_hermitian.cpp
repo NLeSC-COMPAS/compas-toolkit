@@ -3,7 +3,7 @@
 #include <random>
 
 #include "common.hpp"
-#include "compas/jacobian/product.h"
+#include "compas/jacobian/hermitian.h"
 #include "compas/trajectories/cartesian.h"
 #include "compas/trajectories/signal.h"
 
@@ -19,13 +19,13 @@ static void benchmark_method(
     TissueParameters parameters,
     CartesianTrajectory trajectory,
     Array<cfloat, 2> coil_sensitivities,
-    Array<cfloat, 2> vector,
-    const std::vector<cfloat>& expected_Jv) {
-    Array<cfloat, 3> Jv;
+    Array<cfloat, 3> vector,
+    const std::vector<cfloat>& expected) {
+    Array<cfloat, 2> JHv;
     context.synchronize();
 
     auto [duration, runs] = benchmark([&] {
-        Jv = compute_jacobian(
+        JHv = compute_jacobian_hermitian(
             context,
             echos,
             delta_echos_T1,
@@ -44,7 +44,7 @@ static void benchmark_method(
     std::cout << "benchmark: " << name << "\n";
     std::cout << "iterations: " << runs << "\n";
     std::cout << "time: " << duration << " milliseconds\n";
-    compare_output(expected_Jv, Jv.copy_to_vector());
+    compare_output(expected, JHv.copy_to_vector());
     std::cout << "\n";
 }
 
@@ -66,7 +66,7 @@ int main() {
     auto echos = generate_random_complex(context, nreadouts, nvoxels);
     auto delta_echos_T1 = generate_random_complex(context, nreadouts, nvoxels);
     auto delta_echos_T2 = generate_random_complex(context, nreadouts, nvoxels);
-    auto vector = generate_random_complex(context, 4, nvoxels);
+    auto vector = generate_random_complex(context, ncoils, nreadouts, samples_per_readout);
     auto coil_sensitivities = generate_random_complex(context, ncoils, nvoxels);
     TissueParameters parameters = generate_tissue_parameters(context, nvoxels);
 
@@ -82,7 +82,7 @@ int main() {
         compas::View<cfloat> {k_start.data(), {{nreadouts}}},
         delta_k);
 
-    auto Jv = compas::compute_jacobian(
+    auto JHv = compas::compute_jacobian_hermitian(
         context,
         echos,
         delta_echos_T1,
@@ -93,7 +93,7 @@ int main() {
         vector,
         JacobianComputeMethod::Naive);
 
-    auto Jv_ref = Jv.copy_to_vector();
+    auto JHv_ref = JHv.copy_to_vector();
 
     benchmark_method(
         "naive",
@@ -106,7 +106,7 @@ int main() {
         trajectory,
         coil_sensitivities,
         vector,
-        Jv_ref);
+        JHv_ref);
 
     benchmark_method(
         "direct",
@@ -119,7 +119,7 @@ int main() {
         trajectory,
         coil_sensitivities,
         vector,
-        Jv_ref);
+        JHv_ref);
 
     benchmark_method(
         "matmul",
@@ -132,7 +132,7 @@ int main() {
         trajectory,
         coil_sensitivities,
         vector,
-        Jv_ref);
+        JHv_ref);
 
     benchmark_method(
         "matmul (low precision)",
@@ -145,7 +145,7 @@ int main() {
         trajectory,
         coil_sensitivities,
         vector,
-        Jv_ref);
+        JHv_ref);
 
     return 0;
 }

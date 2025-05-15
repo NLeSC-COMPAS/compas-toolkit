@@ -252,7 +252,8 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
             *echos,
             parameters->unwrap<compas::TissueParameters>(),
             trajectory->unwrap<compas::CartesianTrajectory>(),
-            *coils));
+            *coils,
+            compas::SimulateSignalMethod::MatmulBF16));
     });
 }
 
@@ -292,7 +293,8 @@ extern "C" compas::Array<cfloat, 3>* compas_compute_jacobian(
             parameters->unwrap<compas::TissueParameters>(),
             trajectory->unwrap<compas::CartesianTrajectory>(),
             *coils,
-            *vector));
+            *vector,
+            compas::JacobianComputeMethod::GemmLow));
     });
 }
 

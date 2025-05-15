@@ -3,35 +3,96 @@
 #include "compas/core/vector.h"
 #include "compas/parameters/tissue_view.cuh"
 #include "compas/trajectories/cartesian_view.cuh"
-#include "product_kernels.cuh"
 
 namespace compas {
 namespace kernels {
 
-// Defined in product_kernels.cuh
 static __global__ void compute_sample_decay(
     kmm::Bounds<2, int> range,
     GPUSubviewMut<cfloat, 2> E,
     GPUSubviewMut<cfloat, 2> dEdT2,
     CartesianTrajectoryView trajectory,
-    TissueParametersView parameters);
+    TissueParametersView parameters) {
+    index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
+    index_t sample = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.y.begin);
+
+    if (!range.contains(voxel, sample)) {
+        return;
+    }
+
+    TissueVoxel p = parameters.get(voxel);
+    E[sample][voxel] = trajectory.calculate_sample_decay_absolute(sample, p);
+    dEdT2[sample][voxel] = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
+}
+
+__global__ void jacobian_hermitian_product_naive(
+    kmm::Range<int> voxels,
+    int nreadouts,
+    int nsamples_per_readout,
+    int ncoils,
+    GPUSubviewMut<cfloat, 2> JHv,
+    GPUSubview<cfloat, 2> echos,
+    GPUSubview<cfloat, 2> delta_echos_T1,
+    GPUSubview<cfloat, 2> delta_echos_T2,
+    TissueParametersView parameters,
+    CartesianTrajectoryView trajectory,
+    GPUSubview<cfloat, 2> coil_sensitivities,
+    GPUSubview<cfloat, 3> vector) {
+    auto tid_x = index_t(threadIdx.x);
+    index_t voxel = index_t(blockIdx.x * blockDim.x + voxels.begin) + tid_x;
+
+    if (voxel >= voxels.end) {
+        return;
+    }
+
+    TissueVoxel p = parameters.get(voxel);
+    JHv[0][voxel] = 0;
+    JHv[1][voxel] = 0;
+    JHv[2][voxel] = 0;
+    JHv[3][voxel] = 0;
+
+    for (int icoil = 0; icoil < ncoils; icoil++) {
+        cfloat mHv = cfloat(0);
+        cfloat dmHv[2] = {0, 0};
+
+        for (index_t readout = 0; readout < nreadouts; readout++) {
+            auto me = echos[readout][voxel];
+            auto dme =
+                vec2<cfloat> {delta_echos_T1[readout][voxel], delta_echos_T2[readout][voxel]};
+
+            for (index_t sample = 0; sample < nsamples_per_readout; sample++) {
+                auto Es = trajectory.calculate_sample_decay_absolute(sample, p);
+                auto dEdT2s = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
+
+                auto ms = Es * me;
+                auto dms = vec2<cfloat> {dme[0] * Es, dme[1] * Es + me * dEdT2s};
+
+                // accumulate dot product in mHv
+                auto f = cfloat {vector[icoil][readout][sample]};
+
+                mHv += f * conj(ms);
+                dmHv[0] += f * conj(dms[0]);
+                dmHv[1] += f * conj(dms[1]);
+            }
+        }
+
+        // load coordinates, parameters, coil sensitivities and proton density for voxel
+        auto c = coil_sensitivities[icoil][voxel];
+        auto T1 = p.T1;
+        auto T2 = p.T2;
+        auto rho = p.rho;
+
+        JHv[0][voxel] += conj(T1 * rho) * conj(c) * dmHv[0];
+        JHv[1][voxel] += conj(T2 * rho) * conj(c) * dmHv[1];
+        JHv[2][voxel] += conj(c) * mHv;
+        JHv[3][voxel] += conj(c) * mHv * cfloat(0, -1);
+    }
+}
 
 /// Computes `a + b * conj(c)`
 __device__ static COMPAS_DEVICE cfloat add_mul_conj(cfloat a, cfloat b, cfloat c) {
     // Writing out the full equation results in better codegen with more FMAs
     return {fmaf(b.im, c.im, fmaf(b.re, c.re, a.re)), fmaf(b.im, c.re, fmaf(-b.re, c.im, a.im))};
-}
-
-template<typename T, typename U>
-__global__ void
-convert_kernel(kmm::Bounds<3, int> subrange, GPUSubviewMut<T, 3> output, GPUSubview<U, 3> input) {
-    auto k = index_t(blockIdx.x * blockDim.x + threadIdx.x);
-    auto j = index_t(blockIdx.y * blockDim.y + threadIdx.y);
-    auto i = index_t(blockIdx.z * blockDim.z + threadIdx.z);
-
-    if (input.in_bounds({i, j, k})) {
-        output[i][j][k] = T {input[i][j][k]};
-    }
 }
 
 template<
@@ -196,7 +257,7 @@ __launch_bounds__(block_size_x* block_size_y* block_size_z, blocks_per_sm) __glo
                 result += conj(lin_scale[i]) * tmp[i];
             }
 
-            if (block_size_y > 0 || block_size_z > 0) {
+            if (block_size_y > 1 || block_size_z > 1) {
                 __syncthreads();
                 shared_reduction[0][tid_z][tid_y][tid_x] = result.re;
                 shared_reduction[1][tid_z][tid_y][tid_x] = result.im;
@@ -222,5 +283,71 @@ __launch_bounds__(block_size_x* block_size_y* block_size_z, blocks_per_sm) __glo
         }
     }
 }
+
+static __global__ void compute_sample_decay_hermitian(
+    kmm::Bounds<2, int> range,
+    GPUSubviewMut<cfloat, 2> E_H,
+    GPUSubviewMut<cfloat, 2> dEdT2_H,
+    CartesianTrajectoryView trajectory,
+    TissueParametersView parameters) {
+    index_t sample = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
+    index_t voxel = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.y.begin);
+
+    if (!range.contains(sample, voxel)) {
+        return;
+    }
+
+    TissueVoxel p = parameters.get(voxel);
+    E_H[voxel][sample] = conj(trajectory.calculate_sample_decay_absolute(sample, p));
+    dEdT2_H[voxel][sample] = conj(trajectory.calculate_sample_decay_absolute_delta_T2(sample, p));
+}
+
+__global__ void jacobian_hermitian_product_finalize(
+    kmm::Range<int> voxels,
+    int nreadouts,
+    int icoil,
+    GPUSubviewMut<cfloat, 2> JHv,
+    GPUSubview<cfloat, 2> echos,
+    GPUSubview<cfloat, 2> delta_echos_T1,
+    GPUSubview<cfloat, 2> delta_echos_T2,
+    TissueParametersView parameters,
+    GPUSubview<cfloat, 2> coil_sensitivities,
+    GPUSubview<cfloat, 2> Ev,
+    GPUSubview<cfloat, 2> dEdT2v) {
+    auto tid_x = index_t(threadIdx.x);
+    auto voxel = index_t(blockIdx.x * blockDim.x) + voxels.begin + tid_x;
+
+    if (!voxels.contains(voxel)) {
+        return;
+    }
+
+    cfloat mHv = 0;
+    cfloat dmHv[2] = {0, 0};
+
+    for (index_t readout = 0; readout < nreadouts; readout++) {
+        auto me = echos[readout][voxel];
+        auto dme = vec2<cfloat> {delta_echos_T1[readout][voxel], delta_echos_T2[readout][voxel]};
+
+        auto Ev_r = Ev[readout][voxel];
+        auto dEv_r = dEdT2v[readout][voxel];
+
+        mHv += Ev_r * conj(me);
+        dmHv[0] += Ev_r * conj(dme[0]);
+        dmHv[1] += Ev_r * conj(dme[1]) + dEv_r * conj(me);
+    }
+
+    // load coordinates, parameters, coil sensitivities and proton density for voxel
+    auto c = coil_sensitivities[icoil][voxel];
+    TissueVoxel p = parameters.get(voxel);
+    auto T1 = p.T1;
+    auto T2 = p.T2;
+    auto rho = p.rho;
+
+    JHv[0][voxel] += conj(T1 * rho * c) * dmHv[0];
+    JHv[1][voxel] += conj(T2 * rho * c) * dmHv[1];
+    JHv[2][voxel] += conj(c) * mHv;
+    JHv[3][voxel] += conj(c) * mHv * cfloat(0, -1);
+}
+
 }  // namespace kernels
 }  // namespace compas
