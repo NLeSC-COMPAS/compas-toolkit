@@ -317,7 +317,8 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
             parameters->unwrap<compas::TissueParameters>(),
             trajectory->unwrap<compas::CartesianTrajectory>(),
             *coils,
-            *vector));
+            *vector,
+            compas::JacobianComputeMethod::GemmLow));
     });
 }
 

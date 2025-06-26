@@ -104,8 +104,9 @@ inline CompasContext make_context(int device = 0) {
     auto config = kmm::default_config_from_environment();
 
     // TODO: Use caching pools for host and device until segfaults are fixed
-    config.host_memory_kind = kmm::HostMemoryKind::NoPool;
-    config.device_memory_kind = kmm::DeviceMemoryKind::NoPool;
+    config.host_memory_kind = kmm::HostMemoryKind::CachingPool;
+    config.device_memory_kind = kmm::DeviceMemoryKind::DefaultPool;
+    config.device_concurrent_streams = 8;
 
     return {kmm::make_runtime(config), kmm::DeviceId(device)};
 }
