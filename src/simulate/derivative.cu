@@ -52,7 +52,7 @@ Array<cfloat, 2> simulate_magnetization_derivative_impl(
         {chunk_size, nreadouts},
         256,
         compas::kernels::calculate_finite_difference,
-        _x,
+        _xy,
         write(delta_echos(_, _x)),
         echos(_, _x),
         next_echos(_, _x),
