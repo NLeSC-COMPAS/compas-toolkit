@@ -8,8 +8,8 @@ context = CompasToolkit.init_context(0)
 # but non-constant proton density and B₀
 N = 256
 ρ = ComplexF32.(ImagePhantoms.shepp_logan(N, ImagePhantoms.SheppLoganEmis())') |> vec;
-T₁ = fill(0.85f0, N, N) |> vec;
-T₂ = fill(0.05f0, N, N) |> vec;
+T₁ = 0.3f0 .+ 1.5f0 .* rand(N, N) |> vec;     # 0.3–1.8 s
+T₂ = 0.02f0 .+ 0.13f0 .* rand(N, N) |> vec;   # 0.020–0.150 s
 B₀ = repeat(1:N,1,N) .|> Float32 |> vec;
 B₁ = ones(Float32, N, N) |> vec;
 
@@ -27,20 +27,27 @@ nTR = N; # nr of TRs used in the simulation
 RF_train = LinRange(1,90,nTR) |> collect .|> complex; # flip angle train
 TR,TE,TI = 0.010, 0.005, 0.100; # repetition time, echo time, inversion delay
 max_state = 32; # maximum number of configuration states to keep track of
-nz = 35
+nz = 1
 sliceprofiles = complex.(ones(nTR, nz))
 
-fisp_ref = FISP2D(RF_train, sliceprofiles, TR, TE, max_state, TI);
-RF_train = RF_train .|> ComplexF32 # constant flip angle train
-sliceprofiles = collect(sliceprofiles)  .|> ComplexF32 # z locations
+# Try multiple repetitions
+for repetitions in [1, 2, 6]
+    TW = 0.0
+    inversion_prepulse = true
+    wait_spoiling = true
+    undersampling_factor = 2
 
-# Simulate data
-fisp = CompasToolkit.FispSequence(RF_train, sliceprofiles, Float32(TR), Float32(TE), max_state, Float32(TI))
-echos = CompasToolkit.simulate_magnetization(parameters, fisp)
+    # Simulate using CompasToolkit
+    fisp = CompasToolkit.FispSequence(RF_train, sliceprofiles, Float32(TR), Float32(TE), max_state, Float32(TI),
+                                      undersampling_factor=undersampling_factor, repetitions=repetitions)
+    echos = CompasToolkit.simulate_magnetization(parameters, fisp)
 
-# isochromat model
-fisp_ref = gpu(f32(fisp_ref))
-parameters_ref = gpu(f32(parameters_ref))
-echos_ref = simulate_magnetization(CUDALibs(), fisp_ref, parameters_ref);
+    # Simulate using BlochSimulators
+    fisp_ref = FISP3D(RF_train, TR, TE, Val(max_state), TI, TW, repetitions, inversion_prepulse, wait_spoiling, undersampling_factor)
+    echos_ref = simulate_magnetization(CUDALibs(), gpu(f32(fisp_ref)), gpu(f32(parameters_ref)));
 
-print_equals_check(collect(echos_ref), transpose(collect(echos)))
+    # Print difference
+    println("repetitions=$repetitions")
+    print_equals_check(collect(echos_ref), transpose(collect(echos)))
+    println()
+end
