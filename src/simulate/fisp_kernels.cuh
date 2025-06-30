@@ -61,6 +61,7 @@ COMPAS_DEVICE void simulate_fisp_for_voxel_repetition_steps_warp(
             cfloat result;
 
             if (omega.sample_transverse(0, &result)) {
+                // echos[offset_step + j] += result;
                 smem.echos[threadIdx.y][j] = float2 {result.re, result.im};
             }
         }
@@ -78,11 +79,6 @@ COMPAS_DEVICE void simulate_fisp_for_voxel_repetition_steps_warp(
         auto e = smem.echos[threadIdx.y][threadIdx.x];
 
         if (NumStepsIsWarpSize || threadIdx.x < num_steps) {
-            if (isnan(e.x) || isnan(e.y)) {
-                printf("nan found %f,%f\n", p.x, p.y);
-                asm("trap;");
-            }
-
             echos[offset_step + threadIdx.x] += cfloat(e.x, e.y);
         }
     }
@@ -179,7 +175,7 @@ COMPAS_DEVICE void simulate_fisp_for_voxel_repetition(
                 E2_TR_minus_TE,
                 r_TR_minus_TE);
 
-            // break as we are doen with the loop
+            // break as we are done with the loop
             break;
         }
     }
