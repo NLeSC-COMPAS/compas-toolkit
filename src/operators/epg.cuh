@@ -55,7 +55,7 @@ struct EPGExciteMatrix {
         float cosalpha = 2.0f * cosx_sq - 1.0f;
 
         // phase of RF pulse
-        float cosphi = 0;
+        float cosphi = 1;
         float sinphi = 0;
         //        float phi = arg(RF);
         //        __sincosf(phi, &sinphi, &cosphi);
@@ -138,9 +138,7 @@ struct EPGThreadBlockState {
 
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
-            if (local_to_global_index(i) == 0) {
-                state[i].Z *= cos_theta;
-            }
+            state[i].Z *= cos_theta;
         }
     }
 
@@ -148,9 +146,7 @@ struct EPGThreadBlockState {
     void invert() {
 #pragma unroll items_per_thread
         for (int i = 0; i < items_per_thread; i++) {
-            if (local_to_global_index(i) == 0) {
-                state[i].Z *= -1.0f;
-            }
+            state[i].Z *= -1.0f;
         }
     }
 
