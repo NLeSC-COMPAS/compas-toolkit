@@ -20,24 +20,29 @@ template<typename T, size_t N = 1>
 using Array = kmm::Array<T, N>;
 
 struct CompasContext {
-    CompasContext(kmm::RuntimeHandle runtime, kmm::DeviceId device) :
-        m_runtime(runtime),
-        m_device(device) {}
+    CompasContext(kmm::Runtime& runtime, kmm::DeviceId device_id) :
+        m_runtime(kmm::RuntimeHandle(runtime).constrain_to(device_id)),
+        m_device(device_id) {}
+
+    CompasContext with_device(int index) {
+        size_t num_devices = m_runtime.worker().system_info().num_devices();
+        return {m_runtime.worker(), kmm::DeviceId(size_t(index) % num_devices)};
+    }
 
     template<typename T, size_t N>
     Array<std::decay_t<T>, N> allocate(View<T, N> content) const {
-        return m_runtime.allocate(content.data(), kmm::Dim<N>::from(content.sizes()));
+        return m_runtime.allocate(content.data(), kmm::Dim<N>::from(content.sizes()), m_device);
     }
 
     template<typename T, typename... Sizes>
     Array<std::decay_t<T>, sizeof...(Sizes)> allocate(const T* content_ptr, Sizes... sizes) const {
         kmm::Dim<sizeof...(Sizes)> sizes_array = {kmm::checked_cast<index_t>(sizes)...};
-        return m_runtime.allocate(content_ptr, sizes_array);
+        return m_runtime.allocate(content_ptr, sizes_array, kmm::MemoryId(m_device));
     }
 
     template<typename T>
     Array<std::decay_t<T>> allocate(const std::vector<T>& content) const {
-        return m_runtime.allocate(content.data(), content.size());
+        return allocate(content.data(), content.size());
     }
 
     template<typename L, typename... Args>
@@ -108,7 +113,7 @@ inline CompasContext make_context(int device = 0) {
     config.device_memory_kind = kmm::DeviceMemoryKind::DefaultPool;
     config.device_concurrent_streams = 8;
 
-    return {kmm::make_runtime(config), kmm::DeviceId(device)};
+    return {kmm::make_runtime(config).worker(), kmm::DeviceId(device)};
 }
 
 }  // namespace compas

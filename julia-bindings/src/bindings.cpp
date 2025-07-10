@@ -19,10 +19,19 @@ using cfloat = compas::complex_type<float>;
 extern "C" const char* compas_version() {
     return COMPAS_VERSION;
 }
-extern "C" const compas::CompasContext* compas_make_context(int device) {
+
+extern "C" const compas::CompasContext* compas_make_context() {
     return catch_exceptions([&] {
-        auto ctx = compas::make_context(device);
+        auto ctx = compas::make_context();
         return new compas::CompasContext(ctx);
+    });
+}
+
+extern "C" const compas::CompasContext*
+compas_copy_context_for_device(compas::CompasContext* ctx, int device) {
+    return catch_exceptions([&] {
+        auto new_ctx = ctx->with_device(device);
+        return new compas::CompasContext(new_ctx);
     });
 }
 
