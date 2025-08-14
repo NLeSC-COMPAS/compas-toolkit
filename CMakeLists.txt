@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
 set(PROJECT_NAME "compas-toolkit")
-project(${PROJECT_NAME} LANGUAGES CXX CUDA)
 
 # User options (features)
 option(COMPAS_USE_CUDA "Use the CUDA backend (default)" ON)
@@ -10,6 +9,11 @@ option(COMPAS_USE_HIP  "Use the HIP backend" OFF)
 # Check options
 if(COMPAS_USE_CUDA AND COMPAS_USE_HIP)
     message(FATAL_ERROR "CUDA and HIP backends are mutually exclusive.")
+endif()
+if(COMPAS_USE_CUDA)
+    project(${PROJECT_NAME} LANGUAGES CXX CUDA)
+elseif(COMPAS_USE_KMM)
+    project(${PROJECT_NAME} LANGUAGES CXX HIP)
 endif()
 
 # Enable C++17 support
@@ -30,18 +34,6 @@ install(TARGETS ${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/include")
 target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/src")
 
-# The CUDA compiler struggles with the "Werror" options, so we need to explicitly forward it to the host compiler
-# using `-Xcompiler=-Werror` if we are compiling CUDA code.
-set(CXXFLAGS
-        $<$<COMPILE_LANGUAGE:CUDA>:-forward-unknown-to-host-compiler>
-        $<$<COMPILE_LANGUAGE:CUDA>:--generate-line-info>
-        -Wall -Wextra -Wconversion -Wno-unused-parameter
-        #$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Werror>
-        $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>
-        $<$<COMPILE_LANGUAGE:CUDA>:-Xptxas="-v">
-)
-target_compile_options(${PROJECT_NAME} PRIVATE ${CXXFLAGS})
-
 # Enable PIC
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -50,7 +42,6 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${PROJECT_CLANG
 set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
 if(COMPAS_USE_CUDA)
-    enable_language(CUDA)
     set(CUDA_SEPARABLE_COMPILATION ON)
     set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
     set(CUDA_RESOLVE_DEVICE_SYMBOLS ON)
@@ -62,6 +53,18 @@ if(COMPAS_USE_CUDA)
     target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::nvrtc)
     set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_ARCHITECTURES "80")
 
+    # The CUDA compiler struggles with the "Werror" options, so we need to explicitly forward it to the host compiler
+    # using `-Xcompiler=-Werror` if we are compiling CUDA code.
+    set(CXXFLAGS
+            $<$<COMPILE_LANGUAGE:CUDA>:-forward-unknown-to-host-compiler>
+            $<$<COMPILE_LANGUAGE:CUDA>:--generate-line-info>
+            -Wall -Wextra -Wconversion -Wno-unused-parameter
+            #$<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-Werror>
+            $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>
+            $<$<COMPILE_LANGUAGE:CUDA>:-Xptxas="-v">
+    )
+    target_compile_options(${PROJECT_NAME} PRIVATE ${CXXFLAGS})
+
     set(KMM_USE_CUDA ON)
 elseif(COMPAS_USE_HIP)
     if(NOT DEFINED HIP_PATH)
@@ -72,7 +75,6 @@ elseif(COMPAS_USE_HIP)
         endif()
     endif()
     set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
-    enable_language(HIP)
     set_source_files_properties(${sources} PROPERTIES LANGUAGE HIP)
 
     find_package(HIP REQUIRED)
