@@ -1,19 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 
 set(PROJECT_NAME "compas-toolkit")
+project(${PROJECT_NAME} LANGUAGES CXX VERSION 0.2)
 
 # User options (features)
-option(COMPAS_USE_CUDA "Use the CUDA backend (default)" ON)
+option(COMPAS_USE_CUDA "Use the CUDA backend (default)" OFF)
 option(COMPAS_USE_HIP  "Use the HIP backend" OFF)
 
 # Check options
 if(COMPAS_USE_CUDA AND COMPAS_USE_HIP)
-    message(FATAL_ERROR "CUDA and HIP backends are mutually exclusive.")
-endif()
-if(COMPAS_USE_CUDA)
-    project(${PROJECT_NAME} LANGUAGES CXX CUDA)
-elseif(COMPAS_USE_KMM)
-    project(${PROJECT_NAME} LANGUAGES CXX HIP)
+    message(FATAL_ERROR "Exactly one backend between CUDA and HIP must be enabled.")
 endif()
 
 # Enable C++17 support
@@ -42,6 +38,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${PROJECT_CLANG
 set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
 if(COMPAS_USE_CUDA)
+    enable_language(CUDA)
     set(CUDA_SEPARABLE_COMPILATION ON)
     set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
     set(CUDA_RESOLVE_DEVICE_SYMBOLS ON)
@@ -75,6 +72,7 @@ elseif(COMPAS_USE_HIP)
         endif()
     endif()
     set(CMAKE_MODULE_PATH "${HIP_PATH}/cmake" ${CMAKE_MODULE_PATH})
+    enable_language(HIP)
     set_source_files_properties(${sources} PROPERTIES LANGUAGE HIP)
 
     find_package(HIP REQUIRED)
