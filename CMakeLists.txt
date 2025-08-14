@@ -6,6 +6,8 @@ project(${PROJECT_NAME} LANGUAGES CXX VERSION 0.2)
 # User options (features)
 option(COMPAS_USE_CUDA "Use the CUDA backend (default)" OFF)
 option(COMPAS_USE_HIP  "Use the HIP backend" OFF)
+option(COMPAS_BUILD_TEST "Build tests" OFF)
+option(COMPAS_BUILD_BENCHMARK "Build benchmarks" OFF)
 
 # Check options
 if(COMPAS_USE_CUDA AND COMPAS_USE_HIP)
@@ -98,14 +100,14 @@ configure_file(
     ${PROJECT_SOURCE_DIR}/julia-bindings/src/constants.h.input
     ${PROJECT_SOURCE_DIR}/julia-bindings/src/constants.h)
 
-set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-add_subdirectory(thirdparty/Catch2)
-
 set(KMM_STATIC ON)
 add_subdirectory(thirdparty/kmm)
 target_link_libraries(${PROJECT_NAME} PUBLIC kmm)
-
-
 add_subdirectory(julia-bindings)
-add_subdirectory(tests)
-add_subdirectory(benchmarks)
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+if(COMPAS_BUILD_TEST)
+    add_subdirectory(thirdparty/Catch2)
+    add_subdirectory(tests)
+endif()
+if(COMPAS_BUILD_BENCHMARK)add_subdirectory(benchmarks)
+endif()
