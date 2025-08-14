@@ -1,8 +1,6 @@
 #pragma once
 
-#include <cublas_v2.h>
-#include <cuda.h>
-#include <cuda_runtime_api.h>
+#include "compas/utils/backends.h"
 
 #include <memory>
 #include <string>
