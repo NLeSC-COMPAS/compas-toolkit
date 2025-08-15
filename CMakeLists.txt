@@ -64,6 +64,8 @@ if(COMPAS_USE_CUDA)
     )
     target_compile_options(${PROJECT_NAME} PRIVATE ${CXXFLAGS})
 
+    # Define `COMPAS_USE_CUDA` macro so that headers can detect CUDA usage
+    target_compile_definitions(${PROJECT_NAME} PUBLIC COMPAS_USE_CUDA=1)
     set(KMM_USE_CUDA ON)
 elseif(COMPAS_USE_HIP)
     if(NOT DEFINED HIP_PATH)
@@ -83,6 +85,8 @@ elseif(COMPAS_USE_HIP)
     target_link_libraries(${PROJECT_NAME} PUBLIC hip::device)
     target_link_libraries(${PROJECT_NAME} PUBLIC hip::rocblas)
 
+    # Define `COMPAS_USE_HIP` macro so that headers can detect HIP usage
+    target_compile_definitions(${PROJECT_NAME} PUBLIC COMPAS_USE_HIP=1)
     set(KMM_USE_HIP ON)
 endif()
 
