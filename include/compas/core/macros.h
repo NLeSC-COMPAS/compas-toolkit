@@ -12,6 +12,18 @@
     #define COMPAS_IS_HOST     (!COMPAS_IS_DEVICE)
     #define COMPAS_DEVICE      __device__ __forceinline__
     #define COMPAS_HOST_DEVICE __host__ __device__ __forceinline__
+#elif defined(__HIPCC__)
+    #define COMPAS_IS_HIP (1)
+
+    #ifdef __HIP_DEVICE_COMPILE__
+        #define COMPAS_IS_DEVICE (1)
+    #else
+        #define COMPAS_IS_DEVICE (0)
+    #endif
+
+    #define COMPAS_IS_HOST     (!COMPAS_IS_DEVICE)
+    #define COMPAS_DEVICE      __device__
+    #define COMPAS_HOST_DEVICE __host__ __device__
 #else
     #define COMPAS_IS_CUDA     (0)
     #define COMPAS_IS_DEVICE   (0)
