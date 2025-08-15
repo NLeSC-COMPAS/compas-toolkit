@@ -4,5 +4,5 @@
     #include <cuda_runtime_api.h>
 #elif COMPAS_USE_HIP
     #include <hip/hip_runtime.h>
-    #include <rocbla/rocblas.h>
+    #include <rocblas/rocblas.h>
 #endif
