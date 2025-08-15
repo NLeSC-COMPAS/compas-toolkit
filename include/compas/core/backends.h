@@ -1,3 +1,5 @@
+#pragma once
+
 #ifdef COMPAS_USE_CUDA
     #include <cublas_v2.h>
     #include <cuda.h>
