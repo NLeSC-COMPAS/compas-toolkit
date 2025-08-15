@@ -83,7 +83,7 @@ elseif(COMPAS_USE_HIP)
     find_package(ROCBLAS REQUIRED)
     target_link_libraries(${PROJECT_NAME} PUBLIC hip::host)
     target_link_libraries(${PROJECT_NAME} PUBLIC hip::device)
-    target_link_libraries(${PROJECT_NAME} PUBLIC hip::rocblas)
+    target_link_libraries(${PROJECT_NAME} PUBLIC roc::rocblas)
 
     # Define `COMPAS_USE_HIP` macro so that headers can detect HIP usage
     target_compile_definitions(${PROJECT_NAME} PUBLIC COMPAS_USE_HIP=1)
