@@ -199,8 +199,12 @@ struct EPGThreadBlockState {
             if (my_lane() == 0 && i + 1 < items_per_thread) {
                 input = state[i + 1].F_min;
             }
-
+#ifdef COMPAS_IS_CUDA
             state[i].F_min = __shfl_sync(mask, input, src_lane, warp_size);
+#elif defined(COMPAS_IS_HIP)
+            state[i].F_min.re = __shfl_sync(mask, input.re, src_lane, warp_size);
+            state[i].F_min.im = __shfl_sync(mask, input.im, src_lane, warp_size);
+#endif
 
             if (local_to_global_index(i) >= N - 1) {
                 state[i].F_min = 0;
@@ -225,7 +229,12 @@ struct EPGThreadBlockState {
                 input = state[i - 1].F_plus;
             }
 
+#ifdef COMPAS_IS_CUDA
             state[i].F_plus = __shfl_sync(mask, input, src_lane, warp_size);
+#elif defined(COMPAS_IS_HIP)
+            state[i].F_plus.re = __shfl_sync(mask, input.re, src_lane, warp_size);
+            state[i].F_plus.im = __shfl_sync(mask, input.im, src_lane, warp_size);
+#endif
 
             if (local_to_global_index(i) == 0) {
                 state[i].F_plus = conj(state[i].F_min);
