@@ -8,6 +8,7 @@
     #include <cuda_runtime_api.h>
     #define deviceComplex cuComplex
 #elif defined(COMPAS_USE_HIP)
+    #include <hip/hip_complex.h>
     #include <hip/hip_cooperative_groups.h>
     #include <hip/hip_runtime.h>
     #include <rocblas/rocblas.h>
