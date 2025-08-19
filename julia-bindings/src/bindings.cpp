@@ -121,19 +121,20 @@ extern "C" const Object* compas_make_tissue_parameters(
     int chunk_size = kmm::round_up_to_multiple(kmm::div_ceil(nvoxels, num_devices), 32);
 
     return catch_exceptions([&] {
-        return new_object(compas::make_tissue_parameters(
-            *context,
-            nvoxels,
-            chunk_size,
-            make_view(T1, nvoxels),
-            make_view(T2, nvoxels),
-            make_view(B1, nvoxels),
-            make_view(B0, nvoxels),
-            make_view(rho_x, nvoxels),
-            make_view(rho_y, nvoxels),
-            make_view(x, nvoxels),
-            make_view(y, nvoxels),
-            make_view(z, nvoxels)));
+        return new_object(
+            compas::make_tissue_parameters(
+                *context,
+                nvoxels,
+                chunk_size,
+                make_view(T1, nvoxels),
+                make_view(T2, nvoxels),
+                make_view(B1, nvoxels),
+                make_view(B0, nvoxels),
+                make_view(rho_x, nvoxels),
+                make_view(rho_y, nvoxels),
+                make_view(x, nvoxels),
+                make_view(y, nvoxels),
+                make_view(z, nvoxels)));
     });
 }
 
@@ -148,16 +149,17 @@ extern "C" Object* compas_make_fisp_sequence(
     int undersampling_factor,
     int repetitions) {
     return catch_exceptions([&] {
-        return new_object(compas::FISPSequence {
-            *RF_train,
-            *sliceprofiles,
-            TR,
-            TE,
-            TW,
-            max_state,
-            TI,
-            undersampling_factor,
-            repetitions});
+        return new_object(
+            compas::FISPSequence {
+                *RF_train,
+                *sliceprofiles,
+                TR,
+                TE,
+                TW,
+                max_state,
+                TI,
+                undersampling_factor,
+                repetitions});
     });
 }
 
@@ -220,10 +222,11 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_fisp(
     const Object* parameters,
     const Object* sequence) {
     return catch_exceptions([&] {
-        return new_object(compas::simulate_magnetization(
-            *context,
-            parameters->unwrap<compas::TissueParameters>(),
-            sequence->unwrap<compas::FISPSequence>()));
+        return new_object(
+            compas::simulate_magnetization(
+                *context,
+                parameters->unwrap<compas::TissueParameters>(),
+                sequence->unwrap<compas::FISPSequence>()));
     });
 }
 
@@ -232,10 +235,11 @@ extern "C" kmm::ArrayBase* compas_simulate_magnetization_pssfp(
     const Object* parameters,
     const Object* sequence) {
     return catch_exceptions([&] {
-        return new_object(compas::simulate_magnetization(
-            *context,
-            parameters->unwrap<compas::TissueParameters>(),
-            sequence->unwrap<compas::pSSFPSequence>()));
+        return new_object(
+            compas::simulate_magnetization(
+                *context,
+                parameters->unwrap<compas::TissueParameters>(),
+                sequence->unwrap<compas::pSSFPSequence>()));
     });
 }
 
@@ -247,13 +251,14 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
     const compas::Array<cfloat, 2>* coils,
     const Object* trajectory) {
     return catch_exceptions([&] {
-        return new_object(compas::magnetization_to_signal(
-            *context,
-            *echos,
-            parameters->unwrap<compas::TissueParameters>(),
-            trajectory->unwrap<compas::CartesianTrajectory>(),
-            *coils,
-            compas::SimulateSignalMethod::MatmulBF16));
+        return new_object(
+            compas::magnetization_to_signal(
+                *context,
+                *echos,
+                parameters->unwrap<compas::TissueParameters>(),
+                trajectory->unwrap<compas::CartesianTrajectory>(),
+                *coils,
+                compas::SimulateSignalMethod::MatmulBF16));
     });
 }
 
@@ -265,12 +270,13 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_spiral(
     const compas::Array<cfloat, 2>* coils,
     const Object* trajectory) {
     return catch_exceptions([&] {
-        return new_object(compas::magnetization_to_signal(
-            *context,
-            *echos,
-            parameters->unwrap<compas::TissueParameters>(),
-            trajectory->unwrap<compas::SpiralTrajectory>(),
-            *coils));
+        return new_object(
+            compas::magnetization_to_signal(
+                *context,
+                *echos,
+                parameters->unwrap<compas::TissueParameters>(),
+                trajectory->unwrap<compas::SpiralTrajectory>(),
+                *coils));
     });
 }
 
@@ -285,16 +291,17 @@ extern "C" compas::Array<cfloat, 3>* compas_compute_jacobian(
     const Object* trajectory,
     const compas::Array<cfloat, 2>* vector) {
     return catch_exceptions([&] {
-        return new_object(compas::compute_jacobian(
-            *context,
-            *echos,
-            *delta_echos_T1,
-            *delta_echos_T2,
-            parameters->unwrap<compas::TissueParameters>(),
-            trajectory->unwrap<compas::CartesianTrajectory>(),
-            *coils,
-            *vector,
-            compas::JacobianComputeMethod::GemmLow));
+        return new_object(
+            compas::compute_jacobian(
+                *context,
+                *echos,
+                *delta_echos_T1,
+                *delta_echos_T2,
+                parameters->unwrap<compas::TissueParameters>(),
+                trajectory->unwrap<compas::CartesianTrajectory>(),
+                *coils,
+                *vector,
+                compas::JacobianComputeMethod::GemmLow));
     });
 }
 
@@ -309,15 +316,16 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
     const compas::Array<cfloat, 2>* coils,
     const compas::Array<cfloat, 3>* vector) {
     return catch_exceptions([&] {
-        return new_object(compas::compute_jacobian_hermitian(
-            *context,
-            *echos,
-            *delta_echos_T1,
-            *delta_echos_T2,
-            parameters->unwrap<compas::TissueParameters>(),
-            trajectory->unwrap<compas::CartesianTrajectory>(),
-            *coils,
-            *vector));
+        return new_object(
+            compas::compute_jacobian_hermitian(
+                *context,
+                *echos,
+                *delta_echos_T1,
+                *delta_echos_T2,
+                parameters->unwrap<compas::TissueParameters>(),
+                trajectory->unwrap<compas::CartesianTrajectory>(),
+                *coils,
+                *vector));
     });
 }
 
@@ -327,11 +335,12 @@ extern "C" compas::Array<cfloat, 2>* phase_encoding(
     const Object* parameters,
     const Object* trajectory) {
     return catch_exceptions([&] {
-        return new_object(compas::phase_encoding(
-            *context,
-            *echos,
-            parameters->unwrap<compas::TissueParameters>(),
-            trajectory->unwrap<compas::CartesianTrajectory>()));
+        return new_object(
+            compas::phase_encoding(
+                *context,
+                *echos,
+                parameters->unwrap<compas::TissueParameters>(),
+                trajectory->unwrap<compas::CartesianTrajectory>()));
     });
 }
 
@@ -352,13 +361,14 @@ extern "C" compas::Array<cfloat, 2>* compas_simulate_magnetization_derivative_ps
     float delta,
     const Object* sequence) {
     return catch_exceptions([&] {
-        return new_object(compas::simulate_magnetization_derivative(
-            *context,
-            field,
-            *echos,
-            parameters->unwrap<compas::TissueParameters>(),
-            sequence->unwrap<compas::pSSFPSequence>(),
-            delta));
+        return new_object(
+            compas::simulate_magnetization_derivative(
+                *context,
+                field,
+                *echos,
+                parameters->unwrap<compas::TissueParameters>(),
+                sequence->unwrap<compas::pSSFPSequence>(),
+                delta));
     });
 }
 
@@ -370,12 +380,13 @@ extern "C" compas::Array<cfloat, 2>* compas_simulate_magnetization_derivative_fi
     float delta,
     const Object* sequence) {
     return catch_exceptions([&] {
-        return new_object(compas::simulate_magnetization_derivative(
-            *context,
-            field,
-            *echos,
-            parameters->unwrap<compas::TissueParameters>(),
-            sequence->unwrap<compas::FISPSequence>(),
-            delta));
+        return new_object(
+            compas::simulate_magnetization_derivative(
+                *context,
+                field,
+                *echos,
+                parameters->unwrap<compas::TissueParameters>(),
+                sequence->unwrap<compas::FISPSequence>(),
+                delta));
     });
 }
