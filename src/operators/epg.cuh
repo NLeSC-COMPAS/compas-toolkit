@@ -185,7 +185,11 @@ struct EPGThreadBlockState {
   private:
     COMPAS_DEVICE
     void shift_down() {
+#ifdef COMPAS_IS_CUDA
         unsigned int mask = ~0u;
+#elif defined(COMPAS_IS_HIP)
+        long long unsigned int mask = ~0u;
+#endif
         int src_lane = (my_lane() + 1) % warp_size;
 
 #pragma unroll items_per_thread
@@ -206,7 +210,11 @@ struct EPGThreadBlockState {
 
     COMPAS_DEVICE
     void shift_up() {
+#ifdef COMPAS_IS_CUDA
         unsigned int mask = ~0u;
+#elif defined(COMPAS_IS_HIP)
+        long long unsigned int mask = ~0u;
+#endif
         int src_lane = (my_lane() + (warp_size - 1)) % warp_size;
 
 #pragma unroll items_per_thread
