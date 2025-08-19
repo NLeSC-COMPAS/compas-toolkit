@@ -1,8 +1,5 @@
 #pragma once
 
-#include <cooperative_groups.h>
-#include <cooperative_groups/reduce.h>
-
 #include "../operators/isochromat.cuh"
 #include "compas/core/complex_type.h"
 #include "compas/sequences/pssfp_view.h"
