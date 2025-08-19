@@ -10,7 +10,7 @@ void compute_gemm(
     GPUSubview<cfloat, 2> rhs,
     cfloat beta,
     GemmComputeMethod kind) {
-    cuComplex alpha = {1, 0};
+    deviceComplex alpha = {1, 0};
 
     int64_t m = result.size(0);
     int64_t n = result.size(1);
@@ -23,6 +23,7 @@ void compute_gemm(
     COMPAS_CHECK(rhs.size(0) == n);
     COMPAS_CHECK(rhs.size(1) == k);
 
+#if defined(COMPAS_USE_CUDA)
     cublasGemmAlgo_t compute_algo = CUBLAS_GEMM_DEFAULT;
     cublasComputeType_t compute_type = CUBLAS_COMPUTE_32F;
 
@@ -62,6 +63,52 @@ void compute_gemm(
         result.stride(),  // ldc
         compute_type,
         compute_algo));
+#elif defined(COMPAS_USE_HIP)
+    rocblasGemmAlgo_t compute_algo = ROCBLAS_GEMM_DEFAULT;
+    rocblasComputeType_t compute_type = ROCBLAS_COMPUTE_32F;
+
+    switch (kind) {
+        case GemmComputeMethod::Pedantic:
+            compute_type = ROCBLAS_COMPUTE_32F_PEDANTIC;
+            break;
+        case GemmComputeMethod::Fast:
+            compute_type = ROCBLAS_COMPUTE_32F_PEDANTIC;
+            break;
+        case GemmComputeMethod::BF16:
+            compute_type = ROCBLAS_COMPUTE_32F_FAST_16BF;
+            break;
+        case GemmComputeMethod::TF32:
+            compute_type = ROCBLAS_COMPUTE_32F_FAST_TF32;
+            break;
+    }
+
+    COMPAS_GPU_CHECK(rocblas_set_stream(context.blas(), context.stream()));
+    COMPAS_GPU_CHECK(rocblas_gemm_ex(
+        context.blas(),
+        rocblas_operation_transpose,  // transa
+        rocblas_operation_none,  // transb
+        n,  // m
+        m,  // n
+        k,  // k
+        &alpha,  // alpha
+        rhs.data(),  // A
+        rocblas_datatype_f32_r,  // A type
+        rhs.stride(),  // lda
+        lhs.data(),  // B
+        rocblas_datatype_f32_r,  // B type
+        lhs.stride(),  // ldb
+        &beta,  //beta
+        result.data(),  // C
+        rocblas_datatype_f32_r,  // C type
+        result.stride(),  // ldc
+        result.data(),  // C
+        rocblas_datatype_f32_r,  // C type
+        result.stride(),  // ldc
+        compute_type,
+        compute_algo,
+        0,
+        0));
+#endif
 }
 
 }  // namespace compas
