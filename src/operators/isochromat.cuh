@@ -31,9 +31,12 @@ struct Isochromat: vfloat3 {
         float theta_sq = a.x * a.x + a.y * a.y + a.z * a.z;
         float theta;
 
-#if COMPAS_IS_DEVICE
+#if COMPAS_IS_CUDA
         //        theta = __sqrtf(theta_sq);
         asm("sqrt.approx.f32 %0, %1;" : "=f"(theta) : "f"(theta_sq));
+#elif COMPAS_IS_HIP
+        // TODO: add asm implementation?
+        theta = sqrtf(theta_sq);
 #else
         theta = sqrtf(theta_sq);
 #endif
@@ -41,11 +44,14 @@ struct Isochromat: vfloat3 {
         if (fabsf(theta) > 1e-9f) {  // theta != 0
 
             // Normalize rotation vector
-#if COMPAS_IS_DEVICE
+#if COMPAS_IS_CUDA
             float theta_rcp = 0;
             //            theta_rcp = __fdividef(1.0f, theta);
             asm("rcp.approx.f32 %0, %1;" : "=f"(theta_rcp) : "f"(theta));
             vfloat3 k = a * theta_rcp;
+#elif COMPAS_IS_HIP
+            // TODO: add asm implementation?
+            vfloat3 k = a / theta;
 #else
             vfloat3 k = a / theta;
 #endif
