@@ -35,7 +35,7 @@ struct EPGExciteMatrix {
 
     COMPAS_DEVICE
     EPGExciteMatrix(cfloat RF, float B1 = 1.0f) {
-        static constexpr float MIN_ANGLE = FLT_EPSILON;
+        static constexpr float MIN_ANGLE = FLT_MIN;
         static constexpr float DEG2RAD = (float(M_PI) / 180.0f);
 
         // angle of RF pulse
@@ -96,14 +96,15 @@ struct EPGExciteMatrix {
         auto R13 = cfloat(R13_re, R13_im);
 
         // These values can be derived from the other entries
-        auto R21 = conj(cfloat(R12));
+        auto R21 = conj(R12);
         auto R22 = R11;
+        auto R23 = conj(R13);
+
         auto R31 = cfloat(-0.5F * R13.re, 0.5F * R13.im);
-        auto R23 = conj(cfloat(R13));
         auto R32 = conj(R31);
 
         EPGStateColumn result;
-        result.F_plus = (R11 * x.F_plus).add_mul(cfloat(R12), x.F_min).add_mul(cfloat(R13), x.Z);
+        result.F_plus = (R11 * x.F_plus).add_mul(R12, x.F_min).add_mul(R13, x.Z);
         result.F_min = (R22 * x.F_min).add_mul(R21, x.F_plus).add_mul(R23, x.Z);
         result.Z = (R31 * x.F_plus).add_mul(R32, x.F_min).add_mul(R33, x.Z);
         return result;
@@ -235,18 +236,20 @@ struct EPGThreadBlockState {
     COMPAS_DEVICE
     void shift_down() {
         unsigned int mask = ~0u;
-        int src_lane = (my_lane() + 1) % warp_size;
+
+        auto old_first = state[0].F_min;
+        auto new_last = __shfl_sync_down(mask, old_first, 1, warp_size);
+
+        // Shift all F_min values one up
+#pragma unroll
+        for (int i = 0; i < items_per_thread - 1; i++) {
+            state[i].F_min = state[i + 1].F_min;
+        }
+
+        state[items_per_thread - 1].F_min = new_last;
 
 #pragma unroll items_per_thread
         for (index_t i = 0; i < items_per_thread; i++) {
-            auto input = state[i].F_min;
-
-            if (my_lane() == 0 && i + 1 < items_per_thread) {
-                input = state[i + 1].F_min;
-            }
-
-            state[i].F_min = __shfl_sync(mask, input, src_lane, warp_size);
-
             if (local_to_global_index(i) >= N - 1) {
                 state[i].F_min = 0;
             }
@@ -256,21 +259,20 @@ struct EPGThreadBlockState {
     COMPAS_DEVICE
     void shift_up() {
         unsigned int mask = ~0u;
-        int src_lane = (my_lane() + (warp_size - 1)) % warp_size;
 
-#pragma unroll items_per_thread
-        for (index_t i = items_per_thread - 1; i >= 0; i--) {
-            auto input = state[i].F_plus;
+        auto old_last = state[items_per_thread - 1].F_plus;
+        auto new_first = __shfl_sync_up(mask, old_last, 1, warp_size);
 
-            if (my_lane() == warp_size - 1 && i > 0) {
-                input = state[i - 1].F_plus;
-            }
+        // Shift all F_plus values one down
+#pragma unroll
+        for (int i = 0; i < items_per_thread - 1; i++) {
+            state[items_per_thread - 1 - i].F_plus = state[items_per_thread - 2 - i].F_plus;
+        }
 
-            state[i].F_plus = __shfl_sync(mask, input, src_lane, warp_size);
+        state[0].F_plus = new_first;
 
-            if (local_to_global_index(i) == 0) {
-                state[i].F_plus = conj(state[i].F_min);
-            }
+        if (my_lane() == 0) {
+            state[0].F_plus = conj(state[0].F_min);
         }
     }
 
@@ -281,17 +283,17 @@ struct EPGThreadBlockState {
 
     COMPAS_DEVICE
     static index_t local_to_global_index(index_t i) {
-        return i * warp_size + my_lane();
+        return my_lane() * items_per_thread + i;
     }
 
     COMPAS_DEVICE
     static index_t global_to_local_lane(index_t i) {
-        return i % warp_size;
+        return i / items_per_thread;
     }
 
     COMPAS_DEVICE
     static index_t global_to_local_item(index_t i) {
-        return i / warp_size;
+        return i % items_per_thread;
     }
 
     int N;

@@ -24,13 +24,14 @@ parameters_ref = map(T₁T₂B₀ρˣρʸ, T₁, T₂, B₀, real.(ρ), imag.(ρ
 parameters = CompasToolkit.TissueParameters(nvoxels, T₁, T₂, B₁, B₀, real.(ρ), imag.(ρ), X, Y)
 
 nTR = N; # nr of TRs used in the simulation
-RF_train = LinRange(1,90,nTR) |> collect .|> complex; # flip angle train
+RF_train = rand(nTR) .* exp.(rand(nTR) .* im) |> collect .|> complex; # flip angle train
 TR,TE,TI = 0.010, 0.005, 0.100; # repetition time, echo time, inversion delay
-max_state = 32; # maximum number of configuration states to keep track of
+#max_state = 64; # maximum number of configuration states to keep track of
 nz = 1
 sliceprofiles = complex.(ones(nTR, nz))
 
 # Try multiple repetitions
+for max_state in [32, 64]
 for repetitions in [1, 2, 6]
     TW = 0.0
     inversion_prepulse = true
@@ -50,4 +51,5 @@ for repetitions in [1, 2, 6]
     println("repetitions=$repetitions")
     print_equals_check(collect(echos_ref), transpose(collect(echos)))
     println()
+end
 end
