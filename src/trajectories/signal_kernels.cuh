@@ -93,7 +93,11 @@ COMPAS_DEVICE void reduce_signal_cooperative(
 
 #pragma unroll 6
     for (unsigned int delta = threads_cooperative / 2; delta > 0; delta /= 2) {
+#if defined(COMPAS_IS_CUDA)
         static constexpr unsigned int mask = (1L << threads_cooperative) - 1;
+#elif defined(COMPAS_IS_HIP)
+        static constexpr long long unsigned int mask = (1L << threads_cooperative) - 1;
+#endif
 
         value.re += __shfl_down_sync(mask, value.re, delta, threads_cooperative);
         value.im += __shfl_down_sync(mask, value.im, delta, threads_cooperative);
