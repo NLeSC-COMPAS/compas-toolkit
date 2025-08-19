@@ -64,21 +64,18 @@ void compute_gemm(
         compute_type,
         compute_algo));
 #elif defined(COMPAS_USE_HIP)
-    rocblasGemmAlgo_t compute_algo = ROCBLAS_GEMM_DEFAULT;
-    rocblasComputeType_t compute_type = ROCBLAS_COMPUTE_32F;
+    rocblas_gemm_algo compute_algo = ROCBLAS_GEMM_DEFAULT;
+    rocblas_datatype compute_type = ROCBLAS_COMPUTE_32F;
 
     switch (kind) {
         case GemmComputeMethod::Pedantic:
-            compute_type = ROCBLAS_COMPUTE_32F_PEDANTIC;
+            compute_type = rocblas_datatype_f32_r;
             break;
         case GemmComputeMethod::Fast:
-            compute_type = ROCBLAS_COMPUTE_32F_PEDANTIC;
+            compute_type = rocblas_datatype_f32_r;
             break;
         case GemmComputeMethod::BF16:
-            compute_type = ROCBLAS_COMPUTE_32F_FAST_16BF;
-            break;
-        case GemmComputeMethod::TF32:
-            compute_type = ROCBLAS_COMPUTE_32F_FAST_TF32;
+            compute_type = rocblas_datatype_bf16_r;
             break;
     }
 
