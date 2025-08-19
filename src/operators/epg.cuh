@@ -238,7 +238,7 @@ struct EPGThreadBlockState {
         unsigned int mask = ~0u;
 
         auto old_first = state[0].F_min;
-        auto new_last = __shfl_sync_down(mask, old_first, 1, warp_size);
+        auto new_last = __shfl_down_sync(mask, old_first, 1, warp_size);
 
         // Shift all F_min values one up
 #pragma unroll
@@ -261,7 +261,7 @@ struct EPGThreadBlockState {
         unsigned int mask = ~0u;
 
         auto old_last = state[items_per_thread - 1].F_plus;
-        auto new_first = __shfl_sync_up(mask, old_last, 1, warp_size);
+        auto new_first = __shfl_up_sync(mask, old_last, 1, warp_size);
 
         // Shift all F_plus values one down
 #pragma unroll

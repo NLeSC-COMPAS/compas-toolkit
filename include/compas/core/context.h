@@ -20,18 +20,18 @@ template<typename T, size_t N = 1>
 using Array = kmm::Array<T, N>;
 
 struct CompasContext {
-    CompasContext(kmm::Runtime& runtime, kmm::DeviceId device_id) :
-        m_runtime(kmm::RuntimeHandle(runtime).constrain_to(device_id)),
-        m_device(device_id) {}
+    CompasContext(kmm::Runtime& runtime, kmm::ResourceId resource_id) :
+        m_runtime(kmm::RuntimeHandle(runtime).constrain_to(resource_id)),
+        m_device(resource_id.as_device()) {}
 
     CompasContext with_device(int index) {
-        size_t num_devices = m_runtime.worker().system_info().num_devices();
-        return {m_runtime.worker(), kmm::DeviceId(size_t(index) % num_devices)};
+        auto resources = m_runtime.worker().system_info().resources();
+        return {m_runtime.worker(), resources[index % resources.size()]};
     }
 
     template<typename T, size_t N>
     Array<std::decay_t<T>, N> allocate(View<T, N> content) const {
-        return m_runtime.allocate(content.data(), kmm::Dim<N>::from(content.sizes()), m_device);
+        return m_runtime.allocate(content.data(), kmm::Dim<N>::from(content.sizes()), kmm::MemoryId(m_device));
     }
 
     template<typename T, typename... Sizes>
@@ -113,7 +113,7 @@ inline CompasContext make_context(int device = 0) {
     config.device_memory_kind = kmm::DeviceMemoryKind::DefaultPool;
     config.device_concurrent_streams = 8;
 
-    return {kmm::make_runtime(config).worker(), kmm::DeviceId(device)};
+    return {kmm::make_runtime(config).worker(), kmm::ResourceId{kmm::DeviceId(device), 0}};
 }
 
 }  // namespace compas
