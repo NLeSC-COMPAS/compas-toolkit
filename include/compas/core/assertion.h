@@ -1,5 +1,6 @@
 #pragma once
 
+#include "backends.h"
 #include "macros.h"
 
 #if COMPAS_IS_DEVICE
