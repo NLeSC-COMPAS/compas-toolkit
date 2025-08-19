@@ -305,7 +305,11 @@ using cdouble = complex_type<double>;
 #define COMPAS_COMPLEX_DEVICE_SHFL_IMPL(F, Ty)                                 \
     template<typename T>                                                       \
     COMPAS_DEVICE compas::complex_type<T> F(                                   \
+#ifdef COMPAS_IS_CUDA                                                          \
         unsigned mask,                                                         \
+#elif COMPAS_IS_HIP                                                            \
+        unsigned long long mask,                                               \
+#endif                                                                         \
         const compas::complex_type<T>& var,                                    \
         Ty arg,                                                                \
         int width = 32) {                                                      \
