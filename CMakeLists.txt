@@ -88,6 +88,7 @@ elseif(COMPAS_USE_HIP)
     # Define `COMPAS_USE_HIP` macro so that headers can detect HIP usage
     target_compile_definitions(${PROJECT_NAME} PUBLIC COMPAS_USE_HIP=1)
     set(KMM_USE_HIP ON)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC HIP_ENABLE_WARP_SYNC_BUILTINS=1)
 endif()
 
 # Installation of library files
