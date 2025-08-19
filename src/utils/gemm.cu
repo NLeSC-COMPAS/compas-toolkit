@@ -64,8 +64,8 @@ void compute_gemm(
         compute_type,
         compute_algo));
 #elif defined(COMPAS_USE_HIP)
-    rocblas_gemm_algo compute_algo = ROCBLAS_GEMM_DEFAULT;
-    rocblas_datatype compute_type = ROCBLAS_COMPUTE_32F;
+    rocblas_gemm_algo compute_algo = rocblas_gemm_algo_standard;
+    rocblas_datatype compute_type = rocblas_datatype_f32_r;
 
     switch (kind) {
         case GemmComputeMethod::Pedantic:
@@ -76,6 +76,10 @@ void compute_gemm(
             break;
         case GemmComputeMethod::BF16:
             compute_type = rocblas_datatype_bf16_r;
+            break;
+        case GemmComputeMethod::TF32:
+            // TODO: tensorfloat type missing?
+            compute_type = rocblas_datatype_invalid;
             break;
     }
 
