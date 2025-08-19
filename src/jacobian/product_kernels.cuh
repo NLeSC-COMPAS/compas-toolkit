@@ -221,7 +221,12 @@ __launch_bounds__(threads_per_block, blocks_per_sm) __global__ void jacobian_pro
 
 #pragma unroll 6
                 for (uint delta = threads_per_item / 2; delta > 0; delta /= 2) {
+#ifdef COMPAS_IS_CUDA
                     static constexpr uint mask = uint((1L << threads_per_item) - 1);
+#elif defined(COMPAS_IS_HIP)
+                    static constexpr long long unsigned int mask =
+                        uint((1L << threads_per_item) - 1);
+#endif
 
                     result.re += __shfl_down_sync(mask, result.re, delta, threads_per_item);
                     result.im += __shfl_down_sync(mask, result.im, delta, threads_per_item);

@@ -312,7 +312,7 @@ using cdouble = complex_type<double>;
             int width = 32) {                                                      \
             return {::F(mask, var.re, arg, width), ::F(mask, var.im, arg, width)}; \
         }
-#elif COMPAS_IS_HIP
+#elif defined(COMPAS_IS_HIP)
     #define COMPAS_COMPLEX_DEVICE_SHFL_IMPL(F, Ty)                                 \
         template<typename T>                                                       \
         COMPAS_DEVICE compas::complex_type<T> F(                                   \
