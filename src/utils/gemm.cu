@@ -65,17 +65,17 @@ void compute_gemm(
         compute_algo));
 #elif defined(COMPAS_USE_HIP)
     rocblas_gemm_algo compute_algo = rocblas_gemm_algo_standard;
-    rocblas_datatype compute_type = rocblas_datatype_f32_r;
+    rocblas_datatype compute_type = rocblas_datatype_f32_c;
 
     switch (kind) {
         case GemmComputeMethod::Pedantic:
-            compute_type = rocblas_datatype_f32_r;
+            compute_type = rocblas_datatype_f32_c;
             break;
         case GemmComputeMethod::Fast:
-            compute_type = rocblas_datatype_f32_r;
+            compute_type = rocblas_datatype_f32_c;
             break;
         case GemmComputeMethod::BF16:
-            compute_type = rocblas_datatype_bf16_r;
+            compute_type = rocblas_datatype_bf16_c;
             break;
         case GemmComputeMethod::TF32:
             // TODO: tensorfloat type missing?
@@ -93,17 +93,17 @@ void compute_gemm(
         k,  // k
         &alpha,  // alpha
         rhs.data(),  // A
-        rocblas_datatype_f32_r,  // A type
+        rocblas_datatype_f32_c,  // A type
         rhs.stride(),  // lda
         lhs.data(),  // B
-        rocblas_datatype_f32_r,  // B type
+        rocblas_datatype_f32_c,  // B type
         lhs.stride(),  // ldb
         &beta,  //beta
         result.data(),  // C
-        rocblas_datatype_f32_r,  // C type
+        rocblas_datatype_f32_c,  // C type
         result.stride(),  // ldc
         result.data(),  // C
-        rocblas_datatype_f32_r,  // C type
+        rocblas_datatype_f32_c,  // C type
         result.stride(),  // ldc
         compute_type,
         compute_algo,
