@@ -75,11 +75,12 @@ void compute_gemm(
             compute_type = rocblas_datatype_f32_c;
             break;
         case GemmComputeMethod::BF16:
-            compute_type = rocblas_datatype_bf16_c;
+            // TODO: BF16_C not currently supported
+            compute_type = rocblas_datatype_f32_c;
             break;
         case GemmComputeMethod::TF32:
-            // TODO: tensorfloat type missing?
-            compute_type = rocblas_datatype_invalid;
+            // TODO: TF32_C not currently supported
+            compute_type = rocblas_datatype_f32_c;
             break;
     }
 
