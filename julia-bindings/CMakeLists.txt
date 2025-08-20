@@ -1,5 +1,5 @@
 file(GLOB sources "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cu")
-add_library(compas-julia SHARED ${sources})
+add_library(compas-julia STATIC ${sources})
 
 target_compile_features(compas-julia PRIVATE cxx_std_17)
 install(TARGETS compas-julia LIBRARY DESTINATION lib)
