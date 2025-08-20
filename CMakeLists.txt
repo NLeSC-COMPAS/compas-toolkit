@@ -109,8 +109,10 @@ configure_file(
 set(KMM_STATIC ON)
 add_subdirectory(thirdparty/kmm)
 target_link_libraries(${PROJECT_NAME} PUBLIC kmm)
+
 add_subdirectory(julia-bindings)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+
 if(COMPAS_BUILD_TEST)
     add_subdirectory(thirdparty/Catch2)
     add_subdirectory(tests)

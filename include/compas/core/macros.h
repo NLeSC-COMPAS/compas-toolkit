@@ -22,8 +22,8 @@
     #endif
 
     #define COMPAS_IS_HOST     (!COMPAS_IS_DEVICE)
-    #define COMPAS_DEVICE      __device__
-    #define COMPAS_HOST_DEVICE __host__ __device__
+    #define COMPAS_DEVICE      __device__ inline __attribute__((always_inline))
+    #define COMPAS_HOST_DEVICE __host__ __device__ inline __attribute__((always_inline))
 #else
     #define COMPAS_IS_CUDA     (0)
     #define COMPAS_IS_DEVICE   (0)
