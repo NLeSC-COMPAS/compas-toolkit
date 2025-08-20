@@ -126,8 +126,9 @@ extern "C" const Object* compas_make_tissue_parameters(
     const float* x,
     const float* y,
     const float* z) {
-    int num_devices = int(context->runtime().info().num_devices());
-    int chunk_size = kmm::round_up_to_multiple(kmm::div_ceil(nvoxels, num_devices), 32);
+    //    int num_devices = int(context->runtime().info().num_devices());
+    //    int chunk_size = kmm::round_up_to_multiple(kmm::div_ceil(nvoxels, num_devices), 32);
+    int chunk_size = nvoxels;
 
     return catch_exceptions([&] {
         return new_object(compas::make_tissue_parameters(

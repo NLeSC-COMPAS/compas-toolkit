@@ -22,7 +22,8 @@ using Array = kmm::Array<T, N>;
 struct CompasContext {
     CompasContext(kmm::Runtime& runtime, kmm::ResourceId resource_id) :
         m_runtime(kmm::RuntimeHandle(runtime).constrain_to(resource_id)),
-        m_device(resource_id.as_device()) {}
+        m_device(resource_id.as_device()) {
+    }
 
     CompasContext with_device(int index) {
         auto resources = m_runtime.worker().system_info().resources();
