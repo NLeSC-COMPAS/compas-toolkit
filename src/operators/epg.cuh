@@ -242,7 +242,13 @@ struct EPGThreadBlockState {
 #endif
 
         auto old_first = state[0].F_min;
-        auto new_last = __shfl_down_sync(mask, old_first, 1, warp_size);
+        auto new_last = old_first;
+#if defined(COMPAS_IS_CUDA)
+        new_last = __shfl_down_sync(mask, old_first, 1, warp_size);
+#elif defined(COMPAS_IS_HIP)
+        new_last.re = __shfl_down_sync(mask, old_first.re, 1, warp_size);
+        new_last.im = __shfl_down_sync(mask, old_first.im, 1, warp_size);
+#endif
 
         // Shift all F_min values one up
 #pragma unroll
@@ -270,7 +276,13 @@ struct EPGThreadBlockState {
         int src_lane = (my_lane() + (warp_size - 1)) % warp_size;
 
         auto old_last = state[items_per_thread - 1].F_plus;
-        auto new_first = __shfl_up_sync(mask, old_last, 1, warp_size);
+        auto new_first = old_last;
+#if defined(COMPAS_IS_CUDA)
+        new_first = __shfl_up_sync(mask, old_last, 1, warp_size);
+#elif defined(COMPAS_IS_HIP)
+        new_first.re = __shfl_up_sync(mask, old_last.re, 1, warp_size);
+        new_first.im = __shfl_up_sync(mask, old_last.im, 1, warp_size);
+#endif
 
         // Shift all F_plus values one down
 #pragma unroll
