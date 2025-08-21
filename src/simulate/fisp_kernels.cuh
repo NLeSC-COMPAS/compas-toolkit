@@ -47,7 +47,7 @@ COMPAS_DEVICE void simulate_fisp_for_voxel_repetition_steps_warp(
 #if defined(COMPAS_USE_CUDA)
     __syncwarp();
 #elif defined(COMPAS_USE_HIP)
-    warp.sync()
+    warp.sync();
 #endif
 
 #pragma unroll warp_size
@@ -84,7 +84,7 @@ COMPAS_DEVICE void simulate_fisp_for_voxel_repetition_steps_warp(
 #if defined(COMPAS_USE_CUDA)
     __syncwarp();
 #elif defined(COMPAS_USE_HIP)
-    warp.sync()
+    warp.sync();
 #endif
 
     if constexpr (SampleTransverse) {
