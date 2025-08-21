@@ -20,6 +20,10 @@ template<
     int warp_size,
     int warps_per_block>
 COMPAS_DEVICE void simulate_fisp_for_voxel_repetition_steps_warp(
+#if defined(COMPAS_USE_HIP)
+    auto block = cooperative_groups::this_thread_block();
+    auto warp = cooperative_groups::tiled_partition<64>(block);
+#endif
     int offset_step,
     int num_steps,
     EPGThreadBlockState<max_N, warp_size, warps_per_block>& omega,
@@ -40,7 +44,11 @@ COMPAS_DEVICE void simulate_fisp_for_voxel_repetition_steps_warp(
             p.B1);
     }
 
+#if defined(COMPAS_USE_CUDA)
     __syncwarp();
+#elif defined(COMPAS_USE_HIP)
+    warp.sync()
+#endif
 
 #pragma unroll warp_size
     for (index_t j = 0; j < warp_size; j++) {
@@ -73,7 +81,11 @@ COMPAS_DEVICE void simulate_fisp_for_voxel_repetition_steps_warp(
         omega.dephasing();
     }
 
+#if defined(COMPAS_USE_CUDA)
     __syncwarp();
+#elif defined(COMPAS_USE_HIP)
+    warp.sync()
+#endif
 
     if constexpr (SampleTransverse) {
         auto e = smem.echos[threadIdx.y][threadIdx.x];
