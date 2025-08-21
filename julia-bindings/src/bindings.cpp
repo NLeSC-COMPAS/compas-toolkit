@@ -326,16 +326,17 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
     const compas::Array<cfloat, 2>* coils,
     const compas::Array<cfloat, 3>* vector) {
     return catch_exceptions([&] {
-        return new_object(compas::compute_jacobian_hermitian(
-            *context,
-            *echos,
-            *delta_echos_T1,
-            *delta_echos_T2,
-            parameters->unwrap<compas::TissueParameters>(),
-            trajectory->unwrap<compas::CartesianTrajectory>(),
-            *coils,
-            *vector,
-            compas::JacobianComputeMethod::GemmLow));
+        return new_object(
+            compas::compute_jacobian_hermitian(
+                *context,
+                *echos,
+                *delta_echos_T1,
+                *delta_echos_T2,
+                parameters->unwrap<compas::TissueParameters>(),
+                trajectory->unwrap<compas::CartesianTrajectory>(),
+                *coils,
+                *vector,
+                compas::JacobianComputeMethod::GemmLow));
     });
 }
 
