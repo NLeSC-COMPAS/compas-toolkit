@@ -51,24 +51,30 @@ mutable struct Context
     ptr::Ptr{Cvoid}
 
     """
-        Context(device::Integer)
+        Context()
 
-    Creates a new COMPAS context on the specified device.
+    Creates a new COMPAS context on device 0.
     """
-    function Context(device::Integer)
+    function Context()
         check_version()
-        ptr = @ccall LIBRARY.compas_make_context(device::Int32)::Ptr{Cvoid}
+        ptr = @ccall LIBRARY.compas_make_context()::Ptr{Cvoid}
         obj = new(ptr)
         destroy = (obj) -> @ccall LIBRARY.compas_destroy_context(obj::Ptr{Cvoid})::Cvoid
         finalizer(destroy, obj)
     end
 
     """
-        Context()
+        Context(ctx::Context, device::Integer)
 
-    Creates a new COMPAS context on the default device (device 0).
+    Copies the given COMPAS context and sets it to the specified device.
     """
-    Context() = Context(0)
+    function Context(ctx::Context, device::Integer)
+        check_version()
+        ptr = @ccall LIBRARY.compas_copy_context_for_device(ctx::Ptr{Cvoid}, device::Int32)::Ptr{Cvoid}
+        obj = new(ptr)
+        destroy = (obj) -> @ccall LIBRARY.compas_destroy_context(obj::Ptr{Cvoid})::Cvoid
+        finalizer(destroy, obj)
+    end
 end
 
 Base.show(io::IO, x::Context) = print(io, "Context()")
@@ -81,9 +87,9 @@ Base.unsafe_convert(T::Type{Ptr{Cvoid}}, x::Context) = x.ptr
 Initializes a COMPAS context on the specified device and sets it as the current context.
 """
 function init_context(device::Integer)::Context
-    c = Context(device)
-    set_context(c)
-    return c
+    c = Context()
+    set_context(c, device)
+    return get_context()
 end
 
 const TASK_LOCAL_STORAGE_KEY::Symbol = :compas_toolkit_global_context
@@ -95,6 +101,15 @@ Sets the COMPAS context for the current thread.
 """
 function set_context(context::Context)
     task_local_storage(TASK_LOCAL_STORAGE_KEY, context)
+end
+
+"""
+    set_context(context::Context)
+
+Sets the COMPAS context for the current thread.
+"""
+function set_context(context::Context, device::Integer)
+    task_local_storage(TASK_LOCAL_STORAGE_KEY, Context(context, device))
 end
 
 """

@@ -54,8 +54,8 @@ template<
     typename... Args>
 static void
 launch_jacobian_product_impl(kmm::DeviceResource& ctx, kmm::Bounds<3> range, Args... args) {
-    auto nsamples = range.sizes().y;
-    auto nreadouts = range.sizes().z;
+    auto nsamples = range.size().y;
+    auto nreadouts = range.size().z;
 
     if (nsamples % samples_per_thread != 0) {
         auto remainder = range;

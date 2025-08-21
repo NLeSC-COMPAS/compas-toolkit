@@ -306,8 +306,8 @@ Array<cfloat, 3> magnetization_to_signal(
                 cublas_compute_type_from_simulate_method(method));
         }
     } else if (const auto* s = dynamic_cast<const SpiralTrajectory*>(&trajectory)) {
-        auto temp_exponents = Array<cfloat, 2>(echos.shape());
-        auto temp_factors = Array<cfloat, 2>(echos.shape());
+        auto temp_exponents = Array<cfloat, 2>(echos.size());
+        auto temp_factors = Array<cfloat, 2>(echos.size());
 
         context.submit_device(
             magnetization_to_signal_spiral,

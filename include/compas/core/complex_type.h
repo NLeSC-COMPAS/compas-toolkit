@@ -13,12 +13,12 @@ struct complex_storage {
 
 template<>
 struct alignas(2 * sizeof(float)) complex_storage<float> {
-    float re = 0, im = 0;
+    float re, im;
 };
 
 template<>
 struct alignas(2 * sizeof(double)) complex_storage<double> {
-    double re = 0, im = 0;
+    double re, im;
 };
 
 template<typename T>
@@ -31,6 +31,12 @@ struct alignas(2 * sizeof(T)) complex_type: complex_storage<T> {
 
     //    COMPAS_HOST_DEVICE
     complex_type(const complex_type<T>& that) = default;
+
+    COMPAS_HOST_DEVICE
+    complex_type(const complex_storage<T>& that) {
+        this->re = that.re;
+        this->im = that.im;
+    }
 
     template<typename R>
     COMPAS_HOST_DEVICE explicit complex_type(const complex_type<R>& that) :
@@ -54,6 +60,14 @@ struct alignas(2 * sizeof(T)) complex_type: complex_storage<T> {
     COMPAS_HOST_DEVICE
     complex_type<T> conj() const {
         return {real(), -imag()};
+    }
+
+    /**
+     * Returns `this + a * b` or, equivalently, `fma(a, b, *this)`
+     */
+    COMPAS_HOST_DEVICE
+    complex_type<T> add_mul(const complex_type<T>& a, const complex_type<T>& b) const {
+        return fma(a, b, *this);
     }
 };
 

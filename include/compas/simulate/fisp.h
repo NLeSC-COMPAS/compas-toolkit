@@ -19,11 +19,4 @@ Array<cfloat, 2> simulate_magnetization(
     TissueParameters parameters,
     FISPSequence sequence);
 
-void simulate_magnetization_kernel(
-    const kmm::DeviceResource& context,
-    kmm::Range<index_t> voxels,
-    GPUSubviewMut<cfloat, 2> echos,
-    TissueParametersView parameters,
-    FISPSequenceView sequence);
-
 }  // namespace compas
