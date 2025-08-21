@@ -19,10 +19,19 @@ using cfloat = compas::complex_type<float>;
 extern "C" const char* compas_version() {
     return COMPAS_VERSION;
 }
-extern "C" const compas::CompasContext* compas_make_context(int device) {
+
+extern "C" const compas::CompasContext* compas_make_context() {
     return catch_exceptions([&] {
-        auto ctx = compas::make_context(device);
+        auto ctx = compas::make_context();
         return new compas::CompasContext(ctx);
+    });
+}
+
+extern "C" const compas::CompasContext*
+compas_copy_context_for_device(compas::CompasContext* ctx, int device) {
+    return catch_exceptions([&] {
+        auto new_ctx = ctx->with_device(device);
+        return new compas::CompasContext(new_ctx);
     });
 }
 
@@ -117,8 +126,9 @@ extern "C" const Object* compas_make_tissue_parameters(
     const float* x,
     const float* y,
     const float* z) {
-    int num_devices = int(context->runtime().info().num_devices());
-    int chunk_size = kmm::round_up_to_multiple(kmm::div_ceil(nvoxels, num_devices), 32);
+    //    int num_devices = int(context->runtime().info().num_devices());
+    //    int chunk_size = kmm::round_up_to_multiple(kmm::div_ceil(nvoxels, num_devices), 32);
+    int chunk_size = nvoxels;
 
     return catch_exceptions([&] {
         return new_object(
@@ -316,16 +326,16 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
     const compas::Array<cfloat, 2>* coils,
     const compas::Array<cfloat, 3>* vector) {
     return catch_exceptions([&] {
-        return new_object(
-            compas::compute_jacobian_hermitian(
-                *context,
-                *echos,
-                *delta_echos_T1,
-                *delta_echos_T2,
-                parameters->unwrap<compas::TissueParameters>(),
-                trajectory->unwrap<compas::CartesianTrajectory>(),
-                *coils,
-                *vector));
+        return new_object(compas::compute_jacobian_hermitian(
+            *context,
+            *echos,
+            *delta_echos_T1,
+            *delta_echos_T2,
+            parameters->unwrap<compas::TissueParameters>(),
+            trajectory->unwrap<compas::CartesianTrajectory>(),
+            *coils,
+            *vector,
+            compas::JacobianComputeMethod::GemmLow));
     });
 }
 

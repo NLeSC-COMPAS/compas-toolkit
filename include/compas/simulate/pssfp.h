@@ -18,11 +18,4 @@ Array<cfloat, 2> simulate_magnetization(
     const CompasContext& context,
     TissueParameters parameters,
     pSSFPSequence sequence);
-
-void simulate_magnetization_kernel(
-    const kmm::DeviceResource& context,
-    kmm::Range<index_t> voxels,
-    GPUSubviewMut<cfloat, 2> echos,
-    TissueParametersView parameters,
-    pSSFPSequenceView sequence);
 }  // namespace compas

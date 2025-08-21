@@ -74,7 +74,7 @@ Array<cfloat, 2> simulate_magnetization(
     pSSFPSequence sequence) {
     using namespace kmm::placeholders;
 
-    int nreadouts = kmm::checked_cast<int>(sequence.RF_train.size());
+    int nreadouts = kmm::checked_cast<int>(sequence.RF_train.size(0));
     int nvoxels = parameters.nvoxels;
     auto echos = Array<cfloat, 2> {{nreadouts, nvoxels}};
 

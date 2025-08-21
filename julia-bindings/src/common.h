@@ -45,16 +45,19 @@ ObjectImpl<T>* new_object(Args&&... args) {
     return new ObjectImpl<T>(std::forward<Args>(args)...);
 }
 
+extern "C" void __attribute__ ((noreturn)) jl_errorf(const char *fmt, ...);
+
 template<typename F>
 auto catch_exceptions(F fun) -> decltype(fun()) {
     try {
         return fun();
     } catch (const std::exception& msg) {
         // Not sure how to pass the error to julia. Abort for now.
-        fprintf(stderr, "COMPAS: fatal error occurred: %s\n", msg.what());
-        std::abort();
+        jl_errorf("COMPAS error occurred: %s\n", msg.what());
     } catch (...) {
-        fprintf(stderr, "COMPAS: fatal error occurred: %s\n", "unknown exception");
-        std::abort();
+        jl_errorf("COMPAS error occurred: %s\n", "unknown exception");
     }
+
+    fprintf(stderr, "Fatal error: unreachable path, `jl_errorf` should not return");
+    std::abort();
 }
