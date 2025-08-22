@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef COMPAS_USE_CUDA
+#if defined(COMPAS_USE_CUDA)
     #include <cooperative_groups.h>
     #include <cooperative_groups/reduce.h>
     #include <cublas_v2.h>

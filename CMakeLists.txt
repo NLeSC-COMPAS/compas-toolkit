@@ -8,6 +8,7 @@ option(COMPAS_USE_CUDA "Use the CUDA backend (default)" OFF)
 option(COMPAS_USE_HIP  "Use the HIP backend" OFF)
 option(COMPAS_BUILD_TEST "Build tests" OFF)
 option(COMPAS_BUILD_BENCHMARK "Build benchmarks" OFF)
+option(COMPAS_ENABLE_LINTER  "Enable clang-tidy linter" OFF)
 
 # Check options
 if(COMPAS_USE_CUDA AND COMPAS_USE_HIP)
@@ -35,15 +36,17 @@ target_include_directories(${PROJECT_NAME} PUBLIC "${PROJECT_SOURCE_DIR}/src")
 # Enable PIC
 set_property(TARGET ${PROJECT_NAME} PROPERTY POSITION_INDEPENDENT_CODE ON)
 
-set(PROJECT_CLANG_TIDY clang-tidy)
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${PROJECT_CLANG_TIDY}")
-set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+if(COMPAS_ENABLE_LINTER)
+    set(PROJECT_CLANG_TIDY clang-tidy)
+    set_target_properties(${PROJECT_NAME} PROPERTIES CXX_CLANG_TIDY "${PROJECT_CLANG_TIDY}")
+endif()
 
 if(COMPAS_USE_CUDA)
     enable_language(CUDA)
     set(CUDA_SEPARABLE_COMPILATION ON)
     set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
     set(CUDA_RESOLVE_DEVICE_SYMBOLS ON)
+    set_property(TARGET ${PROJECT_NAME} PROPERTY CUDA_RESOLVE_DEVICE_SYMBOLS ON)
 
     find_package(CUDAToolkit REQUIRED)
     target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cudart_static)

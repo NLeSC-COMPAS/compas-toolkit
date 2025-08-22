@@ -1,6 +1,6 @@
 #pragma once
 
-#ifdef __CUDACC__
+#if defined(__CUDACC__)
     #define COMPAS_IS_CUDA (1)
 
     #ifdef __CUDA_ARCH__
