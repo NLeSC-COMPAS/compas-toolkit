@@ -11,7 +11,7 @@ option(COMPAS_BUILD_BENCHMARK "Build benchmarks" OFF)
 option(COMPAS_ENABLE_LINTER  "Enable clang-tidy linter" OFF)
 
 # Check options
-if(COMPAS_USE_CUDA AND COMPAS_USE_HIP)
+if(COMPAS_USE_CUDA != COMPAS_USE_HIP)
     message(FATAL_ERROR "Exactly one backend between CUDA and HIP must be enabled.")
 endif()
 
