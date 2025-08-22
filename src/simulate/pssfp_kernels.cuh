@@ -1,5 +1,9 @@
 #pragma once
 
+#if COMPAS_IS_CUDA
+    #include <cooperative_groups/reduce.h>
+#endif
+
 #include "../operators/isochromat.cuh"
 #include "compas/core/complex_type.h"
 #include "compas/sequences/pssfp_view.h"

@@ -2,7 +2,6 @@
 
 #if defined(COMPAS_USE_CUDA)
     #include <cooperative_groups.h>
-    #include <cooperative_groups/reduce.h>
     #include <cublas_v2.h>
     #include <cuda.h>
     #include <cuda_runtime_api.h>
