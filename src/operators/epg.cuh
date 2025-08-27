@@ -236,9 +236,9 @@ struct EPGThreadBlockState {
     COMPAS_DEVICE
     void shift_down() {
 #ifdef COMPAS_IS_CUDA
-        unsigned int mask = ~0u;
+        unsigned int mask = 0xFFFFFFFF;
 #elif defined(COMPAS_IS_HIP)
-        long long unsigned int mask = ~0u;
+        long long unsigned int mask = 0xFFFFFFFFFFFFFFFF;
 #endif
 
         auto old_first = state[0].F_min;
@@ -269,9 +269,9 @@ struct EPGThreadBlockState {
     COMPAS_DEVICE
     void shift_up() {
 #ifdef COMPAS_IS_CUDA
-        unsigned int mask = ~0u;
+        unsigned int mask = 0xFFFFFFFF;
 #elif defined(COMPAS_IS_HIP)
-        long long unsigned int mask = ~0u;
+        long long unsigned int mask = 0xFFFFFFFFFFFFFFFF;
 #endif
         int src_lane = (my_lane() + (warp_size - 1)) % warp_size;
 
