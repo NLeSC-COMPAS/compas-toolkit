@@ -41,7 +41,7 @@ COMPAS_DEVICE void simulate_fisp_for_voxel_repetition_steps_warp(
     }
 #if defined(COMPAS_USE_HIP)
     auto block = cooperative_groups::this_thread_block();
-    auto warp = cooperative_groups::tiled_partition<64>(block);
+    auto warp = cooperative_groups::tiled_partition<warp_size>(block);
 #endif
 
 #if defined(COMPAS_USE_CUDA)
