@@ -51,7 +51,7 @@ Next, configure the CMake project inside a new `build` directory:
 ```bash
 $ mkdir -p build
 $ cd build
-$ cmake -B. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=80 ..
+$ cmake -B. -DCOMPAS_USE_CUDA=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_ARCHITECTURES=80 ..
 ```
 
 After the configuration, build the toolkit by running:
