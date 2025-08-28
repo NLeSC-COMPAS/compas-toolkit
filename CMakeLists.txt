@@ -16,6 +16,11 @@ if(COMPAS_USE_CUDA EQUAL COMPAS_USE_HIP)
     message(FATAL_ERROR "Exactly one backend between CUDA and HIP must be enabled.")
 endif()
 
+# Set CMAKE_CUDA_ARCHITECTURES if not defined. This needs to happen before calling `add_library`
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES all-major)
+endif()
+
 # Enable C++17 support
 set(CXX_STANDARD 17)
 set(CXX_STANDARD_REQUIRED ON)
@@ -54,7 +59,7 @@ if(COMPAS_USE_CUDA)
     target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cuda_driver)
     target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::cublas)
     target_link_libraries(${PROJECT_NAME} PUBLIC CUDA::nvrtc)
-    set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_ARCHITECTURES "80")
+    set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_ARCHITECTURES ${CMAKE_CUDA_ARCHITECTURES})
 
     # The CUDA compiler struggles with the "Werror" options, so we need to explicitly forward it to the host compiler
     # using `-Xcompiler=-Werror` if we are compiling CUDA code.
