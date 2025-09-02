@@ -7,3 +7,6 @@
 [submodule "thirdparty/kmm"]
 	path = thirdparty/kmm
 	url = https://github.com/NLeSC-COMPAS/kmm.git
+[submodule "thirdparty/kernel_float"]
+	path = thirdparty/kernel_float
+	url = https://github.com/KernelTuner/kernel_float.git

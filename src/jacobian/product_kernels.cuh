@@ -68,8 +68,8 @@ static __global__ void jacobian_product_naive(
 
 static __global__ void compute_sample_decay(
     kmm::Bounds<2, int> range,
-    GPUSubviewMut<cfloat, 2> E,
-    GPUSubviewMut<cfloat, 2> dEdT2,
+    GPUSubviewMut<float, 3> E,
+    GPUSubviewMut<float, 3> dEdT2,
     CartesianTrajectoryView trajectory,
     TissueParametersView parameters) {
     index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
@@ -80,8 +80,14 @@ static __global__ void compute_sample_decay(
     }
 
     TissueVoxel p = parameters.get(voxel);
-    E[sample][voxel] = trajectory.calculate_sample_decay_absolute(sample, p);
-    dEdT2[sample][voxel] = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
+
+    auto Ev = trajectory.calculate_sample_decay_absolute(sample, p);
+    E[0][sample][voxel] = Ev.real();
+    E[1][sample][voxel] = Ev.imag();
+
+    auto dEdT2v = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
+    dEdT2[0][sample][voxel] = dEdT2v.real();
+    dEdT2[1][sample][voxel] = dEdT2v.imag();
 }
 
 static __global__ void compute_adjoint_sources(
@@ -115,8 +121,8 @@ static __global__ void compute_adjoint_sources(
 
 static __global__ void compute_adjoint_sources_with_coil(
     kmm::Bounds<2, int> range,
-    GPUSubviewMut<cfloat, 2> adj_phase,
-    GPUSubviewMut<cfloat, 2> adj_decay,
+    GPUSubviewMut<float, 3> adj_phase,
+    GPUSubviewMut<float, 3> adj_decay,
     int icoil,
     GPUSubview<cfloat, 2> coil_sensitivities,
     GPUSubview<cfloat, 2> echos,
@@ -142,8 +148,13 @@ static __global__ void compute_adjoint_sources_with_coil(
         vector[2][voxel] * me +  //
         vector[3][voxel] * cfloat(0, 1) * me;
 
-    adj_phase[readout][voxel] = C * phase;
-    adj_decay[readout][voxel] = C * vector[1][voxel] * p.T2 * p.rho * me;
+    auto Cphase = C * phase;
+    adj_phase[0][readout][voxel] = C.real();
+    adj_phase[1][readout][voxel] = C.imag();
+
+    auto Cdecay = C * vector[1][voxel] * p.T2 * p.rho * me;
+    adj_decay[0][readout][voxel] = Cdecay.real();
+    adj_decay[1][readout][voxel] = Cdecay.imag();
 }
 
 template<

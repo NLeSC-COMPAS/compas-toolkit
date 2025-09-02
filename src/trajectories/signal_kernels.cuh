@@ -48,7 +48,7 @@ __global__ void prepare_sample_decay_cartesian(
 }
 
 __global__ void prepare_sample_decay_cartesian_with_coil(
-    GPUViewMut<cfloat, 2> sample_decay,
+    GPUViewMut<float, 3> sample_decay,
     GPUView<cfloat> coil_sensitivities,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
@@ -61,8 +61,9 @@ __global__ void prepare_sample_decay_cartesian_with_coil(
         auto coil = coil_sensitivities[voxel];
 
         for (int sample = 0; sample < num_samples; sample++) {
-            auto decay = trajectory.calculate_sample_phase_decay(sample, p);
-            sample_decay[sample][voxel] = coil * decay;
+            auto decay = coil * trajectory.calculate_sample_phase_decay(sample, p);
+            sample_decay[0][sample][voxel] = decay.real();
+            sample_decay[1][sample][voxel] = decay.imag();
         }
     }
 }

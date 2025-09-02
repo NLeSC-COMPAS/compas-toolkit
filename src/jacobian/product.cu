@@ -214,8 +214,8 @@ static Array<cfloat, 3> compute_jacobian_gemm(
     GemmComputeMethod kind) {
     using namespace kmm::placeholders;
     auto Jv = Array<cfloat, 3> {{ncoils, nreadouts, ns}};
-    auto E = Array<cfloat, 2> {{ns, nvoxels}};
-    auto dEdT2 = Array<cfloat, 2> {{ns, nvoxels}};
+    auto E = Array<float, 3> {{2, ns, nvoxels}};
+    auto dEdT2 = Array<float, 3> {{2, ns, nvoxels}};
 
     auto chunk_size = parameters.chunk_size;
     auto _voxel = kmm::Axis(0);
@@ -226,14 +226,14 @@ static Array<cfloat, 3> compute_jacobian_gemm(
         {32, 8},
         kernels::compute_sample_decay,
         _xy,
-        write(E[_][_voxel]),
-        write(dEdT2[_][_voxel]),
+        write(E[_][_][_voxel]),
+        write(dEdT2[_][_][_voxel]),
         trajectory,
         read(parameters, _voxel));
 
     for (int icoil = 0; icoil < ncoils; icoil++) {
-        auto adj_phase = Array<cfloat, 2> {{nreadouts, nvoxels}};
-        auto adj_decay = Array<cfloat, 2> {{nreadouts, nvoxels}};
+        auto adj_phase = Array<float, 3> {{2, nreadouts, nvoxels}};
+        auto adj_decay = Array<float, 3> {{2, nreadouts, nvoxels}};
 
         ctx.parallel_kernel(
             {nvoxels, nreadouts},
@@ -241,8 +241,8 @@ static Array<cfloat, 3> compute_jacobian_gemm(
             {32, 8},
             kernels::compute_adjoint_sources_with_coil,
             _xy,
-            write(adj_phase[_][_voxel]),
-            write(adj_decay[_][_voxel]),
+            write(adj_phase[_][_][_voxel]),
+            write(adj_decay[_][_][_voxel]),
             icoil,
             coil_sensitivities[icoil][_voxel],
             echos[_][_voxel],
