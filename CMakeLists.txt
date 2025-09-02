@@ -11,8 +11,14 @@ option(COMPAS_BUILD_TEST "Build tests" OFF)
 option(COMPAS_BUILD_BENCHMARK "Build benchmarks" OFF)
 option(COMPAS_ENABLE_LINTER  "Enable clang-tidy linter" OFF)
 
-# Check options
-if(COMPAS_USE_CUDA EQUAL COMPAS_USE_HIP)
+# If neither backend is enabled, default to CUDA
+if(NOT COMPAS_USE_CUDA AND NOT COMPAS_USE_HIP)
+    set(COMPAS_USE_CUDA ON CACHE BOOL "Use the CUDA backend (default)" FORCE)
+    message(STATUS "No GPU backend was enabled. Compiling for CUDA.")
+endif()
+
+# Check for mutual exclusivity
+if(COMPAS_USE_CUDA AND COMPAS_USE_HIP)
     message(FATAL_ERROR "Exactly one backend between CUDA and HIP must be enabled.")
 endif()
 
