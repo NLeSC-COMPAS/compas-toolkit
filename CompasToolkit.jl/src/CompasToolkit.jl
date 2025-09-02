@@ -86,7 +86,7 @@ Base.unsafe_convert(T::Type{Ptr{Cvoid}}, x::Context) = x.ptr
 
 Initializes a COMPAS context on the specified device and sets it as the current context.
 """
-function init_context(device::Integer)::Context
+function init_context(device::Integer=0)::Context
     c = Context()
     set_context(c, device)
     return get_context()
