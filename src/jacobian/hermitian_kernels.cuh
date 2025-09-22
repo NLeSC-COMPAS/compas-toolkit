@@ -1,8 +1,10 @@
+#pragma once
 
 #include "compas/core/complex_type.h"
 #include "compas/core/vector.h"
 #include "compas/parameters/tissue_view.cuh"
 #include "compas/trajectories/cartesian_view.cuh"
+#include "kernel_float.h"
 
 namespace compas {
 namespace kernels {
@@ -284,10 +286,11 @@ __launch_bounds__(block_size_x* block_size_y* block_size_z, blocks_per_sm) __glo
     }
 }
 
+template <typename T>
 static __global__ void compute_sample_decay_hermitian(
     kmm::Bounds<2, int> range,
-    GPUSubviewMut<float, 3> E_H,
-    GPUSubviewMut<float, 3> dEdT2_H,
+    GPUSubviewMut<T, 3> E_H,
+    GPUSubviewMut<T, 3> dEdT2_H,
     CartesianTrajectoryView trajectory,
     TissueParametersView parameters) {
     index_t sample = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
@@ -300,12 +303,12 @@ static __global__ void compute_sample_decay_hermitian(
     TissueVoxel p = parameters.get(voxel);
 
     auto Ev = conj(trajectory.calculate_sample_decay_absolute(sample, p));
-    E_H[0][voxel][sample] = Ev.re;
-    E_H[1][voxel][sample] = Ev.im;
+    E_H[0][voxel][sample] = kernel_float::cast<T>(Ev.re);
+    E_H[1][voxel][sample] = kernel_float::cast<T>(Ev.im);
 
     auto dEdT2v = conj(trajectory.calculate_sample_decay_absolute_delta_T2(sample, p));
-    dEdT2_H[0][voxel][sample] = dEdT2v.re;
-    dEdT2_H[1][voxel][sample] = dEdT2v.im;
+    dEdT2_H[0][voxel][sample] = kernel_float::cast<T>(dEdT2v.re);
+    dEdT2_H[1][voxel][sample] = kernel_float::cast<T>(dEdT2v.im);
 }
 
 __global__ void jacobian_hermitian_product_finalize(

@@ -29,10 +29,11 @@ __global__ void prepare_readout_echos(
     }
 }
 
+template <typename T>
 __global__ void prepare_readout_echos_planar(
     kmm::Range<index_t> voxels,
     kmm::Range<index_t> readouts,
-    GPUSubviewMut<float, 3> readout_echos,
+    GPUSubviewMut<T, 3> readout_echos,
     GPUSubview<cfloat, 2> echos,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
@@ -44,8 +45,8 @@ __global__ void prepare_readout_echos_planar(
         auto p = parameters.get(voxel);
         auto ms = trajectory.calculate_readout_magnetization(readout, m, p);
 
-        readout_echos[0][readout][voxel] = real(ms * p.rho);
-        readout_echos[1][readout][voxel] = imag(ms * p.rho);
+        readout_echos[0][readout][voxel] = kernel_float::cast<T>(real(ms * p.rho));
+        readout_echos[1][readout][voxel] = kernel_float::cast<T>(imag(ms * p.rho));
     }
 }
 
@@ -67,8 +68,9 @@ __global__ void prepare_sample_decay_cartesian(
     }
 }
 
+template <typename T=float>
 __global__ void prepare_sample_decay_cartesian_with_coil(
-    GPUViewMut<float, 3> sample_decay,  // planar complex
+    GPUViewMut<T, 3> sample_decay,  // planar complex
     GPUView<cfloat> coil_sensitivities,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
@@ -82,8 +84,8 @@ __global__ void prepare_sample_decay_cartesian_with_coil(
 
         for (int sample = 0; sample < num_samples; sample++) {
             auto decay = trajectory.calculate_sample_phase_decay(sample, p);
-            sample_decay[0][sample][voxel] = real(coil * decay);
-            sample_decay[1][sample][voxel] = imag(coil * decay);
+            sample_decay[0][sample][voxel] = kernel_float::cast<T>(real(coil * decay));
+            sample_decay[1][sample][voxel] = kernel_float::cast<T>(imag(coil * decay));
         }
     }
 }

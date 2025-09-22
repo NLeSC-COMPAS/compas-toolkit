@@ -150,6 +150,7 @@ Array<cfloat, 2> compute_jacobian_hermitian_direct(
     return JHv;
 }
 
+template <typename ComputeT=float>
 Array<cfloat, 2> compute_jacobian_hermitian_gemm(
     const CompasContext& ctx,
     GemmComputeMethod gemm,
@@ -169,8 +170,8 @@ Array<cfloat, 2> compute_jacobian_hermitian_gemm(
 
     // four reconstruction parameters: T1, T2, rho_x, rho_y
     auto JHv = Array<cfloat, 2> {{4, nvoxels}};
-    auto E_H = Array<float, 3> {{2, nvoxels, ns}};
-    auto dEdT2_H = Array<float, 3> {{2, nvoxels, ns}};
+    auto E_H = Array<ComputeT, 3> {{2, nvoxels, ns}};
+    auto dEdT2_H = Array<ComputeT, 3> {{2, nvoxels, ns}};
     dim3 block_dim = {64, 4};
 
     // Initialize to zero
@@ -185,7 +186,7 @@ Array<cfloat, 2> compute_jacobian_hermitian_gemm(
     ctx.parallel_submit(
         {ns, nvoxels},
         {ns, chunk_size},
-        kmm::GPUKernel(kernels::compute_sample_decay_hermitian, block_dim),
+        kmm::GPUKernel(kernels::compute_sample_decay_hermitian<ComputeT>, block_dim),
         _xy,
         write(E_H),
         write(dEdT2_H),
@@ -195,7 +196,7 @@ Array<cfloat, 2> compute_jacobian_hermitian_gemm(
     for (int icoil = 0; icoil < ncoils; icoil++) {
         auto Ev = Array<float, 3> {{2, nreadouts, nvoxels}};
         auto dEdT2v = Array<float, 3> {{2, nreadouts, nvoxels}};
-        auto vector_lo = Array<float, 3> {{2, nreadouts, ns}};
+        auto vector_lo = Array<ComputeT, 3> {{2, nreadouts, ns}};
 
         ctx.parallel_device(
             nvoxels,
@@ -301,14 +302,25 @@ Array<cfloat, 2> compute_jacobian_hermitian(
             trajectory,
             coil_sensitivities,
             vector);
+    } else if (kind == JacobianComputeMethod::GemmLow) {
+        return compute_jacobian_hermitian_gemm<kernel_float::bfloat16_t>(
+                ctx,
+                GemmComputeMethod::Fast,
+                nreadouts,
+                ns,
+                nvoxels,
+                ncoils,
+                echos,
+                delta_echos_T1,
+                delta_echos_T2,
+                parameters,
+                trajectory,
+                coil_sensitivities,
+                vector);
     } else {
-        auto gemm = kind == JacobianComputeMethod::Gemm  //
-            ? GemmComputeMethod::Fast
-            : GemmComputeMethod::BF16;
-
         return compute_jacobian_hermitian_gemm(
             ctx,
-            gemm,
+            GemmComputeMethod::BF16,
             nreadouts,
             ns,
             nvoxels,

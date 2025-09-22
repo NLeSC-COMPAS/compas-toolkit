@@ -103,6 +103,7 @@ void magnetization_to_signal_cartesian_direct(
     context.synchronize();
 }
 
+template <typename ComputeT=float>
 void magnetization_to_signal_cartesian_gemm(
     const kmm::DeviceResource& context,
     kmm::Range<index_t> voxels,
@@ -112,8 +113,8 @@ void magnetization_to_signal_cartesian_gemm(
     CartesianTrajectoryView trajectory,
     GPUView<cfloat, 2> coil_sensitivities,
     GPUViewMut<float, 3> temp_signal,
-    GPUViewMut<float, 3> exponents,
-    GPUViewMut<float, 3> factors,
+    GPUViewMut<ComputeT, 3> exponents,
+    GPUViewMut<ComputeT, 3> factors,
     GemmComputeMethod compute_type) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;
@@ -132,7 +133,7 @@ void magnetization_to_signal_cartesian_gemm(
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_readout_echos_planar<<<grid_dim, block_dim, 0, context.stream()>>>(
+    kernels::prepare_readout_echos_planar<ComputeT><<<grid_dim, block_dim, 0, context.stream()>>>(
         voxels,
         nreadouts,
         factors,
@@ -297,13 +298,30 @@ Array<cfloat, 3> magnetization_to_signal(
                 coil_sensitivities[_][_x],
                 write(temp_exponents[_][_x]),
                 write(temp_factors[_y][_x]));
+        } else if (method == SimulateSignalMethod::MatmulBF16) {
+            auto temp_exponents = Array<kernel_float::bfloat16_t, 3> {{2, samples_per_readout, nvoxels}};
+            auto temp_factors = Array<kernel_float::bfloat16_t, 3> {{2, nreadouts, nvoxels}};
+            auto temp_signal = Array<float, 3> {{2, nreadouts, samples_per_readout}};
+
+            context.submit_device(
+                    magnetization_to_signal_cartesian_gemm<kernel_float::bfloat16_t>,
+                    nvoxels,
+                    write(signal),
+                    echos,
+                    parameters,
+                    *cart,
+                    coil_sensitivities,
+                    write(temp_signal),
+                    write(temp_exponents),
+                    write(temp_factors),
+                    GemmComputeMethod::BF16);
         } else {
             auto temp_exponents = Array<float, 3> {{2, samples_per_readout, nvoxels}};
             auto temp_factors = Array<float, 3> {{2, nreadouts, nvoxels}};
             auto temp_signal = Array<float, 3> {{2, nreadouts, samples_per_readout}};
 
             context.submit_device(
-                magnetization_to_signal_cartesian_gemm,
+                magnetization_to_signal_cartesian_gemm<float>,
                 nvoxels,
                 write(signal),
                 echos,

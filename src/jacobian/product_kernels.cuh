@@ -84,10 +84,11 @@ static __global__ void compute_sample_decay(
     dEdT2[sample][voxel] = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
 }
 
+template <typename T=float>
 static __global__ void compute_sample_decay_planar(
     kmm::Bounds<2, int> range,
-    GPUSubviewMut<float, 3> E,
-    GPUSubviewMut<float, 3> dEdT2,
+    GPUSubviewMut<T, 3> E,
+    GPUSubviewMut<T, 3> dEdT2,
     CartesianTrajectoryView trajectory,
     TissueParametersView parameters) {
     index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
@@ -100,12 +101,12 @@ static __global__ void compute_sample_decay_planar(
     TissueVoxel p = parameters.get(voxel);
 
     auto v = trajectory.calculate_sample_decay_absolute(sample, p);
-    E[0][sample][voxel] = v.re;
-    E[1][sample][voxel] = v.im;
+    E[0][sample][voxel] = kernel_float::cast<T>(v.re);
+    E[1][sample][voxel] = kernel_float::cast<T>(v.im);
 
     auto dv = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
-    dEdT2[0][sample][voxel] = dv.re;
-    dEdT2[1][sample][voxel] = dv.im;
+    dEdT2[0][sample][voxel] = kernel_float::cast<T>(dv.re);
+    dEdT2[1][sample][voxel] = kernel_float::cast<T>(dv.im);
 }
 
 static __global__ void compute_adjoint_sources(
@@ -137,10 +138,11 @@ static __global__ void compute_adjoint_sources(
     adj_decay[readout][voxel] = vector[1][voxel] * p.T2 * p.rho * me;
 }
 
+template <typename T>
 static __global__ void compute_adjoint_sources_with_coil(
     kmm::Bounds<2, int> range,
-    GPUSubviewMut<float, 3> adj_phase,  // planar complex
-    GPUSubviewMut<float, 3> adj_decay,  // planar complex
+    GPUSubviewMut<T, 3> adj_phase,  // planar complex
+    GPUSubviewMut<T, 3> adj_decay,  // planar complex
     int icoil,
     GPUSubview<cfloat, 2> coil_sensitivities,
     GPUSubview<cfloat, 2> echos,
@@ -166,11 +168,13 @@ static __global__ void compute_adjoint_sources_with_coil(
         vector[2][voxel] * me +  //
         vector[3][voxel] * cfloat(0, 1) * me;
 
-    adj_phase[0][readout][voxel] = (C * phase).re;
-    adj_phase[1][readout][voxel] = (C * phase).im;
+    cfloat v = C * phase;
+    adj_phase[0][readout][voxel] = kernel_float::cast<T>(v.re);
+    adj_phase[1][readout][voxel] = kernel_float::cast<T>(v.im);
 
-    adj_decay[0][readout][voxel] = (C * vector[1][voxel] * p.T2 * p.rho * me).re;
-    adj_decay[1][readout][voxel] = (C * vector[1][voxel] * p.T2 * p.rho * me).im;
+    cfloat dv = C * vector[1][voxel] * p.T2 * p.rho * me;
+    adj_decay[0][readout][voxel] = kernel_float::cast<T>(dv.re);
+    adj_decay[1][readout][voxel] = kernel_float::cast<T>(dv.im);
 }
 
 template<

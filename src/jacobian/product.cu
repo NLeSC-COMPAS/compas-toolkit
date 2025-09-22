@@ -198,6 +198,7 @@ static Array<cfloat, 3> compute_jacobian_direct(
     return Jv;
 }
 
+template <typename ComputeT=float>
 static Array<cfloat, 3> compute_jacobian_gemm(
     const CompasContext& ctx,
     int nreadouts,
@@ -214,8 +215,8 @@ static Array<cfloat, 3> compute_jacobian_gemm(
     GemmComputeMethod kind) {
     using namespace kmm::placeholders;
     auto Jv = Array<cfloat, 3> {{ncoils, nreadouts, ns}};
-    auto E = Array<float, 3> {{2, ns, nvoxels}};
-    auto dEdT2 = Array<float, 3> {{2, ns, nvoxels}};
+    auto E = Array<ComputeT, 3> {{2, ns, nvoxels}};
+    auto dEdT2 = Array<ComputeT, 3> {{2, ns, nvoxels}};
 
     auto chunk_size = parameters.chunk_size;
     auto _voxel = kmm::Axis(0);
@@ -224,7 +225,7 @@ static Array<cfloat, 3> compute_jacobian_gemm(
         {nvoxels, ns},
         {chunk_size, ns},
         {32, 8},
-        kernels::compute_sample_decay_planar,
+        kernels::compute_sample_decay_planar<ComputeT>,
         _xy,
         write(E[_][_][_voxel]),
         write(dEdT2[_][_][_voxel]),
@@ -233,14 +234,14 @@ static Array<cfloat, 3> compute_jacobian_gemm(
 
     for (int icoil = 0; icoil < ncoils; icoil++) {
         auto Jv_coil = Array<float, 3> {{2, nreadouts, ns}};
-        auto adj_phase = Array<float, 3> {{2, nreadouts, nvoxels}};
-        auto adj_decay = Array<float, 3> {{2, nreadouts, nvoxels}};
+        auto adj_phase = Array<ComputeT, 3> {{2, nreadouts, nvoxels}};
+        auto adj_decay = Array<ComputeT, 3> {{2, nreadouts, nvoxels}};
 
         ctx.parallel_kernel(
             {nvoxels, nreadouts},
             {chunk_size, nreadouts},
             {32, 8},
-            kernels::compute_adjoint_sources_with_coil,
+            kernels::compute_adjoint_sources_with_coil<ComputeT>,
             _xy,
             write(adj_phase[_][_][_voxel]),
             write(adj_decay[_][_][_voxel]),
@@ -339,10 +340,22 @@ Array<cfloat, 3> compute_jacobian(
             trajectory,
             coil_sensitivities,
             vector);
+    } else if (kind == JacobianComputeMethod::GemmLow) {
+            return compute_jacobian_gemm<kernel_float::bfloat16_t>(
+                ctx,
+                nreadouts,
+                ns,
+                nvoxels,
+                ncoils,
+                echos,
+                delta_echos_T1,
+                delta_echos_T2,
+                parameters,
+                trajectory,
+                coil_sensitivities,
+             vector,
+                GemmComputeMethod::Fast);
     } else {
-        GemmComputeMethod gemm = kind == JacobianComputeMethod::GemmLow ? GemmComputeMethod::BF16
-                                                                        : GemmComputeMethod::Fast;
-
         return compute_jacobian_gemm(
             ctx,
             nreadouts,
@@ -356,7 +369,7 @@ Array<cfloat, 3> compute_jacobian(
             trajectory,
             coil_sensitivities,
             vector,
-            gemm);
+            GemmComputeMethod::Fast);
     }
 }
 
