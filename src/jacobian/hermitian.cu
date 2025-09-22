@@ -193,27 +193,24 @@ Array<cfloat, 2> compute_jacobian_hermitian_gemm(
         parameters);
 
     for (int icoil = 0; icoil < ncoils; icoil++) {
-        auto vector_lo = Array<float, 3> {{2, nreadouts, ns}};
         auto Ev = Array<float, 3> {{2, nreadouts, nvoxels}};
         auto dEdT2v = Array<float, 3> {{2, nreadouts, nvoxels}};
+        auto vector_lo = Array<float, 3> {{2, nreadouts, ns}};
 
-        COMPAS_ERROR("need to build vector lo");
+        ctx.parallel_device(
+            nvoxels,
+            chunk_size,
+            [=](auto& device, auto output, auto input) {
+                convert_complex_to_planar(device, output, input.drop_axis(icoil));
+            },
+            write(vector_lo),
+            vector);
 
         ctx.parallel_device(
             nvoxels,
             chunk_size,
             [=](auto& device, auto result, auto lhs, auto rhs) {
-                compute_gemm(
-                        device,
-                        result.drop_axis(0),
-                        result.drop_axis(1),
-                        GPUSubview<float, 2>(lhs.drop_axis(0)),
-                        lhs.drop_axis(1),
-                        rhs.drop_axis(0),
-                        rhs.drop_axis(1),
-                        1.0F,
-                        0.0F,
-                        gemm);
+                compute_complex_gemm(device, result, lhs, rhs, 1.0f, 0.0f, gemm);
             },
             write(Ev),
             vector_lo,
@@ -223,17 +220,7 @@ Array<cfloat, 2> compute_jacobian_hermitian_gemm(
             nvoxels,
             chunk_size,
             [=](auto& device, auto result, auto lhs, auto rhs) {
-                compute_gemm(
-                        device,
-                        result.drop_axis(0),
-                        result.drop_axis(1),
-                        GPUSubview<float, 2>(lhs.drop_axis(0)),
-                        lhs.drop_axis(1),
-                        rhs.drop_axis(0),
-                        rhs.drop_axis(1),
-                        1.0f,
-                        0.0F,
-                        gemm);
+                compute_complex_gemm(device, result, lhs, rhs, 1.0f, 0.0f, gemm);
             },
             write(dEdT2v),
             vector_lo,

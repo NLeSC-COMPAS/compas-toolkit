@@ -300,12 +300,12 @@ static __global__ void compute_sample_decay_hermitian(
     TissueVoxel p = parameters.get(voxel);
 
     auto Ev = conj(trajectory.calculate_sample_decay_absolute(sample, p));
-    E_H[0][voxel][sample] = Ev.real();
-    E_H[1][voxel][sample] = Ev.imag();
+    E_H[0][voxel][sample] = Ev.re;
+    E_H[1][voxel][sample] = Ev.im;
 
-    auto dEdT2v = conj(trajectory.calculate_sample_decay_absolute_delta_T2(sample, p));;
-    dEdT2_H[0][voxel][sample] = dEdT2v.real();
-    dEdT2_H[1][voxel][sample] = dEdT2v.imag();
+    auto dEdT2v = conj(trajectory.calculate_sample_decay_absolute_delta_T2(sample, p));
+    dEdT2_H[0][voxel][sample] = dEdT2v.re;
+    dEdT2_H[1][voxel][sample] = dEdT2v.im;
 }
 
 __global__ void jacobian_hermitian_product_finalize(
@@ -318,8 +318,9 @@ __global__ void jacobian_hermitian_product_finalize(
     GPUSubview<cfloat, 2> delta_echos_T2,
     TissueParametersView parameters,
     GPUSubview<cfloat, 2> coil_sensitivities,
-    GPUSubview<float, 3> Ev,
-    GPUSubview<float, 3> dEdT2v) {
+    GPUSubview<float, 3> Ev,  // planar complex
+    GPUSubview<float, 3> dEdT2v  // planar complex
+) {
     auto tid_x = index_t(threadIdx.x);
     auto voxel = index_t(blockIdx.x * blockDim.x) + voxels.begin + tid_x;
 

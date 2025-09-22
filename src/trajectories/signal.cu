@@ -111,9 +111,9 @@ void magnetization_to_signal_cartesian_gemm(
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
     GPUView<cfloat, 2> coil_sensitivities,
+    GPUViewMut<float, 3> temp_signal,
     GPUViewMut<float, 3> exponents,
     GPUViewMut<float, 3> factors,
-    GPUViewMut<float, 3> signal_temp,
     GemmComputeMethod compute_type) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;
@@ -132,7 +132,7 @@ void magnetization_to_signal_cartesian_gemm(
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_readout_echos<<<grid_dim, block_dim, 0, context.stream()>>>(
+    kernels::prepare_readout_echos_planar<<<grid_dim, block_dim, 0, context.stream()>>>(
         voxels,
         nreadouts,
         factors,
@@ -153,17 +153,11 @@ void magnetization_to_signal_cartesian_gemm(
                 trajectory);
         COMPAS_GPU_CHECK(gpuGetLastError());
 
-        compute_gemm(
-                context,
-                signal_temp.drop_axis(0),
-                signal_temp.drop_axis(1),
-                factors.drop_axis(0),
-                factors.drop_axis(1),
-                exponents.drop_axis(0),
-                exponents.drop_axis(1),
-                float(1), // alpha
-                float(0), // beta
-                compute_type);
+        // temp_signal = factors * exponents
+        compute_complex_gemm(context, temp_signal, factors, exponents, 1.0F, 0.0F, compute_type);
+
+        // signal[icoil] = temp_signal
+        convert_planar_to_complex(context, signal.drop_axis(icoil), temp_signal);
     }
 
     COMPAS_GPU_CHECK(gpuGetLastError());
@@ -276,9 +270,6 @@ Array<cfloat, 3> magnetization_to_signal(
 
     if (const auto* cart = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
         if (method == SimulateSignalMethod::Naive) {
-            auto temp_exponents = Array<cfloat, 2> {{samples_per_readout, nvoxels}};
-            auto temp_factors = Array<cfloat, 2> {{nreadouts, nvoxels}};
-
             context.submit_kernel(
                 {uint(samples_per_readout), uint(nreadouts), uint(ncoils)},
                 256,
@@ -309,6 +300,7 @@ Array<cfloat, 3> magnetization_to_signal(
         } else {
             auto temp_exponents = Array<float, 3> {{2, samples_per_readout, nvoxels}};
             auto temp_factors = Array<float, 3> {{2, nreadouts, nvoxels}};
+            auto temp_signal = Array<float, 3> {{2, nreadouts, samples_per_readout}};
 
             context.submit_device(
                 magnetization_to_signal_cartesian_gemm,
@@ -318,6 +310,7 @@ Array<cfloat, 3> magnetization_to_signal(
                 parameters,
                 *cart,
                 coil_sensitivities,
+                write(temp_signal),
                 write(temp_exponents),
                 write(temp_factors),
                 cublas_compute_type_from_simulate_method(method));

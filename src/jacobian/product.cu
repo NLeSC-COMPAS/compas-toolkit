@@ -224,7 +224,7 @@ static Array<cfloat, 3> compute_jacobian_gemm(
         {nvoxels, ns},
         {chunk_size, ns},
         {32, 8},
-        kernels::compute_sample_decay,
+        kernels::compute_sample_decay_planar,
         _xy,
         write(E[_][_][_voxel]),
         write(dEdT2[_][_][_voxel]),
@@ -232,6 +232,7 @@ static Array<cfloat, 3> compute_jacobian_gemm(
         read(parameters, _voxel));
 
     for (int icoil = 0; icoil < ncoils; icoil++) {
+        auto Jv_coil = Array<float, 3> {{2, nreadouts, ns}};
         auto adj_phase = Array<float, 3> {{2, nreadouts, nvoxels}};
         auto adj_decay = Array<float, 3> {{2, nreadouts, nvoxels}};
 
@@ -255,21 +256,30 @@ static Array<cfloat, 3> compute_jacobian_gemm(
             nvoxels,
             chunk_size,
             [=](auto& device, auto result, auto lhs, auto rhs) {
-                compute_gemm(device, result.drop_axis(icoil), lhs, rhs, cfloat(0.0), kind);
+                compute_complex_gemm(device, result, lhs, rhs, 1.0F, 0.0F, kind);
             },
-            write(Jv),
-            adj_phase[_][_voxel],
-            E[_][_voxel]);
+            write(Jv_coil),
+            adj_phase[_][_][_voxel],
+            E[_][_][_voxel]);
 
         ctx.parallel_device(
             nvoxels,
             chunk_size,
             [=](auto& device, auto result, auto lhs, auto rhs) {
-                compute_gemm(device, result.drop_axis(icoil), lhs, rhs, cfloat(1.0), kind);
+                compute_complex_gemm(device, result, lhs, rhs, 1.0f, 1.0f, kind);
+            },
+            write(Jv_coil),
+            adj_decay[_][_][_voxel],
+            dEdT2[_][_][_voxel]);
+
+        ctx.parallel_device(
+            nvoxels,
+            chunk_size,
+            [=](auto& device, auto output, auto input) {
+                convert_planar_to_complex(device, output.drop_axis(icoil), input);
             },
             write(Jv),
-            adj_decay[_][_voxel],
-            dEdT2[_][_voxel]);
+            Jv_coil);
     }
 
     return Jv;

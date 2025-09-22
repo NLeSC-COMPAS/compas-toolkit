@@ -68,6 +68,24 @@ static __global__ void jacobian_product_naive(
 
 static __global__ void compute_sample_decay(
     kmm::Bounds<2, int> range,
+    GPUSubviewMut<cfloat, 2> E,
+    GPUSubviewMut<cfloat, 2> dEdT2,
+    CartesianTrajectoryView trajectory,
+    TissueParametersView parameters) {
+    index_t voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
+    index_t sample = index_t(blockIdx.y * blockDim.y + threadIdx.y + range.y.begin);
+
+    if (!range.contains(voxel, sample)) {
+        return;
+    }
+
+    TissueVoxel p = parameters.get(voxel);
+    E[sample][voxel] = trajectory.calculate_sample_decay_absolute(sample, p);
+    dEdT2[sample][voxel] = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
+}
+
+static __global__ void compute_sample_decay_planar(
+    kmm::Bounds<2, int> range,
     GPUSubviewMut<float, 3> E,
     GPUSubviewMut<float, 3> dEdT2,
     CartesianTrajectoryView trajectory,
@@ -81,13 +99,13 @@ static __global__ void compute_sample_decay(
 
     TissueVoxel p = parameters.get(voxel);
 
-    auto Ev = trajectory.calculate_sample_decay_absolute(sample, p);
-    E[0][sample][voxel] = Ev.real();
-    E[1][sample][voxel] = Ev.imag();
+    auto v = trajectory.calculate_sample_decay_absolute(sample, p);
+    E[0][sample][voxel] = v.re;
+    E[1][sample][voxel] = v.im;
 
-    auto dEdT2v = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
-    dEdT2[0][sample][voxel] = dEdT2v.real();
-    dEdT2[1][sample][voxel] = dEdT2v.imag();
+    auto dv = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
+    dEdT2[0][sample][voxel] = dv.re;
+    dEdT2[1][sample][voxel] = dv.im;
 }
 
 static __global__ void compute_adjoint_sources(
@@ -121,8 +139,8 @@ static __global__ void compute_adjoint_sources(
 
 static __global__ void compute_adjoint_sources_with_coil(
     kmm::Bounds<2, int> range,
-    GPUSubviewMut<float, 3> adj_phase,
-    GPUSubviewMut<float, 3> adj_decay,
+    GPUSubviewMut<float, 3> adj_phase,  // planar complex
+    GPUSubviewMut<float, 3> adj_decay,  // planar complex
     int icoil,
     GPUSubview<cfloat, 2> coil_sensitivities,
     GPUSubview<cfloat, 2> echos,
@@ -148,13 +166,11 @@ static __global__ void compute_adjoint_sources_with_coil(
         vector[2][voxel] * me +  //
         vector[3][voxel] * cfloat(0, 1) * me;
 
-    auto Cphase = C * phase;
-    adj_phase[0][readout][voxel] = C.real();
-    adj_phase[1][readout][voxel] = C.imag();
+    adj_phase[0][readout][voxel] = (C * phase).re;
+    adj_phase[1][readout][voxel] = (C * phase).im;
 
-    auto Cdecay = C * vector[1][voxel] * p.T2 * p.rho * me;
-    adj_decay[0][readout][voxel] = Cdecay.real();
-    adj_decay[1][readout][voxel] = Cdecay.imag();
+    adj_decay[0][readout][voxel] = (C * vector[1][voxel] * p.T2 * p.rho * me).re;
+    adj_decay[1][readout][voxel] = (C * vector[1][voxel] * p.T2 * p.rho * me).im;
 }
 
 template<
