@@ -4,6 +4,15 @@ This module provides a Julia interface to the COMPAS C++ library for simulating 
 module CompasToolkit
 include("Constants.jl")
 
+macro ccall_gcsafe(ex)
+    # Build `@ccall gc_safe=true <ex>` when supported, else `@ccall <ex>`
+    if VERSION >= v"1.12.0"
+        return Expr(:macrocall, Symbol("@ccall"), __source__, :(gc_safe=true), esc(ex))
+    else
+        return Expr(:macrocall, Symbol("@ccall"), __source__, esc(ex))
+    end
+end
+
 """
     version()::String
 
@@ -133,7 +142,7 @@ Waits until all asynchronous operations of Compas have finished.
 """
 function synchronize()
     context = get_context()
-    @ccall LIBRARY.compas_synchronize(context::Ptr{Cvoid})::Cvoid
+    @ccall_gcsafe LIBRARY.compas_synchronize(context::Ptr{Cvoid})::Cvoid
 end
 
 """
@@ -176,7 +185,7 @@ function CompasArray(input::Array{Float32, N}) where {N}
     context = get_context()
     sizes::Vector{Int64} = [reverse(size(input))...]
 
-    ptr = @ccall LIBRARY.compas_make_array_float(
+    ptr = @ccall_gcsafe LIBRARY.compas_make_array_float(
         context::Ptr{Cvoid},
         input::Ptr{Float32},
         N::Int32,
@@ -195,7 +204,7 @@ function CompasArray(input::Array{ComplexF32, N}) where {N}
     context = get_context()
     sizes::Vector{Int64} = [reverse(size(input))...]
 
-    ptr = @ccall LIBRARY.compas_make_array_complex(
+    ptr = @ccall_gcsafe LIBRARY.compas_make_array_complex(
         context::Ptr{Cvoid},
         input::Ptr{ComplexF32},
         N::Int32,
@@ -214,7 +223,7 @@ Collects the data from a COMPAS array of `Float32` into a Julia array.
 """
 function Base.collect(input::CompasArray{Float32, N}) where {N}
     result = Array{Float32, N}(undef, reverse(input.sizes)...)
-    @ccall LIBRARY.compas_read_array_float(
+    @ccall_gcsafe LIBRARY.compas_read_array_float(
         input.context::Ptr{Cvoid},
         input::Ptr{Cvoid},
         result::Ptr{Float32},
@@ -230,7 +239,7 @@ Collects the data from a COMPAS array of `ComplexF32` into a Julia array.
 """
 function Base.collect(input::CompasArray{ComplexF32, N}) where {N}
     result = Array{ComplexF32, N}(undef, reverse(input.sizes)...)
-    @ccall LIBRARY.compas_read_array_complex(
+    @ccall_gcsafe LIBRARY.compas_read_array_complex(
         input.context::Ptr{Cvoid},
         input::Ptr{Cvoid},
         result::Ptr{ComplexF32},
