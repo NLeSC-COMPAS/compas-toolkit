@@ -198,7 +198,7 @@ static Array<cfloat, 3> compute_jacobian_direct(
     return Jv;
 }
 
-template <typename ComputeT=float>
+template<typename ComputeT = float>
 static Array<cfloat, 3> compute_jacobian_gemm(
     const CompasContext& ctx,
     int nreadouts,
@@ -267,7 +267,7 @@ static Array<cfloat, 3> compute_jacobian_gemm(
             nvoxels,
             chunk_size,
             [=](auto& device, auto result, auto lhs, auto rhs) {
-                compute_complex_gemm(device, result, lhs, rhs, 1.0f, 1.0f, kind);
+                compute_complex_gemm(device, result, lhs, rhs, 1.0F, 1.0F, kind);
             },
             write(Jv_coil),
             adj_decay[_][_][_voxel],
@@ -341,22 +341,7 @@ Array<cfloat, 3> compute_jacobian(
             coil_sensitivities,
             vector);
     } else if (kind == JacobianComputeMethod::GemmLow) {
-            return compute_jacobian_gemm<kernel_float::bfloat16_t>(
-                ctx,
-                nreadouts,
-                ns,
-                nvoxels,
-                ncoils,
-                echos,
-                delta_echos_T1,
-                delta_echos_T2,
-                parameters,
-                trajectory,
-                coil_sensitivities,
-             vector,
-                GemmComputeMethod::Fast);
-    } else {
-        return compute_jacobian_gemm(
+        return compute_jacobian_gemm<kernel_float::bfloat16_t>(
             ctx,
             nreadouts,
             ns,
@@ -370,6 +355,24 @@ Array<cfloat, 3> compute_jacobian(
             coil_sensitivities,
             vector,
             GemmComputeMethod::Fast);
+    } else {
+        auto gemm = kind == JacobianComputeMethod::GemmFast ? GemmComputeMethod::Fast
+                                                            : GemmComputeMethod::Regular;
+
+        return compute_jacobian_gemm(
+            ctx,
+            nreadouts,
+            ns,
+            nvoxels,
+            ncoils,
+            echos,
+            delta_echos_T1,
+            delta_echos_T2,
+            parameters,
+            trajectory,
+            coil_sensitivities,
+            vector,
+            gemm);
     }
 }
 

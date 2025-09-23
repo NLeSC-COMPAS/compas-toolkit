@@ -135,6 +135,19 @@ int main() {
         JHv_ref);
 
     benchmark_method(
+        "matmul (faster)",
+        JacobianComputeMethod::GemmFast,
+        context,
+        echos,
+        delta_echos_T1,
+        delta_echos_T2,
+        parameters,
+        trajectory,
+        coil_sensitivities,
+        vector,
+        JHv_ref);
+
+    benchmark_method(
         "matmul (low precision)",
         JacobianComputeMethod::GemmLow,
         context,

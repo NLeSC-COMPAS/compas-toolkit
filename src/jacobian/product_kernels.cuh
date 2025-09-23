@@ -84,7 +84,7 @@ static __global__ void compute_sample_decay(
     dEdT2[sample][voxel] = trajectory.calculate_sample_decay_absolute_delta_T2(sample, p);
 }
 
-template <typename T=float>
+template<typename T = float>
 static __global__ void compute_sample_decay_planar(
     kmm::Bounds<2, int> range,
     GPUSubviewMut<T, 3> E,
@@ -138,7 +138,7 @@ static __global__ void compute_adjoint_sources(
     adj_decay[readout][voxel] = vector[1][voxel] * p.T2 * p.rho * me;
 }
 
-template <typename T>
+template<typename T>
 static __global__ void compute_adjoint_sources_with_coil(
     kmm::Bounds<2, int> range,
     GPUSubviewMut<T, 3> adj_phase,  // planar complex

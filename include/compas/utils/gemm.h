@@ -4,7 +4,11 @@
 
 namespace compas {
 
-enum struct GemmComputeMethod { Pedantic, Fast, BF16, TF32 };
+enum struct GemmComputeMethod {
+    Pedantic,  // highest precision
+    Regular,  // balanced
+    Fast  // highest performance
+};
 
 /**
  * Multiply `lhs` and `transpose(rhs)` and write the result to `result`.
@@ -21,7 +25,7 @@ void compute_gemm(
     GPUSubview<float, 2> rhs,
     float alpha,
     float beta,
-    GemmComputeMethod kind = GemmComputeMethod::Fast);
+    GemmComputeMethod kind = GemmComputeMethod::Regular);
 
 void compute_gemm(
     const kmm::DeviceResource& context,
@@ -30,7 +34,7 @@ void compute_gemm(
     GPUSubview<kernel_float::bfloat16_t, 2> rhs,
     float alpha,
     float beta,
-    GemmComputeMethod kind = GemmComputeMethod::Fast);
+    GemmComputeMethod kind = GemmComputeMethod::Regular);
 
 void compute_complex_gemm(
     const kmm::DeviceResource& context,
@@ -39,7 +43,7 @@ void compute_complex_gemm(
     GPUSubview<float, 3> rhs,
     float alpha,
     float beta,
-    GemmComputeMethod kind = GemmComputeMethod::Fast);
+    GemmComputeMethod kind = GemmComputeMethod::Regular);
 
 void compute_complex_gemm(
     const kmm::DeviceResource& context,
@@ -48,7 +52,7 @@ void compute_complex_gemm(
     GPUSubview<kernel_float::bfloat16_t, 3> rhs,
     float alpha,
     float beta,
-    GemmComputeMethod kind = GemmComputeMethod::Fast);
+    GemmComputeMethod kind = GemmComputeMethod::Regular);
 
 void convert_complex_to_planar(
     const kmm::DeviceResource& context,  //

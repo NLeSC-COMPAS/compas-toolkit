@@ -36,13 +36,10 @@ void compute_gemm_impl(
             case GemmComputeMethod::Pedantic:
                 compute_type = CUBLAS_COMPUTE_32F_PEDANTIC;
                 break;
-            case GemmComputeMethod::Fast:
+            case GemmComputeMethod::Regular:
                 compute_type = CUBLAS_COMPUTE_32F;
                 break;
-            case GemmComputeMethod::BF16:
-                compute_type = CUBLAS_COMPUTE_32F_FAST_16BF;
-                break;
-            case GemmComputeMethod::TF32:
+            case GemmComputeMethod::Fast:
                 compute_type = CUBLAS_COMPUTE_32F_FAST_TF32;
                 break;
         }
@@ -53,9 +50,8 @@ void compute_gemm_impl(
             case GemmComputeMethod::Pedantic:
                 compute_type = CUBLAS_COMPUTE_32F_PEDANTIC;
                 break;
+            case GemmComputeMethod::Regular:
             case GemmComputeMethod::Fast:
-            case GemmComputeMethod::BF16:
-            case GemmComputeMethod::TF32:
                 compute_type = CUBLAS_COMPUTE_32F;
                 break;
         }
@@ -92,15 +88,11 @@ void compute_gemm_impl(
         case GemmComputeMethod::Pedantic:
             compute_type = rocblas_datatype_f32_c;
             break;
-        case GemmComputeMethod::Fast:
+        case GemmComputeMethod::Regular:
             compute_type = rocblas_datatype_f32_c;
             break;
-        case GemmComputeMethod::BF16:
+        case GemmComputeMethod::Low:
             // TODO: BF16_C not currently supported
-            compute_type = rocblas_datatype_f32_c;
-            break;
-        case GemmComputeMethod::TF32:
-            // TODO: TF32_C not currently supported
             compute_type = rocblas_datatype_f32_c;
             break;
     }

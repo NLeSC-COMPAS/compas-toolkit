@@ -103,7 +103,7 @@ void magnetization_to_signal_cartesian_direct(
     context.synchronize();
 }
 
-template <typename ComputeT=float>
+template<typename ComputeT = float>
 void magnetization_to_signal_cartesian_gemm(
     const kmm::DeviceResource& context,
     kmm::Range<index_t> voxels,
@@ -242,11 +242,9 @@ GemmComputeMethod cublas_compute_type_from_simulate_method(SimulateSignalMethod 
         case SimulateSignalMethod::MatmulPedantic:
             return GemmComputeMethod::Pedantic;
         case SimulateSignalMethod::Matmul:
+            return GemmComputeMethod::Regular;
+        case SimulateSignalMethod::MatmulFast:
             return GemmComputeMethod::Fast;
-        case SimulateSignalMethod::MatmulBF16:
-            return GemmComputeMethod::BF16;
-        case SimulateSignalMethod::MatmulTF32:
-            return GemmComputeMethod::TF32;
         default:
             COMPAS_ERROR("invalid value for `SimulateSignalMethod`");
     }
@@ -298,23 +296,24 @@ Array<cfloat, 3> magnetization_to_signal(
                 coil_sensitivities[_][_x],
                 write(temp_exponents[_][_x]),
                 write(temp_factors[_y][_x]));
-        } else if (method == SimulateSignalMethod::MatmulBF16) {
-            auto temp_exponents = Array<kernel_float::bfloat16_t, 3> {{2, samples_per_readout, nvoxels}};
+        } else if (method == SimulateSignalMethod::MatmulLow) {
+            auto temp_exponents =
+                Array<kernel_float::bfloat16_t, 3> {{2, samples_per_readout, nvoxels}};
             auto temp_factors = Array<kernel_float::bfloat16_t, 3> {{2, nreadouts, nvoxels}};
             auto temp_signal = Array<float, 3> {{2, nreadouts, samples_per_readout}};
 
             context.submit_device(
-                    magnetization_to_signal_cartesian_gemm<kernel_float::bfloat16_t>,
-                    nvoxels,
-                    write(signal),
-                    echos,
-                    parameters,
-                    *cart,
-                    coil_sensitivities,
-                    write(temp_signal),
-                    write(temp_exponents),
-                    write(temp_factors),
-                    GemmComputeMethod::BF16);
+                magnetization_to_signal_cartesian_gemm<kernel_float::bfloat16_t>,
+                nvoxels,
+                write(signal),
+                echos,
+                parameters,
+                *cart,
+                coil_sensitivities,
+                write(temp_signal),
+                write(temp_exponents),
+                write(temp_factors),
+                GemmComputeMethod::Fast);
         } else {
             auto temp_exponents = Array<float, 3> {{2, samples_per_readout, nvoxels}};
             auto temp_factors = Array<float, 3> {{2, nreadouts, nvoxels}};

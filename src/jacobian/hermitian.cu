@@ -150,7 +150,7 @@ Array<cfloat, 2> compute_jacobian_hermitian_direct(
     return JHv;
 }
 
-template <typename ComputeT=float>
+template<typename ComputeT = float>
 Array<cfloat, 2> compute_jacobian_hermitian_gemm(
     const CompasContext& ctx,
     GemmComputeMethod gemm,
@@ -304,23 +304,26 @@ Array<cfloat, 2> compute_jacobian_hermitian(
             vector);
     } else if (kind == JacobianComputeMethod::GemmLow) {
         return compute_jacobian_hermitian_gemm<kernel_float::bfloat16_t>(
-                ctx,
-                GemmComputeMethod::Fast,
-                nreadouts,
-                ns,
-                nvoxels,
-                ncoils,
-                echos,
-                delta_echos_T1,
-                delta_echos_T2,
-                parameters,
-                trajectory,
-                coil_sensitivities,
-                vector);
+            ctx,
+            GemmComputeMethod::Fast,
+            nreadouts,
+            ns,
+            nvoxels,
+            ncoils,
+            echos,
+            delta_echos_T1,
+            delta_echos_T2,
+            parameters,
+            trajectory,
+            coil_sensitivities,
+            vector);
     } else {
+        auto gemm = kind == JacobianComputeMethod::GemmFast ? GemmComputeMethod::Fast
+                                                            : GemmComputeMethod::Regular;
+
         return compute_jacobian_hermitian_gemm(
             ctx,
-            GemmComputeMethod::BF16,
+            gemm,
             nreadouts,
             ns,
             nvoxels,

@@ -286,7 +286,7 @@ __launch_bounds__(block_size_x* block_size_y* block_size_z, blocks_per_sm) __glo
     }
 }
 
-template <typename T>
+template<typename T>
 static __global__ void compute_sample_decay_hermitian(
     kmm::Bounds<2, int> range,
     GPUSubviewMut<T, 3> E_H,

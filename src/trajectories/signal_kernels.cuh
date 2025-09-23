@@ -29,7 +29,7 @@ __global__ void prepare_readout_echos(
     }
 }
 
-template <typename T>
+template<typename T>
 __global__ void prepare_readout_echos_planar(
     kmm::Range<index_t> voxels,
     kmm::Range<index_t> readouts,
@@ -68,7 +68,7 @@ __global__ void prepare_sample_decay_cartesian(
     }
 }
 
-template <typename T=float>
+template<typename T = float>
 __global__ void prepare_sample_decay_cartesian_with_coil(
     GPUViewMut<T, 3> sample_decay,  // planar complex
     GPUView<cfloat> coil_sensitivities,

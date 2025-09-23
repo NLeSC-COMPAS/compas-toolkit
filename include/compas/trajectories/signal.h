@@ -23,24 +23,24 @@ enum struct SimulateSignalMethod {
     Direct,
 
     /**
-     * Use matrix multiplication method. This ensure reasonable accuracy with reasonable performance.
-     */
-    Matmul,
-
-    /**
      * Use high precision matrix multiplication method. This ensure high accuracy with reasonable performance.
      */
     MatmulPedantic,
 
     /**
-     * Use low precision matrix multiplication method using TF32 floats. This gives low accuracy with high performance.
+     * Use matrix multiplication method. This ensure reasonable accuracy with reasonable performance.
      */
-    MatmulTF32,
+    Matmul,
 
     /**
-     * Use low precision matrix multiplication method using BF16 floats. This gives low accuracy with high performance.
+     * Use matrix multiplication method. This ensure reasonable accuracy with reasonable performance.
      */
-    MatmulBF16,
+    MatmulFast,
+
+    /**
+     * Use low precision matrix multiplication method using bfloat16. This gives low accuracy with high performance.
+     */
+    MatmulLow,
 };
 
 /**
@@ -60,6 +60,6 @@ Array<cfloat, 3> magnetization_to_signal(
     TissueParameters parameters,
     const Trajectory& trajectory,
     Array<cfloat, 2> coil_sensitivities,
-    SimulateSignalMethod method = SimulateSignalMethod::Naive);
+    SimulateSignalMethod method = SimulateSignalMethod::MatmulFast);
 
 }  // namespace compas

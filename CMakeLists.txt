@@ -134,6 +134,7 @@ if(COMPAS_BUILD_TEST)
     add_subdirectory(thirdparty/Catch2)
     add_subdirectory(tests)
 endif()
+
 if(COMPAS_BUILD_BENCHMARK)
     add_subdirectory(benchmarks)
 endif()
