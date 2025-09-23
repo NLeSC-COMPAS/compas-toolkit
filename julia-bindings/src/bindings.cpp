@@ -267,8 +267,7 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
                 *echos,
                 parameters->unwrap<compas::TissueParameters>(),
                 trajectory->unwrap<compas::CartesianTrajectory>(),
-                *coils,
-                compas::SimulateSignalMethod::MatmulBF16));
+                *coils));
     });
 }
 
