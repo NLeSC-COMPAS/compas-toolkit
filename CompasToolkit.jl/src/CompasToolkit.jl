@@ -6,10 +6,10 @@ include("Constants.jl")
 
 macro ccall_gcsafe(ex)
     # Build `@ccall gc_safe=true <ex>` when supported, else `@ccall <ex>`
-    if VERSION >= v"1.12.0"
-        return Expr(:macrocall, Symbol("@ccall"), __source__, :(gc_safe=true), esc(ex))
+    if Base.VERSION >= v"1.12.0-"
+        esc(:(@ccall gc_safe=true $(ex)))
     else
-        return Expr(:macrocall, Symbol("@ccall"), __source__, esc(ex))
+        esc(:(@ccall $(ex)))
     end
 end
 
