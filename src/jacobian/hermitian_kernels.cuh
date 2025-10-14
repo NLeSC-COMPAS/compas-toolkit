@@ -1,8 +1,10 @@
+#pragma once
 
 #include "compas/core/complex_type.h"
 #include "compas/core/vector.h"
 #include "compas/parameters/tissue_view.cuh"
 #include "compas/trajectories/cartesian_view.cuh"
+#include "kernel_float.h"
 
 namespace compas {
 namespace kernels {
@@ -284,10 +286,11 @@ __launch_bounds__(block_size_x* block_size_y* block_size_z, blocks_per_sm) __glo
     }
 }
 
+template<typename T>
 static __global__ void compute_sample_decay_hermitian(
     kmm::Bounds<2, int> range,
-    GPUSubviewMut<cfloat, 2> E_H,
-    GPUSubviewMut<cfloat, 2> dEdT2_H,
+    GPUSubviewMut<T, 3> E_H,
+    GPUSubviewMut<T, 3> dEdT2_H,
     CartesianTrajectoryView trajectory,
     TissueParametersView parameters) {
     index_t sample = index_t(blockIdx.x * blockDim.x + threadIdx.x + range.x.begin);
@@ -298,8 +301,14 @@ static __global__ void compute_sample_decay_hermitian(
     }
 
     TissueVoxel p = parameters.get(voxel);
-    E_H[voxel][sample] = conj(trajectory.calculate_sample_decay_absolute(sample, p));
-    dEdT2_H[voxel][sample] = conj(trajectory.calculate_sample_decay_absolute_delta_T2(sample, p));
+
+    auto Ev = conj(trajectory.calculate_sample_decay_absolute(sample, p));
+    E_H[0][voxel][sample] = kernel_float::cast<T>(Ev.re);
+    E_H[1][voxel][sample] = kernel_float::cast<T>(Ev.im);
+
+    auto dEdT2v = conj(trajectory.calculate_sample_decay_absolute_delta_T2(sample, p));
+    dEdT2_H[0][voxel][sample] = kernel_float::cast<T>(dEdT2v.re);
+    dEdT2_H[1][voxel][sample] = kernel_float::cast<T>(dEdT2v.im);
 }
 
 __global__ void jacobian_hermitian_product_finalize(
@@ -312,8 +321,9 @@ __global__ void jacobian_hermitian_product_finalize(
     GPUSubview<cfloat, 2> delta_echos_T2,
     TissueParametersView parameters,
     GPUSubview<cfloat, 2> coil_sensitivities,
-    GPUSubview<cfloat, 2> Ev,
-    GPUSubview<cfloat, 2> dEdT2v) {
+    GPUSubview<float, 3> Ev,  // planar complex
+    GPUSubview<float, 3> dEdT2v  // planar complex
+) {
     auto tid_x = index_t(threadIdx.x);
     auto voxel = index_t(blockIdx.x * blockDim.x) + voxels.begin + tid_x;
 
@@ -328,8 +338,8 @@ __global__ void jacobian_hermitian_product_finalize(
         auto me = echos[readout][voxel];
         auto dme = vec2<cfloat> {delta_echos_T1[readout][voxel], delta_echos_T2[readout][voxel]};
 
-        auto Ev_r = Ev[readout][voxel];
-        auto dEv_r = dEdT2v[readout][voxel];
+        auto Ev_r = cfloat(Ev[0][readout][voxel], Ev[1][readout][voxel]);
+        auto dEv_r = cfloat(dEdT2v[0][readout][voxel], dEdT2v[1][readout][voxel]);
 
         mHv += Ev_r * conj(me);
         dmHv[0] += Ev_r * conj(dme[0]);

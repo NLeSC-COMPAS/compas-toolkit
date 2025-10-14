@@ -13,6 +13,9 @@ static std::pair<double, int> benchmark(F fun) {
     auto after = before;
     int runs = 0;
 
+    // One call to warm up
+    fun();
+
     while (after < deadline) {
         fun();
         after = std::chrono::high_resolution_clock::now();
@@ -84,25 +87,6 @@ compas::Array<T, 2> generate_input(
     return context.allocate(h_data.data(), height, width);
 }
 
-static compas::Array<compas::cfloat, 2> generate_random_complex(
-        compas::CompasContext& context,
-        int height,
-        int width
-) {
-    std::random_device rd;
-    std::mt19937_64 gen(rd());
-    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-
-    return generate_input<compas::cfloat>(
-            context,
-            [&](int i, int j) {
-                return compas::polar(dist(gen), dist(gen) * 2.0F * float(M_PI));
-            },
-            height,
-            width
-    );
-}
-
 template <typename T, typename F>
 compas::Array<T, 3> generate_input(
         compas::CompasContext& context,
@@ -122,6 +106,26 @@ compas::Array<T, 3> generate_input(
     }
 
     return context.allocate(h_data.data(), height, width, depth);
+}
+
+static compas::Array<compas::cfloat, 2> generate_random_complex(
+        compas::CompasContext& context,
+        int height,
+        int width
+) {
+    std::random_device rd;
+    std::mt19937_64 gen(rd());
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+
+    return generate_input<compas::cfloat>(
+            context,
+            [&](int i, int j) {
+                return compas::cfloat {dist(gen), dist(gen)};
+                // return compas::polar(dist(gen), dist(gen) * 2.0F * float(M_PI));
+            },
+            height,
+            width
+    );
 }
 
 static compas::Array<compas::cfloat, 3> generate_random_complex(
@@ -149,6 +153,27 @@ static compas::Array<compas::cfloat, 3> generate_random_complex(
 }
 
 template <typename T>
+static double compute_within_error(
+        const std::vector<T>& expected,
+        const std::vector<T>& answer,
+        double rtol,
+        double atol=1e-9
+) {
+    size_t n = 0;
+
+    for (size_t i = 0; i < expected.size(); i++) {
+        double err = abs(answer[i] - expected[i]);
+
+        if (err <= atol || err <= rtol * abs(expected[i])) {
+            n++;
+        }
+    }
+
+    auto f = double(n) / double(expected.size());
+    return round(f * 10000) / 10000;
+}
+
+template <typename T>
 static void compare_output(
         const std::vector<T>& expected,
         const std::vector<T>& answer
@@ -173,4 +198,7 @@ static void compare_output(
     std::cout << "average relative error: " << (total_rel_error / expected.size()) << "\n";
     std::cout << "maximum absolute error: " << max_abs_error << "\n";
     std::cout << "maximum relative error: " << max_rel_error << "\n";
+    std::cout << "fraction within 1%: " << compute_within_error(expected, answer, 0.01) * 100 << "%\n";
+    std::cout << "fraction within 0.1%: " << compute_within_error(expected, answer, 0.001) * 100 << "%\n";
+    std::cout << "fraction within 0.01%: " << compute_within_error(expected, answer, 0.0001) * 100 << "%\n";
 }

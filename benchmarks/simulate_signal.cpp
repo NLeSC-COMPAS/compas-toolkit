@@ -123,8 +123,8 @@ int main() {
         signal_ref);
 
     benchmark_method(
-        "matmul (TF32)",
-        SimulateSignalMethod::MatmulTF32,
+        "matmul (faster)",
+        SimulateSignalMethod::MatmulFast,
         context,
         echos,
         coil_sensitivities,
@@ -133,8 +133,8 @@ int main() {
         signal_ref);
 
     benchmark_method(
-        "matmul (BF16)",
-        SimulateSignalMethod::MatmulBF16,
+        "matmul (low precision)",
+        SimulateSignalMethod::MatmulLow,
         context,
         echos,
         coil_sensitivities,

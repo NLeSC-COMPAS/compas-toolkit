@@ -4,6 +4,15 @@ This module provides a Julia interface to the COMPAS C++ library for simulating 
 module CompasToolkit
 include("Constants.jl")
 
+macro ccall_gcsafe(ex)
+    # Build `@ccall gc_safe=true <ex>` when supported, else `@ccall <ex>`
+    if Base.VERSION >= v"1.12.0-"
+        esc(:(@ccall gc_safe=true $(ex)))
+    else
+        esc(:(@ccall $(ex)))
+    end
+end
+
 """
     version()::String
 
@@ -92,7 +101,7 @@ function init_context(device::Integer=0)::Context
     return get_context()
 end
 
-const TASK_LOCAL_STORAGE_KEY::Symbol = :compas_toolkit_global_context
+const TASK_LOCAL_STORAGE_CONTEXT::Symbol = :compas_toolkit_global_context
 
 """
     set_context(context::Context)
@@ -100,7 +109,7 @@ const TASK_LOCAL_STORAGE_KEY::Symbol = :compas_toolkit_global_context
 Sets the COMPAS context for the current thread.
 """
 function set_context(context::Context)
-    task_local_storage(TASK_LOCAL_STORAGE_KEY, context)
+    task_local_storage(TASK_LOCAL_STORAGE_CONTEXT, context)
 end
 
 """
@@ -109,7 +118,7 @@ end
 Sets the COMPAS context for the current thread.
 """
 function set_context(context::Context, device::Integer)
-    task_local_storage(TASK_LOCAL_STORAGE_KEY, Context(context, device))
+    task_local_storage(TASK_LOCAL_STORAGE_CONTEXT, Context(context, device))
 end
 
 """
@@ -120,11 +129,14 @@ Throws an error if the COMPAS toolkit has not been initialized.
 """
 function get_context()::Context
     try
-        return task_local_storage(TASK_LOCAL_STORAGE_KEY)
+        return task_local_storage(TASK_LOCAL_STORAGE_CONTEXT)
     catch e
         throw(ArgumentError("COMPAS toolkit has not been initialized, use `init_context` before usage"))
     end
 end
+
+using Base.ScopedValues
+const LOW_PRECISION_MODE = ScopedValue(false)
 
 """
     synchronize()
@@ -133,7 +145,7 @@ Waits until all asynchronous operations of Compas have finished.
 """
 function synchronize()
     context = get_context()
-    @ccall LIBRARY.compas_synchronize(context::Ptr{Cvoid})::Cvoid
+    @ccall_gcsafe LIBRARY.compas_synchronize(context::Ptr{Cvoid})::Cvoid
 end
 
 """
@@ -176,7 +188,7 @@ function CompasArray(input::Array{Float32, N}) where {N}
     context = get_context()
     sizes::Vector{Int64} = [reverse(size(input))...]
 
-    ptr = @ccall LIBRARY.compas_make_array_float(
+    ptr = @ccall_gcsafe LIBRARY.compas_make_array_float(
         context::Ptr{Cvoid},
         input::Ptr{Float32},
         N::Int32,
@@ -195,7 +207,7 @@ function CompasArray(input::Array{ComplexF32, N}) where {N}
     context = get_context()
     sizes::Vector{Int64} = [reverse(size(input))...]
 
-    ptr = @ccall LIBRARY.compas_make_array_complex(
+    ptr = @ccall_gcsafe LIBRARY.compas_make_array_complex(
         context::Ptr{Cvoid},
         input::Ptr{ComplexF32},
         N::Int32,
@@ -214,7 +226,7 @@ Collects the data from a COMPAS array of `Float32` into a Julia array.
 """
 function Base.collect(input::CompasArray{Float32, N}) where {N}
     result = Array{Float32, N}(undef, reverse(input.sizes)...)
-    @ccall LIBRARY.compas_read_array_float(
+    @ccall_gcsafe LIBRARY.compas_read_array_float(
         input.context::Ptr{Cvoid},
         input::Ptr{Cvoid},
         result::Ptr{Float32},
@@ -230,7 +242,7 @@ Collects the data from a COMPAS array of `ComplexF32` into a Julia array.
 """
 function Base.collect(input::CompasArray{ComplexF32, N}) where {N}
     result = Array{ComplexF32, N}(undef, reverse(input.sizes)...)
-    @ccall LIBRARY.compas_read_array_complex(
+    @ccall_gcsafe LIBRARY.compas_read_array_complex(
         input.context::Ptr{Cvoid},
         input::Ptr{Cvoid},
         result::Ptr{ComplexF32},
@@ -806,7 +818,8 @@ function magnetization_to_signal(
     echos::AbstractMatrix,
     parameters::TissueParameters,
     trajectory::CartesianTrajectory,
-    coils::AbstractMatrix,
+    coils::AbstractMatrix;
+    low_precision::Bool=LOW_PRECISION_MODE[]
 )::CompasArray{ComplexF32, 3}
     context = get_context()
     ncoils::Int64 = size(coils, 2)
@@ -824,6 +837,7 @@ function magnetization_to_signal(
         parameters::Ptr{Cvoid},
         coils::Ptr{Cvoid},
         trajectory::Ptr{Cvoid},
+        low_precision::Int32,
     )::Ptr{Cvoid}
 
     return CompasArray{ComplexF32, 3}(context, signal_ptr, (ncoils,  nreadouts, samples_per_readout))
@@ -843,7 +857,8 @@ function magnetization_to_signal(
     echos::AbstractMatrix,
     parameters::TissueParameters,
     trajectory::SpiralTrajectory,
-    coils::AbstractMatrix,
+    coils::AbstractMatrix;
+    low_precision::Bool=LOW_PRECISION_MODE[]
 )::CompasArray{ComplexF32, 3}
     context = get_context()
     ncoils::Int64 = size(coils, 2)
@@ -884,7 +899,8 @@ function compute_jacobian(
     parameters::TissueParameters,
     trajectory::Trajectory,
     coils::AbstractMatrix,
-    v::AbstractMatrix
+    v::AbstractMatrix;
+    low_precision::Bool=LOW_PRECISION_MODE[]
 )::CompasArray{ComplexF32, 3}
     context = get_context()
     ncoils = size(coils, 2)
@@ -907,7 +923,8 @@ function compute_jacobian(
         parameters::Ptr{Cvoid},
         coils::Ptr{Cvoid},
         trajectory::Ptr{Cvoid},
-        v::Ptr{Cvoid}
+        v::Ptr{Cvoid},
+        low_precision::Int32,
     )::Ptr{Cvoid}
 
     return CompasArray{ComplexF32, 3}(context, Jv_ptr, (ncoils, nreadouts, samples_per_readout))
@@ -931,7 +948,8 @@ function compute_jacobian_hermitian(
     parameters::TissueParameters,
     trajectory::Trajectory,
     coils::AbstractMatrix,
-    v::AbstractArray{<:Any,3}
+    v::AbstractArray{<:Any,3};
+    low_precision::Bool=LOW_PRECISION_MODE[]
 )::CompasArray{ComplexF32, 2}
     context = get_context()
     ncoils = size(coils, 2)
@@ -954,7 +972,8 @@ function compute_jacobian_hermitian(
         parameters::Ptr{Cvoid},
         trajectory::Ptr{Cvoid},
         coils::Ptr{Cvoid},
-        v::Ptr{Cvoid}
+        v::Ptr{Cvoid},
+        low_precision::Int32,
     )::Ptr{Cvoid}
 
     return CompasArray{ComplexF32, 2}(context, Jᴴv_ptr, (4, nvoxels))

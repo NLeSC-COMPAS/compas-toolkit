@@ -30,14 +30,14 @@ struct CartesianTrajectoryView {
         auto R2 = 1 / p.T2;
         auto ns = samples_per_readout;
         auto x = p.x;
-        auto y = p.y;
+        // auto y = p.y;
 
         // undo T2 decay and B0 phase that happened between start readout and echo time
         cfloat arg = cfloat(-R2, float(2 * M_PI) * p.B0);
-        cfloat result = float(-0.5f * ns) * delta_t * arg;
+        cfloat result = -0.5f * float(ns) * delta_t * arg;
 
         // apply gradient prephaser (i.e. phase encoding + readout prephaser for Cartesian)
-        auto k0 = float(-0.5f * ns) * delta_k;  //k_start[readout_idx];
+        auto k0 = -0.5f * float(ns) * delta_k;  //k_start[readout_idx];
         result += cfloat(0, k0.re * x /*+ k0.im * y*/);
 
         return m * exp(result);

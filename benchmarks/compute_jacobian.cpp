@@ -70,9 +70,9 @@ int main() {
     auto coil_sensitivities = generate_random_complex(context, ncoils, nvoxels);
     TissueParameters parameters = generate_tissue_parameters(context, nvoxels);
 
-    float delta_t = 10e-5;
-    float delta_k = 2 * M_PI / 25.6;
-    auto k_start = std::vector<cfloat>(nreadouts);
+    auto delta_t = 10e-5f;
+    auto delta_k = 2.0f * float(M_PI) / 25.6f;
+    auto k_start = std::vector<cfloat>(size_t(nreadouts));
 
     auto trajectory = make_cartesian_trajectory(
         context,
@@ -124,6 +124,19 @@ int main() {
     benchmark_method(
         "matmul",
         JacobianComputeMethod::Gemm,
+        context,
+        echos,
+        delta_echos_T1,
+        delta_echos_T2,
+        parameters,
+        trajectory,
+        coil_sensitivities,
+        vector,
+        Jv_ref);
+
+    benchmark_method(
+        "matmul (faster)",
+        JacobianComputeMethod::GemmFast,
         context,
         echos,
         delta_echos_T1,

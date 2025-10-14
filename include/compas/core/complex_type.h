@@ -72,6 +72,16 @@ struct alignas(2 * sizeof(T)) complex_type: complex_storage<T> {
 };
 
 template<typename T>
+COMPAS_HOST_DEVICE static T real(const complex_type<T>& v) {
+    return v.re;
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE static T imag(const complex_type<T>& v) {
+    return v.im;
+}
+
+template<typename T>
 COMPAS_HOST_DEVICE static complex_type<T> conj(const complex_type<T>& v) {
     return v.conj();
 }

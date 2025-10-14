@@ -7,7 +7,7 @@
 
 namespace compas {
 
-enum struct JacobianComputeMethod { Naive, Direct, Gemm, GemmLow };
+enum struct JacobianComputeMethod { Naive, Direct, Gemm, GemmFast, GemmLow };
 
 /**
  * Computes the product of the Jacobian matrix with the given vector.

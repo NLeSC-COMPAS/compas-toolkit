@@ -123,7 +123,10 @@ configure_file(
 
 set(KMM_STATIC ON)
 add_subdirectory(thirdparty/kmm)
+add_subdirectory(thirdparty/kernel_float)
+
 target_link_libraries(${PROJECT_NAME} PUBLIC kmm)
+target_link_libraries(${PROJECT_NAME} PRIVATE kernel_float)
 
 add_subdirectory(julia-bindings)
 
@@ -131,6 +134,7 @@ if(COMPAS_BUILD_TEST)
     add_subdirectory(thirdparty/Catch2)
     add_subdirectory(tests)
 endif()
+
 if(COMPAS_BUILD_BENCHMARK)
     add_subdirectory(benchmarks)
 endif()

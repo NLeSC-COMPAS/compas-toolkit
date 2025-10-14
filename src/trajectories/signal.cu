@@ -103,6 +103,7 @@ void magnetization_to_signal_cartesian_direct(
     context.synchronize();
 }
 
+template<typename ComputeT = float>
 void magnetization_to_signal_cartesian_gemm(
     const kmm::DeviceResource& context,
     kmm::Range<index_t> voxels,
@@ -111,8 +112,9 @@ void magnetization_to_signal_cartesian_gemm(
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory,
     GPUView<cfloat, 2> coil_sensitivities,
-    GPUViewMut<cfloat, 2> exponents,
-    GPUViewMut<cfloat, 2> factors,
+    GPUViewMut<float, 3> temp_signal,
+    GPUViewMut<ComputeT, 3> exponents,
+    GPUViewMut<ComputeT, 3> factors,
     GemmComputeMethod compute_type) {
     int ncoils = kmm::checked_cast<int>(coil_sensitivities.size(0));
     int nreadouts = trajectory.nreadouts;
@@ -131,7 +133,7 @@ void magnetization_to_signal_cartesian_gemm(
     dim3 block_dim = {32, 4};
     dim3 grid_dim = {div_ceil(uint(nvoxels), block_dim.x), div_ceil(uint(nreadouts), block_dim.y)};
 
-    kernels::prepare_readout_echos<<<grid_dim, block_dim, 0, context.stream()>>>(
+    kernels::prepare_readout_echos_planar<ComputeT><<<grid_dim, block_dim, 0, context.stream()>>>(
         voxels,
         nreadouts,
         factors,
@@ -146,13 +148,19 @@ void magnetization_to_signal_cartesian_gemm(
 
         kernels::
             prepare_sample_decay_cartesian_with_coil<<<grid_dim, block_dim, 0, context.stream()>>>(
+                voxels,
+                samples_per_readout,
                 exponents,
                 coil_sensitivities.drop_axis<0>(icoil),
                 parameters,
                 trajectory);
         COMPAS_GPU_CHECK(gpuGetLastError());
 
-        compute_gemm(context, signal.drop_axis(icoil), factors, exponents, cfloat(0), compute_type);
+        // temp_signal = factors * exponents
+        compute_complex_gemm(context, temp_signal, factors, exponents, 1.0F, 0.0F, compute_type);
+
+        // signal[icoil] = temp_signal
+        convert_planar_to_complex(context, signal.drop_axis(icoil), temp_signal);
     }
 
     COMPAS_GPU_CHECK(gpuGetLastError());
@@ -236,11 +244,9 @@ GemmComputeMethod cublas_compute_type_from_simulate_method(SimulateSignalMethod 
         case SimulateSignalMethod::MatmulPedantic:
             return GemmComputeMethod::Pedantic;
         case SimulateSignalMethod::Matmul:
+            return GemmComputeMethod::Regular;
+        case SimulateSignalMethod::MatmulFast:
             return GemmComputeMethod::Fast;
-        case SimulateSignalMethod::MatmulBF16:
-            return GemmComputeMethod::BF16;
-        case SimulateSignalMethod::MatmulTF32:
-            return GemmComputeMethod::TF32;
         default:
             COMPAS_ERROR("invalid value for `SimulateSignalMethod`");
     }
@@ -264,9 +270,6 @@ Array<cfloat, 3> magnetization_to_signal(
     auto signal = Array<cfloat, 3> {{ncoils, nreadouts, samples_per_readout}};
 
     if (const auto* cart = dynamic_cast<const CartesianTrajectory*>(&trajectory)) {
-        auto temp_exponents = Array<cfloat, 2> {{samples_per_readout, nvoxels}};
-        auto temp_factors = Array<cfloat, 2> {{nreadouts, nvoxels}};
-
         if (method == SimulateSignalMethod::Naive) {
             context.submit_kernel(
                 {uint(samples_per_readout), uint(nreadouts), uint(ncoils)},
@@ -280,6 +283,9 @@ Array<cfloat, 3> magnetization_to_signal(
                 coil_sensitivities);
 
         } else if (method == SimulateSignalMethod::Direct) {
+            auto temp_exponents = Array<cfloat, 2> {{samples_per_readout, nvoxels}};
+            auto temp_factors = Array<cfloat, 2> {{nreadouts, nvoxels}};
+
             context.parallel_device(
                 {nvoxels, nreadouts},
                 {chunk_size, nreadouts},
@@ -292,15 +298,38 @@ Array<cfloat, 3> magnetization_to_signal(
                 coil_sensitivities[_][_x],
                 write(temp_exponents[_][_x]),
                 write(temp_factors[_y][_x]));
-        } else {
+        } else if (method == SimulateSignalMethod::MatmulLow) {
+            auto temp_exponents =
+                Array<kernel_float::bfloat16_t, 3> {{2, samples_per_readout, nvoxels}};
+            auto temp_factors = Array<kernel_float::bfloat16_t, 3> {{2, nreadouts, nvoxels}};
+            auto temp_signal = Array<float, 3> {{2, nreadouts, samples_per_readout}};
+
             context.submit_device(
-                magnetization_to_signal_cartesian_gemm,
+                magnetization_to_signal_cartesian_gemm<kernel_float::bfloat16_t>,
                 nvoxels,
                 write(signal),
                 echos,
                 parameters,
                 *cart,
                 coil_sensitivities,
+                write(temp_signal),
+                write(temp_exponents),
+                write(temp_factors),
+                GemmComputeMethod::Fast);
+        } else {
+            auto temp_exponents = Array<float, 3> {{2, samples_per_readout, nvoxels}};
+            auto temp_factors = Array<float, 3> {{2, nreadouts, nvoxels}};
+            auto temp_signal = Array<float, 3> {{2, nreadouts, samples_per_readout}};
+
+            context.submit_device(
+                magnetization_to_signal_cartesian_gemm<float>,
+                nvoxels,
+                write(signal),
+                echos,
+                parameters,
+                *cart,
+                coil_sensitivities,
+                write(temp_signal),
                 write(temp_exponents),
                 write(temp_factors),
                 cublas_compute_type_from_simulate_method(method));
