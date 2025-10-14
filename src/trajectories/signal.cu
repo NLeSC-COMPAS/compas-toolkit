@@ -148,6 +148,8 @@ void magnetization_to_signal_cartesian_gemm(
 
         kernels::
             prepare_sample_decay_cartesian_with_coil<<<grid_dim, block_dim, 0, context.stream()>>>(
+                voxels,
+                samples_per_readout,
                 exponents,
                 coil_sensitivities.drop_axis<0>(icoil),
                 parameters,

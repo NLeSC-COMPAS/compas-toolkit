@@ -23,22 +23,22 @@ enum struct SimulateSignalMethod {
     Direct,
 
     /**
-     * Use high precision matrix multiplication method. This ensure high accuracy with reasonable performance.
+     * Use highest precision matrix multiplication method. This ensure highest precision.
      */
     MatmulPedantic,
 
     /**
-     * Use matrix multiplication method. This ensure reasonable accuracy with reasonable performance.
+     * Use matrix multiplication method. This ensure high accuracy with reasonable performance.
      */
     Matmul,
 
     /**
-     * Use matrix multiplication method. This ensure reasonable accuracy with reasonable performance.
+     * Use fast matrix multiplication method. This ensure reasonable accuracy with decent performance.
      */
     MatmulFast,
 
     /**
-     * Use low precision matrix multiplication method using bfloat16. This gives low accuracy with high performance.
+     * Use low precision matrix multiplication method using bfloat16. This gives low accuracy with highest performance.
      */
     MatmulLow,
 };

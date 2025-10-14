@@ -56,7 +56,7 @@ __global__ void prepare_sample_decay_cartesian(
     GPUSubviewMut<cfloat, 2> sample_decay,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x + voxels.begin);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x) + voxels.begin;
 
     if (voxel < voxels.end) {
         auto p = parameters.get(voxel);
@@ -70,15 +70,15 @@ __global__ void prepare_sample_decay_cartesian(
 
 template<typename T = float>
 __global__ void prepare_sample_decay_cartesian_with_coil(
+    kmm::Range<int> voxels,
+    int num_samples,
     GPUViewMut<T, 3> sample_decay,  // planar complex
     GPUView<cfloat> coil_sensitivities,
     TissueParametersView parameters,
     CartesianTrajectoryView trajectory) {
-    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x);
-    auto num_samples = sample_decay.size(0);
-    auto num_voxels = sample_decay.size(1);
+    auto voxel = index_t(blockIdx.x * blockDim.x + threadIdx.x) + voxels.begin;
 
-    if (voxel < num_voxels) {
+    if (voxel < voxels.end) {
         auto p = parameters.get(voxel);
         auto coil = coil_sensitivities[voxel];
 
