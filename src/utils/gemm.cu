@@ -82,19 +82,15 @@ void compute_gemm_impl(
         compute_algo));
 #elif defined(COMPAS_USE_HIP)
     rocblas_gemm_algo compute_algo = rocblas_gemm_algo_standard;
-    rocblas_datatype compute_type = rocblas_datatype_f32_c;
+    rocblas_datatype output_type = rocblas_datatype_f32_r;
+    rocblas_datatype input_type;
 
-    switch (kind) {
-        case GemmComputeMethod::Pedantic:
-            compute_type = rocblas_datatype_f32_c;
-            break;
-        case GemmComputeMethod::Regular:
-            compute_type = rocblas_datatype_f32_c;
-            break;
-        case GemmComputeMethod::Low:
-            // TODO: BF16_C not currently supported
-            compute_type = rocblas_datatype_f32_c;
-            break;
+    if constexpr (std::is_same_v<T, float>) {
+        input_type = rocblas_datatype_f32_r;
+    } else if constexpr (std::is_same_v<T, kernel_float::bfloat16_t>) {
+        input_type = rocblas_datatype_bf16_r;
+    } else {
+        COMPAS_ERROR("invalid data type for GEMM");
     }
 
     COMPAS_GPU_CHECK(rocblas_set_stream(context.blas(), context.stream()));
@@ -107,19 +103,19 @@ void compute_gemm_impl(
         k,  // k
         &alpha,  // alpha
         rhs.data(),  // A
-        rocblas_datatype_f32_c,  // A type
+        input_type,  // A type
         rhs.stride(),  // lda
         lhs.data(),  // B
-        rocblas_datatype_f32_c,  // B type
+        input_type,  // B type
         lhs.stride(),  // ldb
         &beta,  //beta
         result.data(),  // C
-        rocblas_datatype_f32_c,  // C type
+        output_type,  // C type
         result.stride(),  // ldc
         result.data(),  // C
-        rocblas_datatype_f32_c,  // C type
+        output_type,  // C type
         result.stride(),  // ldc
-        compute_type,
+        output_type,
         compute_algo,
         0,
         0));
