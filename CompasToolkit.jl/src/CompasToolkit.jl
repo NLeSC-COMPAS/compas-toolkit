@@ -101,7 +101,7 @@ function init_context(device::Integer=0)::Context
     return get_context()
 end
 
-const TASK_LOCAL_STORAGE_KEY::Symbol = :compas_toolkit_global_context
+const TASK_LOCAL_STORAGE_CONTEXT::Symbol = :compas_toolkit_global_context
 
 """
     set_context(context::Context)
@@ -109,7 +109,7 @@ const TASK_LOCAL_STORAGE_KEY::Symbol = :compas_toolkit_global_context
 Sets the COMPAS context for the current thread.
 """
 function set_context(context::Context)
-    task_local_storage(TASK_LOCAL_STORAGE_KEY, context)
+    task_local_storage(TASK_LOCAL_STORAGE_CONTEXT, context)
 end
 
 """
@@ -118,7 +118,7 @@ end
 Sets the COMPAS context for the current thread.
 """
 function set_context(context::Context, device::Integer)
-    task_local_storage(TASK_LOCAL_STORAGE_KEY, Context(context, device))
+    task_local_storage(TASK_LOCAL_STORAGE_CONTEXT, Context(context, device))
 end
 
 """
@@ -129,11 +129,14 @@ Throws an error if the COMPAS toolkit has not been initialized.
 """
 function get_context()::Context
     try
-        return task_local_storage(TASK_LOCAL_STORAGE_KEY)
+        return task_local_storage(TASK_LOCAL_STORAGE_CONTEXT)
     catch e
         throw(ArgumentError("COMPAS toolkit has not been initialized, use `init_context` before usage"))
     end
 end
+
+using Base.ScopedValues
+const LOW_PRECISION_MODE = ScopedValue(false)
 
 """
     synchronize()
@@ -815,7 +818,8 @@ function magnetization_to_signal(
     echos::AbstractMatrix,
     parameters::TissueParameters,
     trajectory::CartesianTrajectory,
-    coils::AbstractMatrix,
+    coils::AbstractMatrix;
+    low_precision::Bool=LOW_PRECISION_MODE[]
 )::CompasArray{ComplexF32, 3}
     context = get_context()
     ncoils::Int64 = size(coils, 2)
@@ -833,6 +837,7 @@ function magnetization_to_signal(
         parameters::Ptr{Cvoid},
         coils::Ptr{Cvoid},
         trajectory::Ptr{Cvoid},
+        low_precision::Int32,
     )::Ptr{Cvoid}
 
     return CompasArray{ComplexF32, 3}(context, signal_ptr, (ncoils,  nreadouts, samples_per_readout))
@@ -852,7 +857,8 @@ function magnetization_to_signal(
     echos::AbstractMatrix,
     parameters::TissueParameters,
     trajectory::SpiralTrajectory,
-    coils::AbstractMatrix,
+    coils::AbstractMatrix;
+    low_precision::Bool=LOW_PRECISION_MODE[]
 )::CompasArray{ComplexF32, 3}
     context = get_context()
     ncoils::Int64 = size(coils, 2)
@@ -893,7 +899,8 @@ function compute_jacobian(
     parameters::TissueParameters,
     trajectory::Trajectory,
     coils::AbstractMatrix,
-    v::AbstractMatrix
+    v::AbstractMatrix;
+    low_precision::Bool=LOW_PRECISION_MODE[]
 )::CompasArray{ComplexF32, 3}
     context = get_context()
     ncoils = size(coils, 2)
@@ -916,7 +923,8 @@ function compute_jacobian(
         parameters::Ptr{Cvoid},
         coils::Ptr{Cvoid},
         trajectory::Ptr{Cvoid},
-        v::Ptr{Cvoid}
+        v::Ptr{Cvoid},
+        low_precision::Int32,
     )::Ptr{Cvoid}
 
     return CompasArray{ComplexF32, 3}(context, Jv_ptr, (ncoils, nreadouts, samples_per_readout))
@@ -940,7 +948,8 @@ function compute_jacobian_hermitian(
     parameters::TissueParameters,
     trajectory::Trajectory,
     coils::AbstractMatrix,
-    v::AbstractArray{<:Any,3}
+    v::AbstractArray{<:Any,3};
+    low_precision::Bool=LOW_PRECISION_MODE[]
 )::CompasArray{ComplexF32, 2}
     context = get_context()
     ncoils = size(coils, 2)
@@ -963,7 +972,8 @@ function compute_jacobian_hermitian(
         parameters::Ptr{Cvoid},
         trajectory::Ptr{Cvoid},
         coils::Ptr{Cvoid},
-        v::Ptr{Cvoid}
+        v::Ptr{Cvoid},
+        low_precision::Int32,
     )::Ptr{Cvoid}
 
     return CompasArray{ComplexF32, 2}(context, Jᴴv_ptr, (4, nvoxels))

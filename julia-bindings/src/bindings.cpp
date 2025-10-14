@@ -259,7 +259,10 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
     const compas::Array<cfloat, 2>* echos,
     const Object* parameters,
     const compas::Array<cfloat, 2>* coils,
-    const Object* trajectory) {
+    const Object* trajectory,
+    int32_t low_precision) {
+    auto method = low_precision == 0 ? compas::SimulateSignalMethod::MatmulFast : compas::SimulateSignalMethod::MatmulLow;
+
     return catch_exceptions([&] {
         return new_object(
             compas::magnetization_to_signal(
@@ -267,7 +270,8 @@ extern "C" kmm::ArrayBase* compas_magnetization_to_signal_cartesian(
                 *echos,
                 parameters->unwrap<compas::TissueParameters>(),
                 trajectory->unwrap<compas::CartesianTrajectory>(),
-                *coils));
+                *coils,
+                method));
     });
 }
 
@@ -298,7 +302,10 @@ extern "C" compas::Array<cfloat, 3>* compas_compute_jacobian(
     const Object* parameters,
     const compas::Array<cfloat, 2>* coils,
     const Object* trajectory,
-    const compas::Array<cfloat, 2>* vector) {
+    const compas::Array<cfloat, 2>* vector,
+    const int32_t low_precision) {
+    auto method = low_precision == 0 ? compas::JacobianComputeMethod::GemmFast : compas::JacobianComputeMethod::GemmLow;
+
     return catch_exceptions([&] {
         return new_object(
             compas::compute_jacobian(
@@ -310,7 +317,7 @@ extern "C" compas::Array<cfloat, 3>* compas_compute_jacobian(
                 trajectory->unwrap<compas::CartesianTrajectory>(),
                 *coils,
                 *vector,
-                compas::JacobianComputeMethod::GemmLow));
+                method));
     });
 }
 
@@ -323,7 +330,10 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
     const Object* parameters,
     const Object* trajectory,
     const compas::Array<cfloat, 2>* coils,
-    const compas::Array<cfloat, 3>* vector) {
+    const compas::Array<cfloat, 3>* vector,
+    const int32_t low_precision) {
+    auto method = low_precision == 0 ? compas::JacobianComputeMethod::GemmFast : compas::JacobianComputeMethod::GemmLow;
+
     return catch_exceptions([&] {
         return new_object(
             compas::compute_jacobian_hermitian(
@@ -335,7 +345,7 @@ extern "C" compas::Array<cfloat, 2>* compas_compute_jacobian_hermitian(
                 trajectory->unwrap<compas::CartesianTrajectory>(),
                 *coils,
                 *vector,
-                compas::JacobianComputeMethod::GemmLow));
+                method));
     });
 }
 

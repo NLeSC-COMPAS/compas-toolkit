@@ -21,6 +21,9 @@ struct CompasContext {
         m_runtime(kmm::RuntimeHandle(runtime).constrain_to(resource_id)),
         m_device(resource_id.as_device()) {}
 
+    CompasContext(kmm::Runtime& runtime):
+            CompasContext(runtime, kmm::DeviceId(0)) {}
+
     CompasContext with_device(int index) {
         auto resources = m_runtime.worker().system_info().resources();
         return {m_runtime.worker(), resources[index % resources.size()]};
@@ -111,9 +114,14 @@ inline CompasContext make_context(int device = 0) {
     // TODO: Use caching pools for host and device until segfaults are fixed
     config.host_memory_kind = kmm::HostMemoryKind::CachingPool;
     config.device_memory_kind = kmm::DeviceMemoryKind::DefaultPool;
-    config.device_concurrent_streams = 8;
+    config.device_concurrent_streams = 4;
 
-    return {kmm::make_runtime(config).worker(), kmm::ResourceId {kmm::DeviceId(device), 0}};
+    // Use the caching pool instead in HIP. Memory errors occur when using the async memory pool.
+#ifdef COMPAS_USE_HIP
+    config.device_memory_kind = kmm::DeviceMemoryKind::CachingPool;
+#endif
+
+    return CompasContext(kmm::make_runtime(config).worker()).with_device(device);
 }
 
 }  // namespace compas
