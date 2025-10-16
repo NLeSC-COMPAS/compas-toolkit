@@ -100,9 +100,13 @@ elseif(COMPAS_USE_HIP)
     target_link_libraries(${PROJECT_NAME} PUBLIC hip::device)
     target_link_libraries(${PROJECT_NAME} PUBLIC roc::rocblas)
 
+    # Enable HIP in KMM and kernel float
+    set(KMM_USE_HIP ON)
+    set(KERNEL_FLOAT_LANGUAGE "HIP")
+
     # Define `COMPAS_USE_HIP` macro so that headers can detect HIP usage
     target_compile_definitions(${PROJECT_NAME} PUBLIC COMPAS_USE_HIP=1)
-    set(KMM_USE_HIP ON)
+    
     # Needed for ROCM < 6.3
     target_compile_definitions(${PROJECT_NAME} PUBLIC HIP_ENABLE_WARP_SYNC_BUILTINS=1)
 endif()
