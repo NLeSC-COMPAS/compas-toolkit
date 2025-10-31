@@ -2,11 +2,12 @@
 #include "compas/core/utils.h"
 #include "compas/utils/gemm.h"
 #include "gemm_kernels.cuh"
+#include "ccglib/pipeline/pipeline.h"
 
 namespace compas {
 
 template<typename T>
-void compute_gemm_impl(
+void compute_gemm_cublas(
     const kmm::DeviceResource& context,
     GPUSubviewMut<float, 2> result,
     GPUSubview<T, 2> lhs,
@@ -130,7 +131,7 @@ void compute_gemm(
     float alpha,
     float beta,
     GemmComputeMethod kind) {
-    compute_gemm_impl(context, result, lhs, rhs, alpha, beta, kind);
+    compute_gemm_cublas(context, result, lhs, rhs, alpha, beta, kind);
 }
 
 void compute_gemm(
@@ -141,7 +142,7 @@ void compute_gemm(
     float alpha,
     float beta,
     GemmComputeMethod kind) {
-    compute_gemm_impl(context, result, lhs, rhs, alpha, beta, kind);
+    compute_gemm_cublas(context, result, lhs, rhs, alpha, beta, kind);
 }
 
 template<typename T>
@@ -183,6 +184,87 @@ void compute_complex_gemm(
     compute_complex_gemm_impl(context, result, lhs, rhs, alpha, beta, kind);
 }
 
+struct PipelineConfig {
+    size_t B;
+    size_t M;
+    size_t N;
+    size_t K;
+    CUdevice device;
+    CUstream stream;
+    ccglib::ComplexAxisLocation input_complex_axis_location;
+    ccglib::ComplexAxisLocation output_complex_axis_location;
+    ccglib::mma::MemOrder a_mem_order;
+    ccglib::mma::MemOrder b_mem_order;
+    ccglib::mma::MemOrder c_mem_order;
+    ccglib::ValuePrecision input_precision;
+    ccglib::ValuePrecision output_precision;
+    ccglib::mma::Variant variant;
+    std::complex<float> alpha;
+    std::complex<float> beta;
+
+    auto as_tuple() const {
+        return std::tie(
+                B,
+                M,
+                N,
+                K,
+                device,
+                stream,
+                input_complex_axis_location,
+                output_complex_axis_location,
+                a_mem_order,
+                b_mem_order,
+                c_mem_order,
+                input_precision,
+                output_precision,
+                variant,
+                alpha,
+                beta
+        );
+    }
+
+    std::shared_ptr<ccglib::pipeline::Pipeline> build() {
+        return std::make_unique<ccglib::pipeline::Pipeline>(
+                B,
+                M,
+                N,
+                K,
+                device,
+                stream,
+                input_complex_axis_location,
+                output_complex_axis_location,
+                a_mem_order,
+                b_mem_order,
+                c_mem_order,
+                input_precision,
+                output_precision,
+                variant,
+                alpha,
+                beta
+        );
+    }
+};
+
+struct PipelineCache {
+    std::shared_ptr<ccglib::pipeline::Pipeline> lookup(PipelineConfig config) {
+        std::unique_lock guard(m_mutex);
+
+        for (auto& [key, value]: m_cache) {
+            if (key.as_tuple() == config.as_tuple()) {
+                return value;
+            }
+        }
+
+        auto pipeline = config.build();
+        m_cache.emplace_back(config, pipeline);
+        return pipeline;
+    }
+
+  private:
+    std::mutex m_mutex;
+    std::vector<std::pair<PipelineConfig, std::shared_ptr<ccglib::pipeline::Pipeline>>> m_cache;
+};
+
 void compute_complex_gemm(
     const kmm::DeviceResource& context,
     GPUSubviewMut<float, 3> result,
@@ -191,7 +273,46 @@ void compute_complex_gemm(
     float alpha,
     float beta,
     GemmComputeMethod kind) {
-    compute_complex_gemm_impl(context, result, lhs, rhs, alpha, beta, kind);
+    static PipelineCache pipeline_cache;
+
+    COMPAS_CHECK(result.size(0) == 2);
+    COMPAS_CHECK(lhs.size(0) == 2);
+    COMPAS_CHECK(rhs.size(0) == 2);
+    COMPAS_CHECK(result.size(1) == lhs.size(1));
+    COMPAS_CHECK(result.size(2) == rhs.size(1));
+    COMPAS_CHECK(lhs.size(2) == rhs.size(2));
+    COMPAS_CHECK(lhs.is_contiguous());
+    COMPAS_CHECK(rhs.is_contiguous());
+    COMPAS_CHECK(result.is_contiguous());
+
+    size_t m = result.size(1);
+    size_t n = result.size(2);
+    size_t k = lhs.size(2);
+
+    auto pipeline = pipeline_cache.lookup({
+            1,
+            m,
+            n,
+            k,
+            context.device_ordinal(),
+            context.stream(),
+            ccglib::ComplexAxisLocation::complex_planar,
+            ccglib::ComplexAxisLocation::complex_planar,
+            ccglib::mma::MemOrder::row_major,
+            ccglib::mma::MemOrder::col_major,
+            ccglib::mma::MemOrder::row_major,
+            ccglib::ValueType::bfloat16,
+            ccglib::ValueType::float32,
+            ccglib::mma::Variant::opt,
+            alpha,
+            beta
+    });
+
+    pipeline->Run(
+            reinterpret_cast<CUdeviceptr>(lhs.data()),
+            reinterpret_cast<CUdeviceptr>(rhs.data()),
+            reinterpret_cast<CUdeviceptr>(result.data())
+    );
 }
 
 template<typename T>

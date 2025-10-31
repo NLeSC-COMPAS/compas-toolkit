@@ -114,7 +114,7 @@ inline CompasContext make_context(int device = 0) {
     // TODO: Use caching pools for host and device until segfaults are fixed
     config.host_memory_kind = kmm::HostMemoryKind::CachingPool;
     config.device_memory_kind = kmm::DeviceMemoryKind::DefaultPool;
-    config.device_concurrent_streams = 4;
+    config.device_concurrent_streams = 1;
 
     // Use the caching pool instead in HIP. Memory errors occur when using the async memory pool.
 #ifdef COMPAS_USE_HIP

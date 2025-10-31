@@ -124,8 +124,10 @@ configure_file(
 set(KMM_STATIC ON)
 add_subdirectory(thirdparty/kmm)
 add_subdirectory(thirdparty/kernel_float)
+add_subdirectory(thirdparty/ccglib)
 
 target_link_libraries(${PROJECT_NAME} PUBLIC kmm)
+target_link_libraries(${PROJECT_NAME} PUBLIC ccglib)
 target_link_libraries(${PROJECT_NAME} PRIVATE kernel_float)
 
 add_subdirectory(julia-bindings)
