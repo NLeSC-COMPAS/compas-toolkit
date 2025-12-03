@@ -100,7 +100,47 @@
 <dl class="cpp struct">
 <dt class="sig sig-object cpp" id="_CPPv4N6compas16TissueParametersE">
 <span id="_CPPv3N6compas16TissueParametersE"></span><span id="_CPPv2N6compas16TissueParametersE"></span><span id="compas::TissueParameters"></span><span class="target" id="structcompas_1_1TissueParameters"></span><span class="k"><span class="pre">struct</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">TissueParameters</span></span></span><span class="w"> </span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="k"><span class="pre">public</span></span><span class="w"> </span><span class="n"><span class="pre">compas</span></span><span class="p"><span class="pre">::</span></span><span class="n"><span class="pre">Object</span></span><a class="headerlink" href="#_CPPv4N6compas16TissueParametersE" title="Permalink to this definition"></a><br /></dt>
-<dd><p>Stores the tissue parameters for each voxel. Note that, instead of having seperate 1D arrays for each field, data is instead stored in a single 2D matrix where each row is different field (see <code class="docutils literal notranslate"><span class="pre">TissueParameterField</span></code>) and each column is a voxel. </p>
+<dd><p>Stores tissue parameters (T1, T2, B1, B0, rho, position) for multiple voxels. </p>
+<p>Data is stored in a 2D array <code class="docutils literal notranslate"><span class="pre">data</span></code> [num_parameters, nvoxels]. Parameter order depends on creation (e.g., via <code class="docutils literal notranslate"><span class="pre">make_tissue_parameters</span></code>). </p>
+<div class="breathe-sectiondef docutils container">
+<p class="breathe-sectiondef-title rubric" id="breathe-section-title-public-members">Public Members</p>
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N6compas16TissueParameters4dataE">
+<span id="_CPPv3N6compas16TissueParameters4dataE"></span><span id="_CPPv2N6compas16TissueParameters4dataE"></span><span id="compas::TissueParameters::data__Array:float.2:"></span><span class="target" id="structcompas_1_1TissueParameters_1a81e5fa097f644fc5f5b03e615fcfe127"></span><span class="n"><span class="pre">Array</span></span><span class="p"><span class="pre">&lt;</span></span><span class="kt"><span class="pre">float</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="m"><span class="pre">2</span></span><span class="p"><span class="pre">&gt;</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">data</span></span></span><a class="headerlink" href="#_CPPv4N6compas16TissueParameters4dataE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>2D array [num_parameters, nvoxels] holding all tissue parameters. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N6compas16TissueParameters7nvoxelsE">
+<span id="_CPPv3N6compas16TissueParameters7nvoxelsE"></span><span id="_CPPv2N6compas16TissueParameters7nvoxelsE"></span><span id="compas::TissueParameters::nvoxels__i"></span><span class="target" id="structcompas_1_1TissueParameters_1a9e226db3a3e54c2d4771150e7d3f96f2"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">nvoxels</span></span></span><a class="headerlink" href="#_CPPv4N6compas16TissueParameters7nvoxelsE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Total number of voxels. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N6compas16TissueParameters10chunk_sizeE">
+<span id="_CPPv3N6compas16TissueParameters10chunk_sizeE"></span><span id="_CPPv2N6compas16TissueParameters10chunk_sizeE"></span><span id="compas::TissueParameters::chunk_size__i"></span><span class="target" id="structcompas_1_1TissueParameters_1a6a2fd247bd00445f14553685ed3f10af"></span><span class="kt"><span class="pre">int</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">chunk_size</span></span></span><a class="headerlink" href="#_CPPv4N6compas16TissueParameters10chunk_sizeE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>Voxel processing chunk size. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N6compas16TissueParameters5has_zE">
+<span id="_CPPv3N6compas16TissueParameters5has_zE"></span><span id="_CPPv2N6compas16TissueParameters5has_zE"></span><span id="compas::TissueParameters::has_z__b"></span><span class="target" id="structcompas_1_1TissueParameters_1ac1c71787b2bc07276fb8e8c6fcf50a36"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">has_z</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><a class="headerlink" href="#_CPPv4N6compas16TissueParameters5has_zE" title="Permalink to this definition"></a><br /></dt>
+<dd><p>True if z-coordinates are included in <code class="docutils literal notranslate"><span class="pre">data</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N6compas16TissueParameters6has_b0E">
+<span id="_CPPv3N6compas16TissueParameters6has_b0E"></span><span id="_CPPv2N6compas16TissueParameters6has_b0E"></span><span id="compas::TissueParameters::has_b0__b"></span><span class="target" id="structcompas_1_1TissueParameters_1a6d118cc31eee697f54f40ecac0ef0dec"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">has_b0</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><a class="headerlink" href="#_CPPv4N6compas16TissueParameters6has_b0E" title="Permalink to this definition"></a><br /></dt>
+<dd><p>True if B0 off-resonance values are included in <code class="docutils literal notranslate"><span class="pre">data</span></code>. </p>
+</dd></dl>
+
+<dl class="cpp var">
+<dt class="sig sig-object cpp" id="_CPPv4N6compas16TissueParameters6has_b1E">
+<span id="_CPPv3N6compas16TissueParameters6has_b1E"></span><span id="_CPPv2N6compas16TissueParameters6has_b1E"></span><span id="compas::TissueParameters::has_b1__b"></span><span class="target" id="structcompas_1_1TissueParameters_1ae27e0079df8ca4830df82897f8c1db69"></span><span class="kt"><span class="pre">bool</span></span><span class="w"> </span><span class="sig-name descname"><span class="n"><span class="pre">has_b1</span></span></span><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="k"><span class="pre">true</span></span><a class="headerlink" href="#_CPPv4N6compas16TissueParameters6has_b1E" title="Permalink to this definition"></a><br /></dt>
+<dd><p>True if B1 scaling values are included in <code class="docutils literal notranslate"><span class="pre">data</span></code>. </p>
+</dd></dl>
+
+</div>
 </dd></dl>
 
 </section>
