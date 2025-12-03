@@ -1,31 +1,30 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: CUDA Build with multiple compilers
+name: HIP build
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "dev" ]
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ${{ matrix.os }}
 
     strategy:
-      fail-fast: false
+      fail-fast: true
 
       matrix:
         os: [ubuntu-latest]
         build_type: [Debug]
-        cpp_compiler: [g++, clang++]
 
     steps:
-      - uses: Jimver/cuda-toolkit@v0.2.22
-        id: cuda-toolkit
+      - uses: loostrum/rocm-installer@main
         with:
-          method: 'network'
-          sub-packages: '["toolkit"]'
+          version: 6.2.2
+          packages: hip-dev hipcc rocm-device-libs rocblas rocm-hip-runtime-dev rocrand
+
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
@@ -42,15 +41,18 @@ jobs:
         # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
         run: >
           cmake -B ${{ steps.strings.outputs.build-output-dir }}
-          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+          -DCMAKE_PREFIX_PATH=/opt/rocm
+          -DCMAKE_HIP_COMPILER_ROCM_ROOT:PATH=/opt/rocm
+          -DCMAKE_HIP_ARCHITECTURES=gfx90a
+          -DAMDGPU_TARGETS=gfx90a
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON
           -DSPDLOG_FMT_EXTERNAL:BOOL=ON
-          -DCOMPAS_USE_CUDA:BOOL=ON
+          -DCOMPAS_USE_HIP:BOOL=ON
           -DCOMPAS_BUILD_TESTS:BOOL=ON
           -DCOMPAS_BUILD_BENCHMARKS:BOOL=ON
           -S ${{ github.workspace }}
 
       - name: Build
         # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-        run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+        run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} --parallel 4

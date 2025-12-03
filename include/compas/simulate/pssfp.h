@@ -15,13 +15,7 @@ namespace compas {
  *         echo times.
  */
 Array<cfloat, 2> simulate_magnetization(
-    const CudaContext& context,
+    const CompasContext& context,
     TissueParameters parameters,
     pSSFPSequence sequence);
-
-void simulate_magnetization_kernel(
-    const kmm::CudaDevice& context,
-    cuda_view_mut<cfloat, 2> echos,
-    TissueParametersView parameters,
-    pSSFPSequenceView sequence);
 }  // namespace compas

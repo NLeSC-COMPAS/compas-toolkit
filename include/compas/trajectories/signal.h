@@ -13,29 +13,34 @@ namespace compas {
  */
 enum struct SimulateSignalMethod {
     /**
-     * Direct simulation without optimization or approximations. This is the most reliable method, but is also slow.
+     * Naive simulation without optimization or approximations. This is the most reliable method, but is also slow.
+     */
+    Naive,
+
+    /**
+     * Direct simulation. This is the more performant method if there are many coils.
      */
     Direct,
 
     /**
-     * Use matrix multiplication method. This ensure reasonable accuracy with reasonable performance.
-     */
-    Matmul,
-
-    /**
-     * Use high precision matrix multiplication method. This ensure high accuracy with reasonable performance.
+     * Use highest precision matrix multiplication method. This ensure highest precision.
      */
     MatmulPedantic,
 
     /**
-     * Use low precision matrix multiplication method using TF32 floats. This gives low accuracy with high performance.
+     * Use matrix multiplication method. This ensure high accuracy with reasonable performance.
      */
-    MatmulTF32,
+    Matmul,
 
     /**
-     * Use low precision matrix multiplication method using BF16 floats. This gives low accuracy with high performance.
+     * Use fast matrix multiplication method. This ensure reasonable accuracy with decent performance.
      */
-    MatmulBF16,
+    MatmulFast,
+
+    /**
+     * Use low precision matrix multiplication method using bfloat16. This gives low accuracy with highest performance.
+     */
+    MatmulLow,
 };
 
 /**
@@ -50,11 +55,11 @@ enum struct SimulateSignalMethod {
  * @return The MR signal. Size: [ncoils, nreadouts, nsamples_per_readout].
  */
 Array<cfloat, 3> magnetization_to_signal(
-    const CudaContext& context,
+    const CompasContext& context,
     Array<cfloat, 2> echos,
     TissueParameters parameters,
     const Trajectory& trajectory,
-    Array<float, 2> coil_sensitivities,
-    SimulateSignalMethod method = SimulateSignalMethod::Direct);
+    Array<cfloat, 2> coil_sensitivities,
+    SimulateSignalMethod method = SimulateSignalMethod::MatmulFast);
 
 }  // namespace compas

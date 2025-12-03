@@ -6,72 +6,135 @@ namespace compas {
 
 template<int max_N, int warp_size = max_N>
 void simulate_fisp_sequence_for_size(
-    const kmm::CudaDevice& context,
-    cuda_view_mut<cfloat, 2> echos,
+    const kmm::DeviceResource& context,
+    kmm::Range<index_t> voxels,
+    GPUSubviewMut<cfloat, 2> transposed_echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
-    COMPAS_ASSERT(sequence.max_state <= max_N);
-    COMPAS_ASSERT(is_power_of_two(warp_size) && warp_size <= 32);
+    static constexpr int threads_per_block = 256;
+    static constexpr int warps_per_block = threads_per_block / warp_size;
 
-    int nvoxels = parameters.nvoxels;
-    int nreadouts = sequence.RF_train.size();
+    int RF_train_length = int(sequence.RF_train.size());
+    int nvoxels = voxels.size();
 
-    COMPAS_ASSERT(echos.size(0) == nreadouts);
-    COMPAS_ASSERT(echos.size(1) == nvoxels);
+    COMPAS_CHECK(is_power_of_two(warp_size) && warp_size <= 32);
+    COMPAS_CHECK(sequence.max_state <= max_N);
+    COMPAS_CHECK(sequence.sliceprofiles.size(1) == sequence.RF_train.size());
+    COMPAS_CHECK(transposed_echos.begin(0) == voxels.begin);
+    COMPAS_CHECK(transposed_echos.end(0) == voxels.end);
+    COMPAS_CHECK(transposed_echos.size(1) == RF_train_length);
 
-    context.fill(echos, cfloat(0));
+    context.fill(transposed_echos.data(), transposed_echos.size(), cfloat(0));
+
+    dim3 block_size = {warp_size, warps_per_block};
+    dim3 grid_size = {1, uint(div_ceil(nvoxels, warps_per_block))};
 
     for (index_t i = 0; i < sequence.sliceprofiles.size(0); i++) {
-        dim3 block_size = 256;
-        dim3 grid_size = div_ceil(uint(nvoxels * warp_size), block_size.x);
+        kernels::simulate_fisp<max_N, warp_size, warps_per_block>
+            <<<grid_size, block_size, 0, context>>>(
+                voxels,
+                transposed_echos,
+                sequence.sliceprofiles.drop_axis(i),
+                parameters,
+                sequence);
 
-        kernels::simulate_fisp<max_N, warp_size><<<grid_size, block_size, 0, context.stream()>>>(
-            echos,
-            sequence.sliceprofiles.drop_axis<0>(i),
-            parameters,
-            sequence);
+        KMM_GPU_CHECK(gpuGetLastError());
     }
 }
 
-void simulate_magnetization_kernel(
-    const kmm::CudaDevice& context,
-    cuda_view_mut<cfloat, 2> echos,
+static void simulate_magnetization_kernel(
+    const kmm::DeviceResource& context,
+    kmm::Range<index_t> voxels,
+    GPUSubviewMut<cfloat, 2> transposed_echos,
     TissueParametersView parameters,
     FISPSequenceView sequence) {
     if (sequence.max_state <= 4) {
-        simulate_fisp_sequence_for_size<4, 2>(context, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<4, 2>(
+            context,
+            voxels,
+            transposed_echos,
+            parameters,
+            sequence);
     } else if (sequence.max_state <= 8) {
-        simulate_fisp_sequence_for_size<8, 4>(context, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<8, 4>(
+            context,
+            voxels,
+            transposed_echos,
+            parameters,
+            sequence);
     } else if (sequence.max_state <= 16) {
-        simulate_fisp_sequence_for_size<16, 8>(context, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<16, 8>(
+            context,
+            voxels,
+            transposed_echos,
+            parameters,
+            sequence);
     } else if (sequence.max_state <= 32) {
-        simulate_fisp_sequence_for_size<32, 16>(context, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<32, 16>(
+            context,
+            voxels,
+            transposed_echos,
+            parameters,
+            sequence);
     } else if (sequence.max_state <= 64) {
-        simulate_fisp_sequence_for_size<64, 32>(context, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<64, 32>(
+            context,
+            voxels,
+            transposed_echos,
+            parameters,
+            sequence);
     } else if (sequence.max_state <= 96) {
-        simulate_fisp_sequence_for_size<96, 32>(context, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<96, 32>(
+            context,
+            voxels,
+            transposed_echos,
+            parameters,
+            sequence);
     } else if (sequence.max_state <= 128) {
-        simulate_fisp_sequence_for_size<128, 32>(context, echos, parameters, sequence);
+        simulate_fisp_sequence_for_size<128, 32>(
+            context,
+            voxels,
+            transposed_echos,
+            parameters,
+            sequence);
     } else {
-        COMPAS_PANIC("max_state cannot exceed 128");
+        COMPAS_ERROR("max_state cannot exceed 128");
     }
 }
 
 Array<cfloat, 2> simulate_magnetization(
-    const CudaContext& context,
+    const CompasContext& context,
     TissueParameters parameters,
     FISPSequence sequence) {
-    int nreadouts = sequence.RF_train.size();
-    int nvoxels = parameters.nvoxels;
-    auto echos = Array<cfloat, 2> {nreadouts, nvoxels};
+    using namespace kmm::placeholders;
+    auto RF_length = int(sequence.RF_train.size());
+    auto nvoxels = parameters.nvoxels;
+    auto chunk_size = parameters.chunk_size;
+    auto transposed_echos = Array<cfloat, 2> {{nvoxels, RF_length}};
 
-    void (*fun)(
-        const kmm::CudaDevice&,
-        cuda_view_mut<cfloat, 2>,
-        TissueParametersView,
-        FISPSequenceView) = simulate_magnetization_kernel;
+    context.parallel_device(
+        nvoxels,
+        chunk_size,
+        simulate_magnetization_kernel,
+        _x,
+        write(transposed_echos(_x, _)),
+        read(parameters, _x),
+        sequence);
 
-    context.submit_device(fun, write(echos), parameters, sequence);
+    auto undersampling_factor = sequence.undersampling_factor;
+    auto nreadouts = RF_length * undersampling_factor;
+    auto echos = Array<cfloat, 2> {{nreadouts, nvoxels}};
+
+    context.parallel_kernel(
+        {nvoxels, nreadouts},
+        {chunk_size, nreadouts},
+        {32, 32},
+        kernels::expand_undersampled_echos,
+        _x,
+        _y,
+        undersampling_factor,
+        write(echos[_][_x]),
+        transposed_echos[_x][_]);
 
     return echos;
 }

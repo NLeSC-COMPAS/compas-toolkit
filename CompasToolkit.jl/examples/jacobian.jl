@@ -42,7 +42,7 @@ function Jv_kernel!(Jv, echos, ∂echos, parameters, coil_sensitivities::Abstrac
         s = mod1(i, ns) # determine which sample within readout
         nv = length(parameters) # nr of voxels
         # v is assumed to be an array of ... SVectors?
-        jv = zero(MVector{Nc, Complex{T}})
+        jv = zero(MVector{Nc, T})
 
         for voxel ∈ 1:nv
             x = X[voxel]
@@ -75,7 +75,7 @@ end
 
 function compute_Jv(echos, ∂echos, parameters, coil_sensitivities::AbstractArray{SVector{Nc, T}}, X, Y, trajectory, v) where {Nc,T}
     # allocate output on GPU
-    Jv = CUDA.zeros(SVector{Nc, Complex{T}}, nsamples(trajectory))
+    Jv = CUDA.zeros(SVector{Nc, T}, nsamples(trajectory))
 
     # launch cuda kernel
     THREADS_PER_BLOCK = 256

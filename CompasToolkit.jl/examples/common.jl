@@ -1,9 +1,11 @@
 using BlochSimulators
 using StaticArrays
+using Statistics
 using ComputationalResources
 using ImagePhantoms
 using LinearAlgebra
 using Random
+using Printf
 
 Random.seed!(1337)
 
@@ -28,7 +30,7 @@ function generate_parameters(N)
     ρ = ComplexF32.(ImagePhantoms.shepp_logan(N, ImagePhantoms.SheppLoganEmis())') |> vec;
     T₁ = fill(0.85f0, N, N) |> vec;
     T₂ = fill(0.05f0, N, N) |> vec;
-    B₀ = repeat(1:N,1,N) .|> Float32 |> vec;
+    B₀ = zeros(Float32, N, N) |> vec; #repeat(1:N,1,N) .|> Float32 |> vec;
     B₁ = ones(Float32, N, N) |> vec;
 
     FOVˣ, FOVʸ = 25.6, 25.6;
@@ -58,6 +60,7 @@ end
 
 function generate_cartesian_trajectory(N)
     FOVˣ, FOVʸ = 25.6, 25.6;
+    FOVˣ, FOVʸ = 30.0, 28.0;
 
     nr = N # nr of readouts
     ns = N # nr of samples per readout
@@ -77,7 +80,8 @@ function generate_coils(N, ncoils)
     coil₃ = coil₁;
     coil₄ = coil₂;
     
-    return hcat(coil₁ |> vec, coil₂ |> vec, coil₃ |> vec, coil₄ |> vec) .|> Float32 
+    coils = hcat(coil₁ |> vec, coil₂ |> vec, coil₃ |> vec, coil₄ |> vec) .|> ComplexF32
+    return coils[:, 1:ncoils]
 end
 
 function generate_echos(N, sequence)
@@ -113,20 +117,45 @@ function generate_delta_echos(N, sequence)
     )
 end
 
-function print_equals_check(expected, answer)
-    atol = 1e-9
+function print_equals_check(expected, answer; atol = 1e-9)
     answer = collect(answer)
 
+    println("=== Statistics ===")
+    # Shape and length are the same, so print once
+    @printf("  Shape: %s\n", string(size(expected)))
+    @printf("  Min:   %s vs %s\n", expected[argmin(real.(expected))], answer[argmin(real.(answer))])
+    @printf("  Max:   %s vs %s\n", expected[argmax(real.(expected))], answer[argmax(real.(answer))])
+    @printf("  Mean:  %s vs %s\n", mean(expected), mean(answer))
+    @printf("  Std.:  %s vs %s\n", std(expected), std(answer))
+    @printf("  Zeros: %s vs %s\n", mean(expected .== 0), mean(answer .== 0))
+    println()
+
+    println("=== Fraction of equal values ===")
     for rtol in [0.001, 0.005, 0.01, 0.05, 0.1]
         is_equal = isapprox.(answer, expected, atol=atol, rtol=rtol)
-        println("fraction equal (atol=$(atol), rtol=$(rtol)): ", sum(is_equal) / length(answer))
+        println("  atol=$(atol), rtol=$(rtol): ", sum(is_equal) / length(answer))
     end
 
-    err = abs.(answer - expected)
-    index = argmax(err)
-    println("maximum abs error ($(index)): ", err[index], "($(answer[index]) vs $(expected[index]))")
+    err = abs.(answer .- expected)
+    idx_abs = argmax(err)
+    max_abs_err = err[idx_abs]
+
+    println("\n=== Maximum absolute error ===")
+    println("  Index:          $(Tuple(idx_abs))")
+    println("  Answer:         $(answer[idx_abs])")
+    println("  Expected:       $(expected[idx_abs])")
+    println("  Absolute Error: $(max_abs_err)")
+    println()
 
     rel_err = err ./ max.(abs.(expected), atol)
-    index = argmax(rel_err)
-    println("maximum rel error ($(index)): ", rel_err[index], "($(answer[index]) vs $(expected[index]))")
+    idx_rel = argmax(rel_err)
+    max_rel_err = rel_err[idx_rel]
+
+    println("\n=== Maximum relative error ===")
+    println("  Index:          $(Tuple(idx_rel))")
+    println("  Answer:         $(answer[idx_rel])")
+    println("  Expected:       $(expected[idx_rel])")
+    println("  Relative Error: $max_rel_err")
+    println()
+    println()
 end

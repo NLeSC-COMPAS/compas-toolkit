@@ -19,7 +19,7 @@ static constexpr float DEFAULT_FINITE_DIFFERENCE_DELTA = 1e-4F;
  *         at each voxel for each readout.
  */
 Array<cfloat, 2> simulate_magnetization_derivative(
-    const CudaContext& context,
+    const CompasContext& context,
     int field,
     Array<cfloat, 2> echos,
     TissueParameters parameters,
@@ -39,7 +39,7 @@ Array<cfloat, 2> simulate_magnetization_derivative(
  *         at each voxel for each readout.
  */
 Array<cfloat, 2> simulate_magnetization_derivative(
-    const CudaContext& context,
+    const CompasContext& context,
     int field,
     Array<cfloat, 2> echos,
     TissueParameters parameters,

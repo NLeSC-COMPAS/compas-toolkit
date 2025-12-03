@@ -1,5 +1,7 @@
 using CompasToolkit
 using ImagePhantoms
+using StructArrays
+
 include("common.jl")
 
 function make_phantom(N, coordinates)
@@ -48,6 +50,7 @@ x = LinRange(-FOVˣ/2, FOVˣ/2, N) # cm
 y = LinRange(-FOVʸ/2, FOVʸ/2, N) # cm
 
 coordinates = tuple.(x,y');
+coordinates_ref = StructArray(Coordinates(x, y, zero(x)) for (x, y) in coordinates)
 
 # Make trajectory
 # dwell time between samples within readout
@@ -77,7 +80,7 @@ parameters = vec(make_phantom(N, coordinates));
 
 # Make coil sensitivities
 ncoils = 2
-coil_sensitivities = rand((0.75:0.01:1.25), ncoils,N^2) .|> Float32
+coil_sensitivities = rand((0.75:0.01:1.25), ncoils,N^2) .|> ComplexF32
 coil_sensitivities .= 1
 coil_sensitivities = map(SVector{ncoils}, eachcol(coil_sensitivities))
 
@@ -109,7 +112,6 @@ compas_trajectory = CompasToolkit.CartesianTrajectory(
     trajectory.k_start_readout,
     trajectory.Δk_adc[1]);
 
-compas_coils = CompasToolkit.make_array(compas_context, Float32.(hcat(vec(coil₁), vec(coil₂))))
 echos = CompasToolkit.simulate_magnetization(compas_parameters, compas_sequence)
 
 # Set precision and send to gpu
@@ -117,6 +119,7 @@ parameters          = gpu(f32(vec(parameters)))
 sequence            = gpu(f32(sequence))
 coil_sensitivities  = gpu(f32(coil_sensitivities))
 trajectory          = gpu(f32(trajectory))
+coordinates_ref     = gpu(coordinates_ref)
 
 # Simulate data
 echos_ref = simulate_magnetization(CUDALibs(), sequence, parameters)
@@ -126,6 +129,6 @@ print_equals_check(transpose(collect(echos_ref)), collect(echos))
 
 # Phase encoding
 echos = CompasToolkit.phase_encoding(echos, compas_parameters, compas_trajectory)
-phase_encoding!(echos_ref, trajectory, parameters)
+phase_encoding!(echos_ref, trajectory, coordinates_ref)
 
 print_equals_check(transpose(collect(echos_ref)), collect(echos))

@@ -13,12 +13,12 @@ struct complex_storage {
 
 template<>
 struct alignas(2 * sizeof(float)) complex_storage<float> {
-    float re = 0, im = 0;
+    float re, im;
 };
 
 template<>
 struct alignas(2 * sizeof(double)) complex_storage<double> {
-    double re = 0, im = 0;
+    double re, im;
 };
 
 template<typename T>
@@ -31,6 +31,12 @@ struct alignas(2 * sizeof(T)) complex_type: complex_storage<T> {
 
     //    COMPAS_HOST_DEVICE
     complex_type(const complex_type<T>& that) = default;
+
+    COMPAS_HOST_DEVICE
+    complex_type(const complex_storage<T>& that) {
+        this->re = that.re;
+        this->im = that.im;
+    }
 
     template<typename R>
     COMPAS_HOST_DEVICE explicit complex_type(const complex_type<R>& that) :
@@ -55,7 +61,25 @@ struct alignas(2 * sizeof(T)) complex_type: complex_storage<T> {
     complex_type<T> conj() const {
         return {real(), -imag()};
     }
+
+    /**
+     * Returns `this + a * b` or, equivalently, `fma(a, b, *this)`
+     */
+    COMPAS_HOST_DEVICE
+    complex_type<T> add_mul(const complex_type<T>& a, const complex_type<T>& b) const {
+        return fma(a, b, *this);
+    }
 };
+
+template<typename T>
+COMPAS_HOST_DEVICE static T real(const complex_type<T>& v) {
+    return v.re;
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE static T imag(const complex_type<T>& v) {
+    return v.im;
+}
 
 template<typename T>
 COMPAS_HOST_DEVICE static complex_type<T> conj(const complex_type<T>& v) {
@@ -139,6 +163,18 @@ COMPAS_HOST_DEVICE complex_type<T> pow(const complex_type<T>& a, const T& b) {
 template<typename T>
 COMPAS_HOST_DEVICE complex_type<T> pow(const T& a, const complex_type<T>& b) {
     return exp(b * ::log(a));
+}
+
+template<typename T>
+COMPAS_HOST_DEVICE complex_type<T>
+fma(const complex_type<T>& a, const complex_type<T>& b, const complex_type<T>& c) {
+    return {c.re + a.re * b.re - a.im * b.im, c.im + a.re * b.im + a.im * b.re};
+}
+
+template<>
+COMPAS_HOST_DEVICE complex_type<float>
+fma(const complex_type<float>& a, const complex_type<float>& b, const complex_type<float>& c) {
+    return {fmaf(a.re, b.re, fmaf(-a.im, b.im, c.re)), fmaf(a.re, b.im, fmaf(a.im, b.re, c.im))};
 }
 
 template<typename T>
@@ -290,15 +326,27 @@ using cdouble = complex_type<double>;
 
 }  // namespace compas
 
-#define COMPAS_COMPLEX_DEVICE_SHFL_IMPL(F, Ty)                                 \
-    template<typename T>                                                       \
-    COMPAS_DEVICE compas::complex_type<T> F(                                   \
-        unsigned mask,                                                         \
-        const compas::complex_type<T>& var,                                    \
-        Ty arg,                                                                \
-        int width = 32) {                                                      \
-        return {::F(mask, var.re, arg, width), ::F(mask, var.im, arg, width)}; \
-    }
+#ifdef COMPAS_IS_CUDA
+    #define COMPAS_COMPLEX_DEVICE_SHFL_IMPL(F, Ty)                                 \
+        template<typename T>                                                       \
+        COMPAS_DEVICE compas::complex_type<T> F(                                   \
+            unsigned mask,                                                         \
+            const compas::complex_type<T>& var,                                    \
+            Ty arg,                                                                \
+            int width = 32) {                                                      \
+            return {::F(mask, var.re, arg, width), ::F(mask, var.im, arg, width)}; \
+        }
+#elif defined(COMPAS_IS_HIP)
+    #define COMPAS_COMPLEX_DEVICE_SHFL_IMPL(F, Ty)                                 \
+        template<typename T>                                                       \
+        COMPAS_DEVICE compas::complex_type<T> F(                                   \
+            unsigned long long mask,                                               \
+            const compas::complex_type<T>& var,                                    \
+            Ty arg,                                                                \
+            int width = 32) {                                                      \
+            return {::F(mask, var.re, arg, width), ::F(mask, var.im, arg, width)}; \
+        }
+#endif
 
 COMPAS_COMPLEX_DEVICE_SHFL_IMPL(__shfl_sync, int);
 COMPAS_COMPLEX_DEVICE_SHFL_IMPL(__shfl_up_sync, unsigned int);

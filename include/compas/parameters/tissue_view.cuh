@@ -1,5 +1,6 @@
 #pragma once
 
+#include "compas/core/backends.h"
 #include "compas/core/complex_type.h"
 #include "compas/core/view.h"
 
@@ -39,11 +40,12 @@ struct TissueVoxel {
  * Device-side representation of `TissueParameters`
  */
 struct TissueParametersView {
-    cuda_view<float, 2> parameters;
-    int nvoxels;
-    bool has_z;
-    bool has_b0;
-    bool has_b1;
+    TissueParametersView(GPUSubview<float, 2> parameters = {}) : parameters(parameters) {}
+
+    GPUSubview<float, 2> parameters;
+    bool has_z = true;
+    bool has_b0 = true;
+    bool has_b1 = true;
 
     /**
      * Returns the parameters for the voxel at location `i`.

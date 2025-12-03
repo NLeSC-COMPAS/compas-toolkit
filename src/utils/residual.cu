@@ -6,18 +6,18 @@
 namespace compas {
 
 Array<cfloat, 3> compute_residual(
-    CudaContext ctx,
+    CompasContext ctx,
     Array<cfloat, 3> lhs,
     Array<cfloat, 3> rhs,
     float* objective_out) {
-    COMPAS_ASSERT(lhs.sizes() == rhs.sizes());
-    auto n = lhs.size();
-    auto d = lhs.sizes();
+    COMPAS_CHECK(lhs.size() == rhs.size());
+    auto n = kmm::checked_cast<int>(lhs.size().volume());
+    auto d = lhs.size();
 
     static int constexpr block_dim = 256;
     int num_blocks = std::min(1024, div_ceil(n, block_dim));
 
-    auto output = Array<cfloat> {n};
+    auto output = Array<cfloat, 3> {d};
     auto objective = Array<float> {1};
     auto partials = Array<float> {num_blocks};
 
@@ -25,23 +25,24 @@ Array<cfloat, 3> compute_residual(
         uint(num_blocks),
         uint(block_dim),
         kernels::calculate_elementwise_difference<block_dim>,
-        lhs.flatten(),
-        rhs.flatten(),
+        n,
+        lhs,
+        rhs,
         write(output),
         write(partials));
 
-    if (objective_out != nullptr) {
-        ctx.submit_kernel(
-            1,
-            block_dim,
-            kernels::accumulate_partial_sums<block_dim>,
-            partials,
-            write(objective));
+    ctx.submit_kernel(
+        1,
+        block_dim,
+        kernels::accumulate_partial_sums<block_dim>,
+        partials,
+        write(objective));
 
-        *objective_out = objective.read()[0];
+    if (objective_out != nullptr) {
+        objective.copy_to(objective_out);
     }
 
-    return output.reshape(d[0], d[1], d[2]);
+    return output;
 }
 
 }  // namespace compas

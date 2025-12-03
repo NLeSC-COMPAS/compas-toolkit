@@ -59,8 +59,8 @@ function Jᴴv_kernel!(Jᴴv, echos, ∂echos, parameters, coil_sensitivities::A
         c = coil_sensitivities[voxel]
 
         # accumulators
-        mᴴv = zero(SMatrix{1,Nc}{Complex{T}}{Nc})
-        ∂mᴴv = zero(SMatrix{2,Nc}{Complex{T}}{2*Nc})
+        mᴴv = zero(SMatrix{1,Nc}{T}{Nc})
+        ∂mᴴv = zero(SMatrix{2,Nc}{T}{2*Nc})
 
         t = 1
 

@@ -22,54 +22,57 @@ struct FISPSequence {
     // Echo time in seconds, assumed constant during the sequence
     float TE;
 
+    float TW = 0;
+
     // Maximum number of states to keep track of in EPG simulation
     int max_state;
 
     // Inversion delay after the inversion prepulse in seconds
     float TI;
+
+    int undersampling_factor = 1;
+
+    int repetitions = 1;
+
+    // With or without inversion prepulse at the start of every repetition
+    bool inversion_prepulse = true;
+
+    // Spoiling is assumed before the start of a next cycle
+    bool wait_spoiling = true;
 };
 
 inline FISPSequence make_fisp_sequence(
-    const CudaContext& context,
-    host_view<cfloat> RF_train,
-    host_view<cfloat, 2> sliceprofiles,
+    const CompasContext& context,
+    View<cfloat> RF_train,
+    View<cfloat, 2> sliceprofiles,
     float TR,
     float TE,
     int max_state,
     float TI) {
-    COMPAS_ASSERT(sliceprofiles.size(1) == RF_train.size(0));
-    return {context.allocate(RF_train), context.allocate(sliceprofiles), TR, TE, max_state, TI};
+    return {
+        context.allocate(RF_train),
+        context.allocate(sliceprofiles),
+        TR,
+        TE,
+        0.0F,
+        max_state,
+        TI};
 }
 
 }  // namespace compas
 
-namespace kmm {
+KMM_DEFINE_STRUCT_ARGUMENT(
+    compas::FISPSequence,
+    it.RF_train,
+    it.sliceprofiles,
+    it.TR,
+    it.TE,
+    it.TW,
+    it.max_state,
+    it.TI,
+    it.undersampling_factor,
+    it.repetitions,
+    it.inversion_prepulse,
+    it.wait_spoiling)
 
-template<>
-struct TaskArgument<ExecutionSpace::Cuda, compas::FISPSequence> {
-    using type = compas::FISPSequenceView;
-
-    static TaskArgument pack(TaskBuilder& builder, compas::FISPSequence p) {
-        return {
-            {.RF_train = {},
-             .sliceprofiles = {},
-             .TR = p.TR,
-             .TE = p.TE,
-             .max_state = p.max_state,
-             .TI = p.TI},
-            pack_argument<ExecutionSpace::Cuda>(builder, p.RF_train),
-            pack_argument<ExecutionSpace::Cuda>(builder, p.sliceprofiles)};
-    }
-
-    type unpack(TaskContext& context) {
-        view.RF_train = unpack_argument<ExecutionSpace::Cuda>(context, RF_train);
-        view.sliceprofiles = unpack_argument<ExecutionSpace::Cuda>(context, sliceprofiles);
-        return view;
-    }
-
-    type view;
-    PackedArray<const compas::cfloat> RF_train;
-    PackedArray<const compas::cfloat, 2> sliceprofiles;
-};
-
-};  // namespace kmm
+KMM_DEFINE_STRUCT_VIEW(compas::FISPSequence, compas::FISPSequenceView)

@@ -3,9 +3,6 @@
 #include "assertion.h"
 
 namespace compas {
-
-using index_t = int;
-
 template<typename T, int N>
 struct vector_storage {
     COMPAS_HOST_DEVICE
@@ -160,29 +157,29 @@ struct vector: vector_storage<T, N> {
         storage_type(first, second, rest...) {}
 
     COMPAS_HOST_DEVICE
-    T& at(index_t i) {
+    T& at(int i) {
         COMPAS_DEBUG_ASSERT(i >= 0 && i < N);
         return this->data()[i];
     }
 
     COMPAS_HOST_DEVICE
-    const T& at(index_t i) const {
+    const T& at(int i) const {
         COMPAS_DEBUG_ASSERT(i >= 0 && i < N);
         return this->data()[i];
     }
 
     COMPAS_HOST_DEVICE
-    T& operator[](index_t i) {
+    T& operator[](int i) {
         return at(i);
     }
 
     COMPAS_HOST_DEVICE
-    const T& operator[](index_t i) const {
+    const T& operator[](int i) const {
         return at(i);
     }
 
     COMPAS_HOST_DEVICE
-    index_t size() const {
+    int size() const {
         return N;
     }
 
@@ -221,7 +218,7 @@ struct vector: vector_storage<T, N> {
         using R = decltype(fun(T {}));
         vector<R, N> result;
 
-        for (index_t i = 0; i < N; i++) {
+        for (int i = 0; i < N; i++) {
             result[i] = fun(this->at(i));
         }
 
@@ -230,10 +227,10 @@ struct vector: vector_storage<T, N> {
 };
 
 namespace detail {
-template<typename T, index_t N>
+template<typename T, int N>
 struct vector_norm_impl;
 
-template<index_t N>
+template<int N>
 struct vector_norm_impl<float, N> {
     COMPAS_HOST_DEVICE
     static float call(const vector<float, N>& input) {
@@ -246,7 +243,7 @@ struct vector_norm_impl<float, N> {
     }
 };
 
-template<index_t N>
+template<int N>
 struct vector_norm_impl<double, N> {
     COMPAS_HOST_DEVICE
     static double call(const vector<double, N>& input) {
@@ -306,39 +303,39 @@ COMPAS_HOST_DEVICE vector<T, 3> cross(const vector<T, 3>& left, const vector<T, 
         left[0] * right[1] - left[1] * right[0]};
 }
 
-#define COMPAS_VECTOR_OPS(OP, OP_ASSIGN)                                                     \
-    template<typename T, int N>                                                              \
-    COMPAS_HOST_DEVICE vector<T, N> operator OP(                                             \
-        const vector<T, N>& left,                                                            \
-        const vector<T, N>& right) {                                                         \
-        vector<T, N> result;                                                                 \
-        for (int i = 0; i < N; i++) {                                                        \
-            result[i] = left[i] OP right[i];                                                 \
-        }                                                                                    \
-                                                                                             \
-        return result;                                                                       \
-    }                                                                                        \
-                                                                                             \
-    template<typename T, int N>                                                              \
-    COMPAS_HOST_DEVICE vector<T, N> operator OP(const vector<T, N>& left, const T& right) {  \
-        return left OP vector<T, N> {right};                                                 \
-    }                                                                                        \
-                                                                                             \
-    template<typename T, int N>                                                              \
-    COMPAS_HOST_DEVICE vector<T, N> operator OP(const T& left, const vector<T, N>& right) {  \
-        return vector<T, N> {left} OP right;                                                 \
-    }                                                                                        \
-                                                                                             \
-    template<typename T, int N>                                                              \
-    COMPAS_HOST_DEVICE vector<T, N> operator OP_ASSIGN(                                      \
-        vector<T, N>& left,                                                                  \
-        const vector<T, N>& right) {                                                         \
-        return left = left OP right;                                                         \
-    }                                                                                        \
-                                                                                             \
-    template<typename T, int N>                                                              \
-    COMPAS_HOST_DEVICE vector<T, N> operator OP_ASSIGN(vector<T, N>& left, const T& right) { \
-        return left = left OP right;                                                         \
+#define COMPAS_VECTOR_OPS(OP, OP_ASSIGN)                                                      \
+    template<typename T, int N>                                                               \
+    COMPAS_HOST_DEVICE vector<T, N> operator OP(                                              \
+        const vector<T, N>& left,                                                             \
+        const vector<T, N>& right) {                                                          \
+        vector<T, N> result;                                                                  \
+        for (int i = 0; i < N; i++) {                                                         \
+            result[i] = left[i] OP right[i];                                                  \
+        }                                                                                     \
+                                                                                              \
+        return result;                                                                        \
+    }                                                                                         \
+                                                                                              \
+    template<typename T, int N>                                                               \
+    COMPAS_HOST_DEVICE vector<T, N> operator OP(const vector<T, N>& left, const T & right) {  \
+        return left OP vector<T, N> {right};                                                  \
+    }                                                                                         \
+                                                                                              \
+    template<typename T, int N>                                                               \
+    COMPAS_HOST_DEVICE vector<T, N> operator OP(const T & left, const vector<T, N>& right) {  \
+        return vector<T, N> {left} OP right;                                                  \
+    }                                                                                         \
+                                                                                              \
+    template<typename T, int N>                                                               \
+    COMPAS_HOST_DEVICE vector<T, N> operator OP_ASSIGN(                                       \
+        vector<T, N>& left,                                                                   \
+        const vector<T, N>& right) {                                                          \
+        return left = left OP right;                                                          \
+    }                                                                                         \
+                                                                                              \
+    template<typename T, int N>                                                               \
+    COMPAS_HOST_DEVICE vector<T, N> operator OP_ASSIGN(vector<T, N>& left, const T & right) { \
+        return left = left OP right;                                                          \
     }
 
 COMPAS_VECTOR_OPS(+, +=)
@@ -346,13 +343,13 @@ COMPAS_VECTOR_OPS(-, -=)
 COMPAS_VECTOR_OPS(*, *=)
 COMPAS_VECTOR_OPS(/, /=)
 
-template<typename T, index_t N, typename R, index_t M>
+template<typename T, int N, typename R, int M>
 COMPAS_HOST_DEVICE bool operator==(const vector<T, N>& left, const vector<R, M>& right) {
     if (N != M) {
         return false;
     }
 
-    for (index_t i = 0; i < N; i++) {
+    for (int i = 0; i < N; i++) {
         if (left[i] != right[i]) {
             return false;
         }
@@ -361,7 +358,7 @@ COMPAS_HOST_DEVICE bool operator==(const vector<T, N>& left, const vector<R, M>&
     return true;
 }
 
-template<typename T, index_t N, typename R, index_t M>
+template<typename T, int N, typename R, int M>
 COMPAS_HOST_DEVICE bool operator!=(const vector<T, N>& left, const vector<R, M>& right) {
     return !operator==(left, right);
 }
@@ -385,6 +382,6 @@ using vfloat4 = vec4<float>;
 using vdouble4 = vec4<double>;
 
 template<int N>
-using ndindex_t = vector<index_t, N>;
+using ndint = vector<int, N>;
 
 }  // namespace compas
