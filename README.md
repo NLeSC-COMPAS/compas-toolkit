@@ -6,7 +6,8 @@
 # Compas Toolkit
 
 [![github](https://img.shields.io/badge/github-repo-000.svg?logo=github&labelColor=gray&color=blue)](https://github.com/NLeSC-COMPAS/compas-toolkit)
-![Github Build](https://github.com/NLeSC-COMPAS/compas-toolkit/actions/workflows/cmake-cuda-multi-compiler.yml/badge.svg)
+![CUDA Build](https://github.com/NLeSC-COMPAS/compas-toolkit/actions/workflows/cmake-cuda-multi-compiler.yml/badge.svg)
+![HIP Build](https://github.com/NLeSC-COMPAS/compas-toolkit/actions/workflows/cmake-hip.yml/badge.svg)
 ![GitHub License](https://img.shields.io/github/license/NLeSC-COMPAS/compas-toolkit)
 ![GitHub Tag](https://img.shields.io/github/v/tag/NLeSC-COMPAS/compas-toolkit)
 
