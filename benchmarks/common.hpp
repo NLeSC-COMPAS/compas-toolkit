@@ -8,13 +8,14 @@
 
 template <typename F>
 static std::pair<double, int> benchmark(F fun) {
+    // One call to warm up
+    fun();
+
+    // statistics
     auto before = std::chrono::high_resolution_clock::now();
     auto deadline = before + std::chrono::seconds(1);
     auto after = before;
     int runs = 0;
-
-    // One call to warm up
-    fun();
 
     while (after < deadline) {
         fun();

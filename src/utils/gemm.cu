@@ -303,7 +303,7 @@ void compute_complex_gemm(
             ccglib::mma::MemOrder::row_major,
             ccglib::ValueType::bfloat16,
             ccglib::ValueType::float32,
-            ccglib::mma::Variant::opt,
+            ccglib::mma::Variant::basic,
             alpha,
             beta
     });
