@@ -19,10 +19,6 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.8'
-      - name: Setup Julia
-        uses: julia-actions/setup-julia@v1
-        with:
-          version: "1.11"
       - name: Checkout
         uses: actions/checkout@v2
         with:
@@ -34,27 +30,10 @@ jobs:
           sudo apt-get install python3-sphinx pandoc doxygen
           python -m pip install --upgrade pip
           python -m pip install sphinx_rtd_theme unidecode nbsphinx wheel breathe exhale
-      - name: Build Julia documentation and copy to output
-        run: |
-          cd CompasToolkit.jl
-          touch src/Constants.jl
-          julia --project=docs -e '
-            using Pkg
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()
-          '
-          julia --project=docs docs/make.jl
-          mkdir -p /tmp/sphinxnotes-pages
-          cp -R docs/build ../../api_julia
       - name: Build and commit
         uses: sphinx-notes/pages@v2
         with:
           documentation_path: './docs'
-      - name: Copy Julia documentation and commit
-        run: |
-          cp -R ../api_julia .
-          git add api_julia
-          git commit -a -m "Adding generated Julia documentation"
       - name: Push documentation
         uses: ad-m/github-push-action@master
         with:

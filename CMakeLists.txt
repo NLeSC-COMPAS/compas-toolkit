@@ -23,7 +23,7 @@ if(COMPAS_USE_CUDA AND COMPAS_USE_HIP)
 endif()
 
 # Set CMAKE_CUDA_ARCHITECTURES if not defined. This needs to happen before calling `add_library`
-if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+if(NOT CMAKE_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES all-major)
 endif()
 
@@ -106,24 +106,17 @@ elseif(COMPAS_USE_HIP)
 
     # Define `COMPAS_USE_HIP` macro so that headers can detect HIP usage
     target_compile_definitions(${PROJECT_NAME} PUBLIC COMPAS_USE_HIP=1)
-    
+
     # Needed for ROCM < 6.3
     target_compile_definitions(${PROJECT_NAME} PUBLIC HIP_ENABLE_WARP_SYNC_BUILTINS=1)
 endif()
 
 # Installation of library files
-set(COMPAS_LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(COMPAS_LIB_PATH "${CMAKE_INSTALL_PREFIX}/lib" PARENT_SCOPE)
 
 string(RANDOM LENGTH 32 COMPAS_VERSION_HASH)
 string(TIMESTAMP COMPAS_VERSION_DATE "%Y%m%d")
-set(COMPAS_VERSION "${COMPAS_VERSION_DATE}-${COMPAS_VERSION_HASH}")
-
-configure_file(
-    ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/Constants.jl.input
-    ${PROJECT_SOURCE_DIR}/CompasToolkit.jl/src/Constants.jl)
-configure_file(
-    ${PROJECT_SOURCE_DIR}/julia-bindings/src/constants.h.input
-    ${PROJECT_SOURCE_DIR}/julia-bindings/src/constants.h)
+set(COMPAS_VERSION "${COMPAS_VERSION_DATE}-${COMPAS_VERSION_HASH}" PARENT_SCOPE)
 
 set(KMM_STATIC ON)
 add_subdirectory(thirdparty/kmm)
@@ -132,7 +125,6 @@ add_subdirectory(thirdparty/kernel_float)
 target_link_libraries(${PROJECT_NAME} PUBLIC kmm)
 target_link_libraries(${PROJECT_NAME} PRIVATE kernel_float)
 
-add_subdirectory(julia-bindings)
 
 if(COMPAS_BUILD_TEST)
     add_subdirectory(thirdparty/Catch2)

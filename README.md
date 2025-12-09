@@ -65,24 +65,5 @@ This generates a static library named `libcompas-toolkit.a`.
 
 ### Compiling the Julia bindings
 
-To compile the Julia bindings, use the following command.
-This will install the library into a local `lib/` directory:
+Please visit [CompasToolkit.jl](https://github.com/NLeSC-COMPAS/CompasToolkit.jl) for details on how to use Compas Toolkit from Julia.
 
-```bash
-$ make install
-```
-
-If everything has gone as planned, you'll now have a shared library called `libcompas-julia.so` in the local `lib/` directory. Additionally, a Julia file should have been automatically generated as `CompasToolkit.jl/src/CompasToolkit.jl`.
-
-## Usage
-
-To use the Compas Toolkit in Julia, simply build the Julia bindings using the instructions above and then add the directory `CompasToolkit.jl` to you Julia project.
-
-```julia
-$ julia
-> using Pkg; Pkg.add(path="<path to compas-toolkit>/CompasToolkit.jl/")
-```
-
-You can then import the library with `using CompasToolkit`.
-
-For examples of using the toolkit, take a look at the scripts available in the `CompasToolkit.jl/tests` directory.
