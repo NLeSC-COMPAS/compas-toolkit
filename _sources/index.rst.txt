@@ -10,7 +10,7 @@
    install
    example
    api_cxx
-   Julia API <https://nlesc-compas.github.io/compas-toolkit/api_julia>
+   Julia API <https://nlesc-compas.github.io/CompasToolkit.jl>
    Github Repository <https://github.com/NLeSC-COMPAS/compas-toolkit>
 
 Compas Toolkit
